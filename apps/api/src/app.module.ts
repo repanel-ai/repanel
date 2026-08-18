@@ -7,6 +7,7 @@ import { DbModule } from "./db/db.module";
 import { DefinitionsModule } from "./definitions/definitions.module";
 import { DomainExceptionFilter } from "./errors/domain-exception.filter";
 import { HealthModule } from "./health/health.module";
+import { McpModule } from "./mcp/mcp.module";
 import { ProjectsModule } from "./projects/projects.module";
 
 @Module({
@@ -17,6 +18,7 @@ import { ProjectsModule } from "./projects/projects.module";
     DbModule,
     DefinitionsModule,
     HealthModule,
+    McpModule,
     ProjectsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: DomainExceptionFilter }],

@@ -7,7 +7,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./fixtures": "./dist/definition/fixtures/index.js"
+    "./fixtures": "./dist/definition/fixtures/index.js",
+    "./SCHEMA.md": "./SCHEMA.md"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

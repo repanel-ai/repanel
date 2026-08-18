@@ -98,3 +98,13 @@ race in auth, where check-then-insert alone answers concurrent signups with a
 500 instead of a 409. Why: the database is already the authority on what
 "already exists" means, so a service-level pre-check must not be the only
 guard; and #008's error-quality bar applies to every caller, not just MCP.
+
+020 · 2026-08 · MCP surface v0 is public contract: five tools (get_project,
+get_schema_documentation, get_definition, submit_definition,
+get_validation_result), token-scoped with no project arguments, stateless
+HTTP transport. Invalid definitions are successful verdicts (never isError);
+refusals are isError; error lists are never truncated and carry a count the
+agent can verify. The transport never pre-validates definitions — the
+validator's repairable errors are the only errors an agent sees. Server
+instructions teach the authoring loop. Why: tool names, shapes, and
+descriptions are the product's onboarding for every customer's agent (#008).

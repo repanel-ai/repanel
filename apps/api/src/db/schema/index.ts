@@ -1,5 +1,3 @@
-/**
- * Drizzle tables live here, each added by the feature that owns it
- * (auth in task 003). Empty until then.
- */
-export {};
+/** Drizzle tables, each added by the feature that owns it. */
+export * from "./sessions";
+export * from "./users";

@@ -15,6 +15,13 @@
       "when": 1787081687601,
       "tag": "0001_married_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787091292553,
+      "tag": "0002_hesitant_living_lightning",
+      "breakpoints": true
     }
   ]
 }

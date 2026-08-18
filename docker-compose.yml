@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: repanel
+      POSTGRES_PASSWORD: repanel
+      POSTGRES_DB: repanel
+    ports:
+      - "5432:5432"
+    volumes:
+      - repanel-postgres:/var/lib/postgresql/data
+
+volumes:
+  repanel-postgres:

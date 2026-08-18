@@ -108,3 +108,21 @@ agent can verify. The transport never pre-validates definitions — the
 validator's repairable errors are the only errors an agent sees. Server
 instructions teach the authoring loop. Why: tool names, shapes, and
 descriptions are the product's onboarding for every customer's agent (#008).
+
+021 · 2026-08 · Agent guidance ships in three layers: MCP descriptions +
+server instructions (minimal, always-on, MUST be self-sufficient for a naive
+agent), an installable skill packaging AUTHORING.md (deep workflow:
+inspection, field classification, companion-endpoint scaffolding, monorepo
+navigation — loaded on demand), and per-stack guides referenced by the skill
+(#011, community-contributable). The skill improves activation but never
+gates it; all three layers share one source tree, no drifting copies.
+Skill packaging lands post-013; POC measures the skill-less floor first.
+
+022 · 2026-08 · Checkpoint B (first naive-agent test): valid definition in
+1 prompt / 1 submission / 0 repairs; server instructions sufficed without a
+skill; agent independently derived the no-actions-without-admin-endpoints
+rule (#010). Rulings from findings: always-quote makes Prisma-cased
+identifiers fully supported (pin with a mixed-case test in 008; fix
+SCHEMA.md wording); repo convention is repanel/definition.json at repo root
+(server = execution truth, file = reviewable source; standardized in 013);
+definition-vs-live-schema drift check backlogged post-POC.

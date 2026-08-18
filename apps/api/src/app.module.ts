@@ -5,9 +5,10 @@ import { ConfigModule } from "./config/config.module";
 import { DbModule } from "./db/db.module";
 import { DomainExceptionFilter } from "./errors/domain-exception.filter";
 import { HealthModule } from "./health/health.module";
+import { ProjectsModule } from "./projects/projects.module";
 
 @Module({
-  imports: [AuthModule, ConfigModule, DbModule, HealthModule],
+  imports: [AuthModule, ConfigModule, DbModule, HealthModule, ProjectsModule],
   providers: [{ provide: APP_FILTER, useClass: DomainExceptionFilter }],
 })
 export class AppModule {}

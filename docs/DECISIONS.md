@@ -35,3 +35,55 @@ cheapest highest-leverage feature in the loop.
 
 009 · 2026-08 · Work is executed as bounded task files (docs/tasks/) run by a
 coding agent; CLAUDE.md is the standing rulebook. Out-of-scope lists are binding.
+
+010 · 2026-08 · Complexity policy: the definition schema never contains
+branching, sequencing, or computation. Multi-step / conditional operations
+are customer application endpoints invoked via httpCall actions; the agent
+authors both sides. Schema grows only by declarative additions (action
+inputs, fixed-vocabulary preconditions, relationship context), each gated
+by "can the runtime render it excellently for everyone?" Why: keeps the
+schema agent-generatable and the runtime ownable; the agent makes the
+endpoint escape hatch nearly free, so the format never needs to become a
+programming language.
+
+011 · 2026-08 · Mission framing: bring a Filament-class admin experience to
+every stack and language. The coding agent is the universal adapter — stack
+support is authored as agent guidance (markdown), never as per-framework
+SDKs. The definition stays strictly stack-neutral. Constrained patterns may
+grow Filament-style (widgets, pages) in later phases; a blank canvas never.
+
+012 · 2026-08 · Reversibility posture: the definition captures high-level
+intent, which preserves every exit — runtime replacement, schema migration
+(agent-assisted, near-free), and worst-case `repanel eject` generating an
+owned codebase FROM the definition. The true one-way door is the
+compatibility ratchet: once external definitions exist, schema changes are
+additive or migrated, never breaking-in-place. Schema changes are reviewed
+as public API changes. Genuinely custom pages, if ever needed, enter as an
+additive "embedded customer view" nav entry — never as layout primitives
+inside the definition.
+
+013 · 2026-08 · Companion endpoints convention: customer-side logic invoked
+by actions lives in ONE mounted admin-API module (default prefix /repanel/*),
+behind one verification middleware, scaffolded by the agent from our
+per-stack guide. Outbound requests are HMAC-signed (Stripe-webhook-style:
+timestamp + body, per-project secret, rotation via dual secrets). Reads and
+dbUpdate actions require zero app changes; endpoints appear only where
+business logic exists. Rationale: matches the normalized webhook/Filament
+precedent; puts operational logic in the customer's repo (tested, versioned,
+reviewed) rather than in a vendor UI; the module doubles as the app's
+operations API.
+
+014 · 2026-08 · Sensitive-field containment is total: sensitive fields may
+not appear in table columns, search, filters, or httpCall URL templates —
+any surface where values render OR can be probed (filter/search = an
+interactive oracle even when values never display). dbUpdate on hidden
+fields stays legal: hidden is a display concern, sensitive is a security
+one, and the two flags must not blur. Why: #008 — leaks die at validation;
+and a crisp sensitive/hidden distinction keeps authoring agents from
+misusing one as the other.
+
+015 · 2026-08 · Hint policy: validation hints suggest only safe fixes.
+A containment error (sensitive/hidden/etc.) never offers unsetting or
+weakening the protective flag as a remedy — the bypass must not live in the
+error message. Humans relax flags; hints don't. Why: authoring agents take
+the shortest path a hint offers; the shortest path must be the safe one.

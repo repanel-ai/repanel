@@ -85,6 +85,40 @@ orders is enough) including: an enum field, a relation, a sensitive field, a
 json field, both action kinds, and navigation groups. Tests import it; later
 tasks will reuse it.
 
+## Resolved decisions (from the approved plan review — implement as stated)
+
+The plan gate for this task already ran. These rulings are final; do not
+re-plan, implement directly:
+
+1. **Strict objects everywhere.** Unknown keys are a validation error.
+2. **Extra uniqueness checks:** relationship keys and action keys must be
+   unique per resource, in addition to resource keys and field keys.
+3. **Relationship foreignKey existence:** `belongsTo` → the FK must exist in
+   this resource's fields; `hasMany` → in the target resource's fields.
+4. **`dbUpdate` value vs enum:** if the target field is an enum, the literal
+   value must be one of its values (referential check + test).
+5. **Searchable "text-type"** means: `text`, `longText`, `email`, `url`.
+6. **No build step in this task.** `exports` may point at `./src/index.ts`;
+   no `dist`. (Task 002 revisits this when NestJS consumes the package —
+   note that in your summary.)
+7. **Fixture is NOT exported from the main barrel.** Add a separate
+   package.json export path `"./fixtures"` pointing at the fixtures module;
+   later tasks import `@repanel/contracts/fixtures`.
+
+Shape rulings from the approved plan (follow them): resources as an array
+of objects with `key` (not a keyed record); views under a `views` object
+(`views.table`, `views.detail`); refs as bare strings (columns, search,
+section fields, relatedLists, navigation resources); actions as a flat
+discriminated union on `kind`; field types as a discriminated union on
+`type`; validator returns `{ valid: true, definition } | { valid: false,
+errors }`; structural failure skips the referential pass; root-level error
+paths render as `(root)`.
+
+Housekeeping: if the repo root is missing `.gitignore` (dotfiles sometimes
+get lost when copying the bootstrap), recreate it with: `node_modules/`,
+`dist/`, `.env`, `.env.*`, `!.env.example`, `*.log`, `coverage/`,
+`.repanel/`. Commit `pnpm-lock.yaml`; ignore only `node_modules/`.
+
 ## Out of scope (binding)
 
 - Create/edit forms, editable fields, or any write configuration beyond the two
@@ -94,16 +128,18 @@ tasks will reuse it.
 - YAML/file serialization, schema migration tooling, JSON-schema export.
 - Any code outside `packages/contracts`. No API, no MCP, no UI.
 - No workspace-root changes except adding the package to the pnpm workspace
-  (already covered by the `packages/*` glob — so: none).
+  (already covered by the `packages/*` glob) and the `.gitignore`
+  housekeeping above if needed.
 
 ## Acceptance
 
 - [ ] `pnpm -r typecheck` and `pnpm -r test` pass from the repo root
 - [ ] The fixture validates with zero errors
-- [ ] Every referential rule above has at least one failing-case test asserting
-      `path` and `hint`
+- [ ] Every referential rule above (including resolved decisions 2–4) has at
+      least one failing-case test asserting `path` and `hint`
 - [ ] A structurally broken input (wrong type, missing required key) produces
       the translated error shape, not raw zod output
+- [ ] An unknown key anywhere produces a precise "unrecognized key" error
 - [ ] `SCHEMA.md` documents every concept with a short example each
 - [ ] Package imports cleanly with no server-only or browser-only dependencies
 

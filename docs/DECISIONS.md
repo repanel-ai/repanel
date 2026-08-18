@@ -87,3 +87,14 @@ A containment error (sensitive/hidden/etc.) never offers unsetting or
 weakening the protective flag as a remedy — the bypass must not live in the
 error message. Humans relax flags; hints don't. Why: authoring agents take
 the shortest path a hint offers; the shortest path must be the safe one.
+
+016 · 2026-08 · Repositories translate persistence error codes into domain
+errors: a pg `23505` unique violation leaves the repository as `ConflictError`,
+never as a raw ORM failure. This is not domain logic leaking downward — hiding
+persistence detail behind a domain-meaningful signal is the repository's one
+job, and an error code is exactly such a detail. Applies wherever a constraint
+violation carries a domain meaning; first application is the duplicate-email
+race in auth, where check-then-insert alone answers concurrent signups with a
+500 instead of a 409. Why: the database is already the authority on what
+"already exists" means, so a service-level pre-check must not be the only
+guard; and #008's error-quality bar applies to every caller, not just MCP.

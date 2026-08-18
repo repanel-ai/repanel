@@ -1,3 +1,5 @@
+export * from "./auth/requests.js";
+export * from "./auth/user.js";
 export * from "./definition/actions.js";
 export * from "./definition/errors.js";
 export * from "./definition/fields.js";

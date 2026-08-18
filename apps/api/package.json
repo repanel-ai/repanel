@@ -60,6 +60,7 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@repanel/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts",
+      "^@repanel/contracts/fixtures$": "<rootDir>/../../../packages/contracts/src/definition/fixtures/index.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   }

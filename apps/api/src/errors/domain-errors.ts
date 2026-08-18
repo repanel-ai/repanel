@@ -17,6 +17,14 @@ export class NotFoundError extends DomainError {
   readonly code = "not_found";
 }
 
+/**
+ * The request carries no usable identity. Says nothing more than that: which
+ * half of a credential was wrong is not the caller's business.
+ */
+export class UnauthorizedError extends DomainError {
+  readonly code = "unauthorized";
+}
+
 export class ForbiddenError extends DomainError {
   readonly code = "forbidden";
 }

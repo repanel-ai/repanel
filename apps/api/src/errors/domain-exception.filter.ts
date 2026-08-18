@@ -13,6 +13,7 @@ import {
   DomainError,
   ForbiddenError,
   NotFoundError,
+  UnauthorizedError,
   ValidationFailedError,
 } from "./domain-errors";
 
@@ -65,6 +66,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
 function statusOf(error: DomainError): number {
   if (error instanceof NotFoundError) return HttpStatus.NOT_FOUND;
+  if (error instanceof UnauthorizedError) return HttpStatus.UNAUTHORIZED;
   if (error instanceof ForbiddenError) return HttpStatus.FORBIDDEN;
   if (error instanceof ConflictError) return HttpStatus.CONFLICT;
   return HttpStatus.INTERNAL_SERVER_ERROR;

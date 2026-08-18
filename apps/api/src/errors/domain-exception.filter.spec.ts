@@ -4,6 +4,7 @@ import {
   DomainError,
   ForbiddenError,
   NotFoundError,
+  UnauthorizedError,
   ValidationFailedError,
 } from "./domain-errors";
 import { DomainExceptionFilter } from "./domain-exception.filter";
@@ -46,6 +47,7 @@ describe("DomainExceptionFilter", () => {
   });
 
   it.each<[DomainError, number, string]>([
+    [new UnauthorizedError("Sign in to continue"), HttpStatus.UNAUTHORIZED, "unauthorized"],
     [new ForbiddenError("Not your project"), HttpStatus.FORBIDDEN, "forbidden"],
     [new ConflictError("Email already registered"), HttpStatus.CONFLICT, "conflict"],
   ])("maps %s to its status", (error, status, code) => {

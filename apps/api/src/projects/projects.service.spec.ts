@@ -1,4 +1,5 @@
 import { Test } from "@nestjs/testing";
+import type { Principal } from "../auth/principal";
 import { ConflictError, NotFoundError } from "../errors/domain-errors";
 import { ProjectsRepository, type NewProjectRow, type ProjectRow } from "./projects.repository";
 import { ProjectsService } from "./projects.service";
@@ -163,6 +164,60 @@ describe("ProjectsService", () => {
       expect(nothingAtAll).toBeInstanceOf(NotFoundError);
       // Told apart, the two would let a caller probe for other people's ids.
       expect(nothingAtAll.message).toBe(somebodyElses.message);
+    });
+  });
+
+  describe("requireAccess", () => {
+    const asUser = (userId: string): Principal => ({ kind: "user", userId });
+    const asAgent = (projectId: string): Principal => ({ kind: "agent", projectId });
+
+    it("answers a user with the project they own", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      await expect(service.requireAccess(asUser(ADA), project.id)).resolves.toEqual(project);
+    });
+
+    it("answers a user asking after someone else's project as missing", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+
+      const refusal = await refusalFrom(service.requireAccess(asUser(ADA), project.id));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    it("answers an agent with the project its token names", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      await expect(service.requireAccess(asAgent(project.id), project.id)).resolves.toEqual(
+        project,
+      );
+    });
+
+    it("answers an agent asking after any other project as missing", async () => {
+      const skyscout = await service.create(ADA, { name: "SkyScout" });
+      const compiler = await service.create(GRACE, { name: "Compiler" });
+
+      const refusal = await refusalFrom(service.requireAccess(asAgent(skyscout.id), compiler.id));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    it("answers an agent whose project has since been deleted as missing", async () => {
+      // The token outlives nothing: a project that is gone is gone for it too.
+      const refusal = await refusalFrom(
+        service.requireAccess(asAgent("project-deleted"), "project-deleted"),
+      );
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    it("does not tell a user and an agent apart when refusing", async () => {
+      const compiler = await service.create(GRACE, { name: "Compiler" });
+
+      const asHuman = await refusalFrom(service.requireAccess(asUser(ADA), compiler.id));
+      const asToken = await refusalFrom(service.requireAccess(asAgent("project-404"), compiler.id));
+
+      expect(asToken.message).toBe(asHuman.message);
     });
   });
 });

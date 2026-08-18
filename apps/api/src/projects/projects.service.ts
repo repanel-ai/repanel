@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { CreateProjectRequest, ProjectDto } from "@repanel/contracts";
+import type { Principal } from "../auth/principal";
 import { ConflictError, NotFoundError } from "../errors/domain-errors";
 import { createProjectKey } from "./project-key";
 import { toProjectDto } from "./projects.mapper";
@@ -41,6 +42,20 @@ export class ProjectsService {
   async requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
     const project = await this.repository.findById(projectId);
     if (!project || project.userId !== ownerId) throw new NotFoundError("Project not found");
+    return toProjectDto(project);
+  }
+
+  /**
+   * The project this caller may act on, whoever the caller is. An agent token
+   * names exactly one project, so every other project reads as missing to it —
+   * the same answer a human gets for someone else's, and for the same reason.
+   */
+  async requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
+    if (principal.kind === "user") return this.requireOwned(projectId, principal.userId);
+
+    if (principal.projectId !== projectId) throw new NotFoundError("Project not found");
+    const project = await this.repository.findById(projectId);
+    if (!project) throw new NotFoundError("Project not found");
     return toProjectDto(project);
   }
 }

@@ -6,6 +6,7 @@ import {
   type ValidationResult,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
+import type { Principal } from "../auth/principal";
 import { NotFoundError, ValidationFailedError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 import { MAX_PAYLOAD_BYTES } from "./definition-size";
@@ -16,9 +17,15 @@ import {
 } from "./definitions.repository";
 import { DefinitionsService } from "./definitions.service";
 
-const ADA = "user-ada";
-const GRACE = "user-grace";
 const SKYSCOUT = "project-skyscout";
+const LEDGER = "project-ledger";
+
+/** Ada owns SkyScout; Grace owns nothing here. */
+const ADA: Principal = { kind: "user", userId: "user-ada" };
+const GRACE: Principal = { kind: "user", userId: "user-grace" };
+/** The agent holding SkyScout's token, and one holding another project's. */
+const SKYSCOUT_AGENT: Principal = { kind: "agent", projectId: SKYSCOUT };
+const LEDGER_AGENT: Principal = { kind: "agent", projectId: LEDGER };
 
 const PROJECT: ProjectDto = {
   id: SKYSCOUT,
@@ -68,12 +75,18 @@ class InMemoryDefinitionsRepository implements DefinitionStore {
   }
 }
 
-/** Stands in for the projects feature: Ada owns SkyScout, nobody else does. */
-class OwnedProjects implements Pick<ProjectsService, "requireOwned"> {
-  requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
-    if (projectId !== SKYSCOUT || ownerId !== ADA) {
-      return Promise.reject(new NotFoundError("Project not found"));
-    }
+/**
+ * Stands in for the projects feature: Ada owns SkyScout, and SkyScout's token
+ * reaches SkyScout. Everything else is missing, whoever is asking.
+ */
+class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
+  requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
+    const reaches =
+      principal.kind === "user"
+        ? principal.userId === "user-ada" && projectId === SKYSCOUT
+        : principal.projectId === projectId && projectId === SKYSCOUT;
+
+    if (!reaches) return Promise.reject(new NotFoundError("Project not found"));
     return Promise.resolve(PROJECT);
   }
 }
@@ -104,7 +117,7 @@ describe("DefinitionsService", () => {
       providers: [
         DefinitionsService,
         { provide: DefinitionsRepository, useValue: repository },
-        { provide: ProjectsService, useValue: new OwnedProjects() },
+        { provide: ProjectsService, useValue: new ReachableProjects() },
       ],
     }).compile();
 
@@ -116,7 +129,7 @@ describe("DefinitionsService", () => {
       const result = await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
 
       expect(result.valid).toBe(true);
-      await expect(service.getDraft(SKYSCOUT)).resolves.toEqual({
+      await expect(service.getDraft(ADA, SKYSCOUT)).resolves.toEqual({
         payload: saasDefinition,
         valid: true,
         errors: null,
@@ -128,16 +141,17 @@ describe("DefinitionsService", () => {
       const reported = errorsOf(await service.submitDraft(ADA, SKYSCOUT, BROKEN));
 
       expect(reported.length).toBeGreaterThan(0);
-      await expect(service.getValidationResult(SKYSCOUT)).resolves.toEqual({
+      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toEqual({
         valid: false,
         errors: reported,
+        updatedAt: expect.any(String),
       });
     });
 
     it("keeps an invalid draft readable, so the agent can see what it sent", async () => {
       await service.submitDraft(ADA, SKYSCOUT, BROKEN);
 
-      const draft = await service.getDraft(SKYSCOUT);
+      const draft = await service.getDraft(ADA, SKYSCOUT);
 
       expect(draft?.payload).toEqual(BROKEN);
       expect(draft?.valid).toBe(false);
@@ -146,7 +160,7 @@ describe("DefinitionsService", () => {
     it("stores every error exactly as validation wrote it", async () => {
       await service.submitDraft(ADA, SKYSCOUT, BROKEN);
 
-      const stored = await service.getValidationResult(SKYSCOUT);
+      const stored = await service.getValidationResult(ADA, SKYSCOUT);
 
       // Same input, straight from contracts: what came out of storage must be
       // indistinguishable from what validation produced, hints and all.
@@ -161,7 +175,7 @@ describe("DefinitionsService", () => {
       await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
 
       expect(repository.rows).toHaveLength(1);
-      const draft = await service.getDraft(SKYSCOUT);
+      const draft = await service.getDraft(ADA, SKYSCOUT);
       expect(draft?.payload).toEqual(saasDefinition);
       expect(draft?.valid).toBe(true);
       // The repaired draft must not inherit the errors of the one it replaced.
@@ -183,32 +197,70 @@ describe("DefinitionsService", () => {
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(repository.rows).toEqual([]);
     });
+
+    it("takes a submission from the agent holding the project's own token", async () => {
+      const result = await service.submitDraft(SKYSCOUT_AGENT, SKYSCOUT, saasDefinition);
+
+      expect(result.valid).toBe(true);
+      expect(repository.rows).toHaveLength(1);
+    });
+
+    it("answers an agent submitting to a project its token does not name as missing", async () => {
+      const refusal = await refusalFrom(
+        service.submitDraft(LEDGER_AGENT, SKYSCOUT, saasDefinition),
+      );
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(repository.rows).toEqual([]);
+    });
   });
 
   describe("getDraft", () => {
     it("answers a project that has never been submitted to with nothing", async () => {
-      await expect(service.getDraft(SKYSCOUT)).resolves.toBeNull();
+      await expect(service.getDraft(ADA, SKYSCOUT)).resolves.toBeNull();
     });
 
-    it("does not hand one project the draft of another", async () => {
+    it("hands the agent holding the project's token the draft that was submitted", async () => {
       await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
 
-      await expect(service.getDraft("project-ledger")).resolves.toBeNull();
+      const draft = await service.getDraft(SKYSCOUT_AGENT, SKYSCOUT);
+
+      expect(draft?.payload).toEqual(saasDefinition);
+    });
+
+    it("refuses a project the caller cannot reach rather than reading it", async () => {
+      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+
+      await expect(refusalFrom(service.getDraft(LEDGER_AGENT, SKYSCOUT))).resolves.toBeInstanceOf(
+        NotFoundError,
+      );
+      await expect(refusalFrom(service.getDraft(GRACE, SKYSCOUT))).resolves.toBeInstanceOf(
+        NotFoundError,
+      );
     });
   });
 
   describe("getValidationResult", () => {
     it("answers a project that has never been submitted to with nothing", async () => {
-      await expect(service.getValidationResult(SKYSCOUT)).resolves.toBeNull();
+      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toBeNull();
     });
 
     it("answers without validating anything again", async () => {
       await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
 
-      await expect(service.getValidationResult(SKYSCOUT)).resolves.toEqual({
+      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toEqual({
         valid: true,
         errors: null,
+        updatedAt: expect.any(String),
       });
+    });
+
+    it("refuses a project the caller cannot reach", async () => {
+      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+
+      const refusal = await refusalFrom(service.getValidationResult(LEDGER_AGENT, SKYSCOUT));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
     });
   });
 });

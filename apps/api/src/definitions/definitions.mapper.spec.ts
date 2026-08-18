@@ -48,7 +48,15 @@ describe("toDefinitionDraft", () => {
 
 describe("toStoredValidation", () => {
   it("answers with the verdict alone", () => {
-    expect(toStoredValidation(ROW)).toEqual({ valid: false, errors: [MISSING_NAVIGATION] });
+    expect(toStoredValidation(ROW)).toEqual({
+      valid: false,
+      errors: [MISSING_NAVIGATION],
+      updatedAt: "2026-08-19T09:30:00.000Z",
+    });
+  });
+
+  it("says when the verdict was reached, so a caller need not read the draft for it", () => {
+    expect(toStoredValidation(ROW).updatedAt).toBe("2026-08-19T09:30:00.000Z");
   });
 
   it("does not carry the payload along", () => {
@@ -56,6 +64,10 @@ describe("toStoredValidation", () => {
   });
 
   it("reads a valid draft's empty errors column as nothing to report", () => {
-    expect(toStoredValidation(VALID_ROW)).toEqual({ valid: true, errors: null });
+    expect(toStoredValidation(VALID_ROW)).toEqual({
+      valid: true,
+      errors: null,
+      updatedAt: "2026-08-19T09:30:00.000Z",
+    });
   });
 });

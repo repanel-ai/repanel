@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { validateDefinition, type ValidationResult } from "@repanel/contracts";
+import type { Principal } from "../auth/principal";
 import { ProjectsService } from "../projects/projects.service";
 import { requirePayloadWithinLimit } from "./definition-size";
 import {
@@ -28,11 +29,11 @@ export class DefinitionsService {
    * to read back what it sent alongside what was wrong with it.
    */
   async submitDraft(
-    ownerId: string,
+    principal: Principal,
     projectId: string,
     payload: unknown,
   ): Promise<ValidationResult> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireAccess(principal, projectId);
     requirePayloadWithinLimit(payload);
 
     const result = validateDefinition(payload);
@@ -47,13 +48,20 @@ export class DefinitionsService {
   }
 
   /** The project's draft as it stands, or null if nothing was ever submitted. */
-  async getDraft(projectId: string): Promise<DefinitionDraft | null> {
+  async getDraft(principal: Principal, projectId: string): Promise<DefinitionDraft | null> {
+    await this.projects.requireAccess(principal, projectId);
+
     const definition = await this.repository.findByProjectId(projectId);
     return definition ? toDefinitionDraft(definition) : null;
   }
 
   /** What the last submission concluded, without validating anything again. */
-  async getValidationResult(projectId: string): Promise<StoredValidation | null> {
+  async getValidationResult(
+    principal: Principal,
+    projectId: string,
+  ): Promise<StoredValidation | null> {
+    await this.projects.requireAccess(principal, projectId);
+
     const definition = await this.repository.findByProjectId(projectId);
     return definition ? toStoredValidation(definition) : null;
   }

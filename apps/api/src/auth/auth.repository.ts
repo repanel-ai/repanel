@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import { DbService } from "../db/db.service";
 import { sessions, users } from "../db/schema";
+import { isUniqueViolation } from "../db/unique-violation";
+import { ConflictError } from "../errors/domain-errors";
 
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
@@ -28,10 +30,20 @@ export class AuthRepository {
     return user;
   }
 
+  /**
+   * The email column is the last word on who is already registered: two
+   * concurrent signups both clear the service's check, and the one Postgres
+   * refuses must still read as a conflict rather than a failure.
+   */
   async createUser(user: NewUserRow): Promise<UserRow> {
-    const [created] = await this.database.db.insert(users).values(user).returning();
-    if (!created) throw new Error("Inserting a user returned no row");
-    return created;
+    try {
+      const [created] = await this.database.db.insert(users).values(user).returning();
+      if (!created) throw new Error("Inserting a user returned no row");
+      return created;
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new ConflictError("Email already registered");
+      throw error;
+    }
   }
 
   async createSession(session: NewSessionRow): Promise<void> {

@@ -3,8 +3,15 @@
 /* Tailwind scans the app it is loaded from; the components live outside it. */
 @source "../../../packages/ui/src";
 
+/*
+ * The page is the ground the sidebar and the panel sit on — the second of the
+ * four surfaces, and the only one declared outside a component.
+ */
 body {
-  background-color: var(--color-background);
+  background-color: var(--color-page);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }

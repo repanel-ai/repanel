@@ -1,0 +1,116 @@
+import type { DateRangeFilter as DateRange } from "@repanel/contracts";
+import { ChevronDownIcon, Input } from "@repanel/ui";
+import { useRef } from "react";
+
+export interface DateRangeFilterProps {
+  label: string;
+  value: DateRange | undefined;
+  onChange: (value: DateRange | undefined) => void;
+  /**
+   * Whether the column carries a time as well as a day. It does not change what
+   * is picked — a day — only where that day ends: `to` on a timestamp column
+   * means the end of that day, or an operator asking for "up to today" is told
+   * today has nothing in it.
+   */
+  hasTime: boolean;
+}
+
+/**
+ * Two ends of a range, behind the trigger that shows them. The disclosure is
+ * the browser's own: a `<details>` opens, closes, takes focus and answers the
+ * keyboard without a line of that being written here.
+ */
+export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFilterProps) {
+  const disclosure = useRef<HTMLDetailsElement>(null);
+  const isSet = Boolean(value?.from || value?.to);
+
+  const close = () => {
+    if (disclosure.current) disclosure.current.open = false;
+  };
+
+  const edit = (end: "from" | "to", day: string) => {
+    const next: DateRange = { ...value };
+    if (day === "") delete next[end];
+    else next[end] = end === "to" && hasTime ? `${day}T23:59:59.999Z` : day;
+
+    onChange(next.from || next.to ? next : undefined);
+  };
+
+  return (
+    <details
+      ref={disclosure}
+      className="relative"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") close();
+      }}
+      onBlur={(event) => {
+        if (!disclosure.current?.contains(event.relatedTarget as Node | null)) close();
+      }}
+    >
+      <summary
+        className={[
+          "flex h-control cursor-pointer list-none items-center gap-1.5 rounded-md border border-input",
+          "bg-background pr-7 pl-2.5 text-body outline-none [&::-webkit-details-marker]:hidden",
+          "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
+        ].join(" ")}
+      >
+        <span className="text-muted-foreground">{label}</span>
+        <span className={isSet ? "font-medium text-foreground" : "text-muted-foreground"}>
+          {describe(value)}
+        </span>
+        <ChevronDownIcon className="pointer-events-none absolute right-2.5 size-3 opacity-55" />
+      </summary>
+
+      <div className="absolute z-20 mt-1 flex w-60 flex-col gap-2 rounded-lg border border-border bg-background p-2.5">
+        <label className="flex items-center justify-between gap-2 text-small text-muted-foreground">
+          From
+          <Input
+            type="date"
+            className="w-36"
+            value={value?.from?.slice(0, 10) ?? ""}
+            onChange={(event) => edit("from", event.target.value)}
+          />
+        </label>
+        <label className="flex items-center justify-between gap-2 text-small text-muted-foreground">
+          To
+          <Input
+            type="date"
+            className="w-36"
+            value={value?.to?.slice(0, 10) ?? ""}
+            onChange={(event) => edit("to", event.target.value)}
+          />
+        </label>
+        {isSet && (
+          <button
+            type="button"
+            onClick={() => {
+              onChange(undefined);
+              close();
+            }}
+            className="self-start text-small text-muted-foreground underline underline-offset-[3px] hover:text-foreground"
+          >
+            Clear {label.toLowerCase()}
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
+
+const DAY = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function describe(value: DateRange | undefined): string {
+  if (!value?.from && !value?.to) return "Any time";
+  if (value.from && value.to) return `${day(value.from)} – ${day(value.to)}`;
+  return value.from ? `From ${day(value.from)}` : `Until ${day(value.to)}`;
+}
+
+function day(value: string | undefined): string {
+  const at = new Date(String(value));
+  return Number.isNaN(at.getTime()) ? String(value) : DAY.format(at);
+}

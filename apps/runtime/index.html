@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin</title>
+    <script>
+      /*
+       * The theme, before the first paint. It is read here rather than in the
+       * app because the app cannot run until its bundle and its session have
+       * both arrived, and until then the page ground would be painted light —
+       * the whole of the dark direction is that ground. The key is
+       * `repanel.theme`, written by features/runtime/use-theme.ts.
+       */
+      (function () {
+        try {
+          var stored = localStorage.getItem("repanel.theme");
+          var dark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (error) {
+          /* A store the browser refuses is not a reason to fail to render. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

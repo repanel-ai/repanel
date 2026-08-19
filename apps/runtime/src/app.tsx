@@ -1,4 +1,5 @@
 import { Route, Routes, useParams } from "react-router";
+import { RuntimeShell } from "./features/runtime/runtime-shell";
 import { SessionGate } from "./features/session/session-gate";
 
 /** Where an operator signs in; the runtime has no login screen of its own. */
@@ -11,7 +12,7 @@ export function App() {
         path="/a/:projectKey/*"
         element={
           <SessionGate consoleUrl={CONSOLE_URL}>
-            <RuntimePlaceholder />
+            <Admin />
           </SessionGate>
         }
       />
@@ -19,14 +20,8 @@ export function App() {
   );
 }
 
-/** Stands in until the renderer itself arrives in task 010. */
-function RuntimePlaceholder() {
-  const { projectKey } = useParams();
-
-  return (
-    <main className="flex min-h-screen flex-col items-start gap-2 p-6">
-      <p>Runtime shell — built in task 010.</p>
-      <p className="text-muted-foreground">Project: {projectKey}</p>
-    </main>
-  );
+/** The rendered admin for the project the address names. */
+function Admin() {
+  const { projectKey = "" } = useParams();
+  return <RuntimeShell projectKey={projectKey} />;
 }

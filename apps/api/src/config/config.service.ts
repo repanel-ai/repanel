@@ -18,4 +18,9 @@ export class ConfigService {
   get databaseUrl(): string {
     return this.env.get("DATABASE_URL", { infer: true });
   }
+
+  /** Base64 for 32 bytes; `CryptoService` is the only thing that reads it. */
+  get appEncryptionKey(): string {
+    return this.env.get("APP_ENCRYPTION_KEY", { infer: true });
+  }
 }

@@ -2,6 +2,8 @@ export * from "./agent-tokens/agent-token.js";
 export * from "./agent-tokens/requests.js";
 export * from "./auth/requests.js";
 export * from "./auth/user.js";
+export * from "./connections/connection.js";
+export * from "./connections/requests.js";
 export * from "./definition/actions.js";
 export * from "./definition/errors.js";
 export * from "./definition/fields.js";

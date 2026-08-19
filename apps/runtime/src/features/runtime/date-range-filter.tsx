@@ -1,5 +1,5 @@
 import type { DateRangeFilter as DateRange } from "@repanel/contracts";
-import { ChevronDownIcon, Input } from "@repanel/ui";
+import { ChevronDownIcon, Input, cn } from "@repanel/ui";
 import { useRef } from "react";
 
 export interface DateRangeFilterProps {
@@ -61,24 +61,14 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
         <ChevronDownIcon className="pointer-events-none absolute right-2.5 size-3 opacity-55" />
       </summary>
 
-      <div className="absolute z-20 mt-1 flex w-60 flex-col gap-2 rounded-lg border border-border bg-background p-2.5">
+      <div className="absolute z-20 mt-1 flex w-60 flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
         <label className="flex items-center justify-between gap-2 text-small text-muted-foreground">
           From
-          <Input
-            type="date"
-            className="w-36"
-            value={value?.from?.slice(0, 10) ?? ""}
-            onChange={(event) => edit("from", event.target.value)}
-          />
+          <DayInput value={value?.from?.slice(0, 10) ?? ""} onChange={(day) => edit("from", day)} />
         </label>
         <label className="flex items-center justify-between gap-2 text-small text-muted-foreground">
           To
-          <Input
-            type="date"
-            className="w-36"
-            value={value?.to?.slice(0, 10) ?? ""}
-            onChange={(event) => edit("to", event.target.value)}
-          />
+          <DayInput value={value?.to?.slice(0, 10) ?? ""} onChange={(day) => edit("to", day)} />
         </label>
         {isSet && (
           <button
@@ -94,6 +84,33 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
         )}
       </div>
     </details>
+  );
+}
+
+/**
+ * One end of the range. The control underneath stays the browser's own date
+ * input — its picker, its keyboard, its parsing, none of it re-implemented —
+ * and everything around it spends the tokens every other control spends: the
+ * data face a date is set in, the muted-until-set voice the selects use, and a
+ * calendar glyph dressed like the chevron it sits beside rather than left at
+ * the browser's weight.
+ */
+function DayInput({ value, onChange }: { value: string; onChange: (day: string) => void }) {
+  return (
+    <Input
+      type="date"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={cn(
+        "w-36 px-2.5 font-data",
+        // An empty date input shows `dd/mm/yyyy`, which is a placeholder and
+        // reads as one; a date somebody picked comes forward.
+        value === "" ? "text-muted-foreground" : "text-foreground",
+        "[&::-webkit-calendar-picker-indicator]:cursor-pointer",
+        "[&::-webkit-calendar-picker-indicator]:opacity-55",
+        "[&::-webkit-calendar-picker-indicator]:hover:opacity-100",
+      )}
+    />
   );
 }
 

@@ -15,4 +15,16 @@ describe("Button", () => {
 
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("type", "button");
   });
+
+  it("is the primary action unless it was asked to be quieter", () => {
+    render(<Button>Save</Button>);
+
+    expect(screen.getByRole("button", { name: "Save" }).dataset.variant).toBe("primary");
+  });
+
+  it("carries the variant it was given", () => {
+    render(<Button variant="outline">Refresh</Button>);
+
+    expect(screen.getByRole("button", { name: "Refresh" }).dataset.variant).toBe("outline");
+  });
 });

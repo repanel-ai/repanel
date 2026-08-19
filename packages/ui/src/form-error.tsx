@@ -13,7 +13,7 @@ export interface FormErrorProps {
 export function FormError({ message, className }: FormErrorProps) {
   if (!message) return null;
   return (
-    <p role="alert" className={cn("text-sm text-danger", className)}>
+    <p role="alert" className={cn("text-sm text-destructive-text", className)}>
       {message}
     </p>
   );

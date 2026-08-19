@@ -1,12 +1,34 @@
 /*
- * The design-token home. Every colour, radius, and font stack a RePanel
+ * The design-token home. Every colour, size, radius and rhythm value a RePanel
  * surface may use is named here and nowhere else — components spend tokens,
- * they never mint them.
+ * they never mint them (DECISIONS #028).
  *
- * The palette below is a deliberate placeholder: neutral greys chosen to be
- * unmistakably undesigned, so that task 010's approved concept replaces the
- * VALUES without touching the structure or a single component.
+ * The values are task 010's approved direction, transcribed from
+ * `docs/design/DESIGN.md`. That record names a token `--foreground`; Tailwind 4
+ * reads a namespace prefix to decide which utilities a variable generates, so
+ * the same token is declared here as `--color-foreground` and spent as
+ * `text-foreground`. The mapping is mechanical and total:
+ *
+ *   DESIGN.md          here                 generates
+ *   --foreground       --color-foreground   text-foreground, bg-foreground, …
+ *   --t-body           --text-body          text-body
+ *   --h-row            --spacing-row        h-row
+ *
+ * `@theme static` emits every variable whether or not a utility spends it: the
+ * runtime reads a few of these through `var()` directly (the page ground, the
+ * sidebar gradient), and a token that vanishes when the last utility using it
+ * is deleted is not a token.
  */
+
+/*
+ * The faces themselves, self-hosted: the file that names a family is the file
+ * that delivers it, so nothing an operator reads depends on a third-party CDN
+ * being reachable. Both are the variable cut — one file covers the 400/500/600
+ * the design spends — and both carry every subset the package ships, because an
+ * admin renders whatever the customer's database holds.
+ */
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
 
 @import "tailwindcss";
 
@@ -16,53 +38,161 @@
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+@theme static {
+  /* ---- type ------------------------------------------------------------ */
+  /*
+   * `Geist Variable` is the family name the self-hosted variable cut registers;
+   * plain `Geist` follows it for a machine that has the static family installed,
+   * and the system stack follows that.
+   */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
 
-  --radius-md: 0.375rem;
-  --radius-lg: 0.625rem;
+  /*
+   * The face machine-shaped values are set in — dates, ids, references. It is a
+   * token precisely so the single-face and mono-variant renderings are one line
+   * apart; `.data-mono` below is that line (DESIGN.md BUILD REQUIREMENT 5).
+   */
+  --font-data: var(--font-sans);
 
-  /* The page itself, and the text on it. */
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.22 0 0);
+  /* Five sizes, and nothing between them. */
+  --text-micro: 11.5px; /* counts, badges, the `/` hint, the project line     */
+  --text-small: 12.5px; /* column headers, page meta, pagination, breadcrumb  */
+  --text-body: 13.5px; /* table cells, controls, buttons, account name       */
+  --text-title: 20px; /* the page title, and nothing else                   */
 
-  /* Anything raised off the page: cards, panels, popovers. */
-  --color-surface: oklch(1 0 0);
+  /* The sidebar is chrome read at a glance, so it runs one step above data. */
+  --text-nav: 14px;
+  --text-nav-meta: 12px;
 
-  /* Secondary text and the fills behind it. */
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.54 0 0);
+  /* ---- rhythm ---------------------------------------------------------- */
+  --spacing-nav: 32px;
+  --spacing-control: 32px;
+  --spacing-row: 36px;
+  --spacing-head: 34px;
+  --spacing-top: 48px;
+  --spacing-sidebar: 236px;
+  /* What the sidebar narrows to when the panel needs the width (DESIGN §7). */
+  --spacing-sidebar-narrow: 180px;
 
-  /* Edges: borders, dividers, input outlines. */
-  --color-border: oklch(0.92 0 0);
+  /*
+   * The one breakpoint the runtime has. Below it the sidebar gives its width to
+   * the panel; the design is not responsive beyond that, it only has to hold
+   * (DESIGN.md §7).
+   */
+  --breakpoint-wide: 900px;
 
-  /* The focus ring. Never removed, only restyled. */
-  --color-ring: oklch(0.62 0 0);
+  /* ---- radius ---------------------------------------------------------- */
+  --radius: 0.45rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 
-  /* The one emphatic colour: primary actions. */
-  --color-primary: oklch(0.22 0 0);
-  --color-primary-foreground: oklch(0.99 0 0);
+  /* ---- surfaces, deepest first ----------------------------------------- */
+  /* The sidebar falls slightly top to bottom; the page it sits on is flat. */
+  --color-sidebar-top: #e7e3de;
+  --color-sidebar-bottom: #dfdbd6;
+  --color-page: #f3f1ed;
+  --color-background: #ffffff;
+  --color-card: #ffffff;
+  --color-muted: #f2f3f3; /* the row under the cursor */
+  --color-accent: #eff0f1;
+  --color-secondary: #ecedee;
+  --color-sidebar-accent: #f7f4f0;
 
-  /* Something went wrong, said in text. */
-  --color-danger: oklch(0.58 0.21 27);
+  /* ---- text ------------------------------------------------------------ */
+  --color-foreground: #0a0b0b;
+  --color-card-foreground: #0a0b0b;
+  --color-muted-foreground: #64666a;
+  --color-accent-foreground: #191a1b;
+  --color-secondary-foreground: #1c1d1e;
+  --color-sidebar-muted: #665e53;
+  /* Utility chrome sits one step behind the data it frames — in dark only,
+     where it would otherwise outshine it. */
+  --color-utility-foreground: var(--color-foreground);
+
+  /* ---- accent, state, edges -------------------------------------------- */
+  --color-primary: #bb4d00;
+  --color-primary-foreground: #fffbeb;
+  --color-destructive: #e7000b;
+  --color-destructive-soft: #fde6e7;
+  --color-destructive-line: #f8b8bb;
+  /* Not `--destructive` itself: that measures 4.01:1 on its own tint. */
+  --color-destructive-text: #c2191c;
+  --color-border: #e0e1e3;
+  --color-input: #dbdcde;
+  --color-ring: #a4a5a8;
+  --color-sidebar-border: #d5d0ca;
 }
 
 /*
- * Dark values re-point the same names, so every utility built from them
- * follows without a `dark:` class anywhere in a component.
+ * Dark re-points the same names, so every utility built from them follows
+ * without a `dark:` class anywhere in a component.
  */
 .dark {
-  --color-background: oklch(0.18 0 0);
-  --color-foreground: oklch(0.96 0 0);
-  --color-surface: oklch(0.22 0 0);
-  --color-muted: oklch(0.26 0 0);
-  --color-muted-foreground: oklch(0.71 0 0);
-  --color-border: oklch(0.31 0 0);
-  --color-ring: oklch(0.58 0 0);
-  --color-primary: oklch(0.96 0 0);
-  --color-primary-foreground: oklch(0.2 0 0);
-  --color-danger: oklch(0.68 0.18 25);
+  --color-sidebar-top: #080605;
+  --color-sidebar-bottom: #040302;
+  --color-page: #14120f;
+  --color-background: #1a1a1b;
+  --color-card: #222324;
+  --color-muted: #2b2b2d;
+  --color-accent: #2b2b2d;
+  --color-secondary: #2d2e2f;
+  --color-sidebar-accent: #191714;
+
+  --color-foreground: #f5f6f6;
+  --color-card-foreground: #f5f6f6;
+  --color-muted-foreground: #95979b;
+  --color-accent-foreground: #f5f6f6;
+  --color-secondary-foreground: #f3f3f4;
+  --color-sidebar-muted: #8b857d;
+  --color-utility-foreground: var(--color-muted-foreground);
+
+  --color-primary: #973c00;
+  --color-primary-foreground: #fffbeb;
+  --color-destructive: #ff6467;
+  --color-destructive-soft: #3f2627;
+  --color-destructive-line: #683335;
+  --color-destructive-text: #ff6467;
+  --color-border: #353537;
+  --color-input: #3b3c3d;
+  --color-ring: #7f8083;
+  --color-sidebar-border: #2a2622;
+}
+
+/*
+ * The mono data face, whole. Adding this class to the root swaps the face every
+ * machine-shaped value is set in and changes nothing else — which is what makes
+ * the choice reviewable rather than rewritable.
+ */
+.data-mono {
+  --font-data: var(--font-mono);
+}
+
+@layer base {
+  /*
+   * Geist's default figures are proportional: measured at 40px, ten `1`s render
+   * 139.2px against ten `0`s at 268.8px. With this on they both measure 240px.
+   * It is declared once, at the root, and no component may reset it — every
+   * column of dates, ids, counts, amounts and page ranges depends on it.
+   */
+  html {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

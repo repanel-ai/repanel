@@ -79,6 +79,15 @@ const ERROR_CASES: ReadonlyArray<(draft: DefinitionInput) => void> = [
       { key: "organization", kind: "belongsTo", target: "organizations", foreignKey: "org_id" },
     ];
   },
+  (draft) => {
+    resourceIn(draft, "users").labelField = "password_hash";
+  },
+  (draft) => {
+    resourceIn(draft, "users").primaryKey = "password_hash";
+  },
+  (draft) => {
+    resourceIn(draft, "orders").labelField = "metadata";
+  },
 ];
 
 /**

@@ -18,6 +18,7 @@ export const saasDefinition: DefinitionInput = {
       label: { singular: "Organization", plural: "Organizations" },
       source: { table: "organizations" },
       primaryKey: "id",
+      labelField: "name",
       fields: [
         { key: "id", label: "ID", type: "text" },
         { key: "name", label: "Name", type: "text" },
@@ -62,6 +63,7 @@ export const saasDefinition: DefinitionInput = {
       label: { singular: "User", plural: "Users" },
       source: { table: "users" },
       primaryKey: "id",
+      labelField: "email",
       fields: [
         { key: "id", label: "ID", type: "text" },
         { key: "email", label: "Email", type: "email" },
@@ -130,6 +132,7 @@ export const saasDefinition: DefinitionInput = {
       label: { singular: "Order", plural: "Orders" },
       source: { table: "orders" },
       primaryKey: "id",
+      labelField: "reference",
       readOnly: true,
       fields: [
         { key: "id", label: "ID", type: "text" },

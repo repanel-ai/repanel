@@ -1,9 +1,19 @@
 import { checkActions } from "./action-checks.js";
 import { checkDetailView } from "./detail-view-checks.js";
 import { formatList, type ValidationError } from "./errors.js";
-import { duplicateKey, unknownField, type FieldEntry } from "./reference-errors.js";
+import type { FieldType } from "./fields.js";
+import {
+  duplicateKey,
+  hiddenFieldError,
+  sensitiveFieldError,
+  unknownField,
+  type FieldEntry,
+} from "./reference-errors.js";
 import type { Relationship, Resource } from "./schema.js";
 import { checkTableView } from "./table-view-checks.js";
+
+/** Types with no single reading to show, so nothing to name a record with. */
+const UNLABELLABLE_FIELD_TYPES: ReadonlySet<FieldType> = new Set(["json", "relation"]);
 
 /**
  * One resource's own references: its keys are unique, and its primary key,
@@ -49,9 +59,8 @@ export function checkResource(
 
   const fieldKeys = [...fields.keys()];
 
-  if (!fields.has(resource.primaryKey)) {
-    errors.push(unknownField(`${at}.primaryKey`, resource.primaryKey, resource.key, fieldKeys));
-  }
+  errors.push(...checkPrimaryKey(resource, at, fields, fieldKeys));
+  errors.push(...checkLabelField(resource, at, fields, fieldKeys));
 
   resource.fields.forEach((field, index) => {
     if (field.type !== "relation" || resources.has(field.target)) return;
@@ -73,6 +82,99 @@ export function checkResource(
   errors.push(...checkActions(resource, at, fields, fieldKeys));
 
   return errors;
+}
+
+/**
+ * A record is addressed by its primary key, so the value travels in every URL,
+ * link and access log that reaches it. That is a surface, and DECISIONS #014
+ * admits no sensitive value onto one.
+ */
+function checkPrimaryKey(
+  resource: Resource,
+  at: string,
+  fields: ReadonlyMap<string, FieldEntry>,
+  fieldKeys: readonly string[],
+): ValidationError[] {
+  const path = `${at}.primaryKey`;
+  const entry = fields.get(resource.primaryKey);
+  if (!entry) return [unknownField(path, resource.primaryKey, resource.key, fieldKeys)];
+  if (!entry.field.sensitive) return [];
+
+  const addressable = keysWhere(fields, (field) => !field.sensitive);
+  return [
+    sensitiveFieldError({
+      path,
+      key: resource.primaryKey,
+      problem: "cannot be the primary key",
+      fix: `A record's primary key is how the admin addresses it, so it is in every URL and every log line that reaches the record — point \`${path}\` at a non-sensitive identifier such as one of: ${formatList(addressable)}.`,
+    }),
+  ];
+}
+
+/**
+ * The label is what a human reads instead of a record: it names the row in a
+ * relation column, a related list and every link. So it has to exist, has to
+ * render, and — being shown in lists that belong to other resources — must
+ * carry nothing a list may not carry.
+ */
+function checkLabelField(
+  resource: Resource,
+  at: string,
+  fields: ReadonlyMap<string, FieldEntry>,
+  fieldKeys: readonly string[],
+): ValidationError[] {
+  const { labelField } = resource;
+  if (labelField === undefined) return [];
+
+  const path = `${at}.labelField`;
+  const entry = fields.get(labelField);
+  if (!entry) return [unknownField(path, labelField, resource.key, fieldKeys)];
+
+  const candidates = keysWhere(
+    fields,
+    (field) => !field.sensitive && !field.hidden && !UNLABELLABLE_FIELD_TYPES.has(field.type),
+  );
+
+  if (entry.field.sensitive) {
+    return [
+      sensitiveFieldError({
+        path,
+        key: labelField,
+        problem: "cannot be the label field",
+        fix: `A label names the record wherever it is pointed at, including in lists that belong to other resources — change \`${path}\` to a non-sensitive field such as one of: ${formatList(candidates)}.`,
+      }),
+    ];
+  }
+
+  if (entry.field.hidden) {
+    return [
+      hiddenFieldError({
+        path,
+        key: labelField,
+        problem: "cannot be the label field",
+        remedy: `name \`${resource.key}\` with a field the admin shows`,
+        fieldPath: `${at}.fields[${entry.index}]`,
+      }),
+    ];
+  }
+
+  if (!UNLABELLABLE_FIELD_TYPES.has(entry.field.type)) return [];
+
+  return [
+    {
+      path,
+      message: `Field \`${labelField}\` has type \`${entry.field.type}\` and cannot be a label.`,
+      expected: "a field whose value reads as a name",
+      hint: `Change \`${path}\` to a field that names the record, such as one of: ${formatList(candidates)}; a \`${entry.field.type}\` value has no single reading to show in its place.`,
+    },
+  ];
+}
+
+function keysWhere(
+  fields: ReadonlyMap<string, FieldEntry>,
+  matches: (field: FieldEntry["field"]) => boolean,
+): string[] {
+  return [...fields.values()].filter((entry) => matches(entry.field)).map((entry) => entry.field.key);
 }
 
 function checkRelationship(

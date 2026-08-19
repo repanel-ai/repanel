@@ -56,6 +56,7 @@ A resource binds one postgres table to one admin section.
   "label": { "singular": "User", "plural": "Users" },
   "source": { "table": "users" },
   "primaryKey": "id",
+  "labelField": "email",
   "readOnly": true,
   "fields": [],
   "relationships": [],
@@ -69,12 +70,19 @@ A resource binds one postgres table to one admin section.
 | `key` | yes | Stable identifier, unique in the definition. Used in URLs and every reference. |
 | `label` | yes | Display names; the runtime picks singular or plural per context. |
 | `source.table` | yes | Postgres table name. |
-| `primaryKey` | yes | Field key used to address one record. |
+| `primaryKey` | yes | Field key used to address one record. Must not be `sensitive`. |
+| `labelField` | no (default `primaryKey`) | Field key a record is displayed by. Must not be `sensitive`, `hidden`, `json` or `relation`. |
 | `readOnly` | no (default `true`) | v0 accepts only `true`. |
 | `fields` | yes, ≥1 | Columns the admin knows about. |
 | `relationships` | no (default `[]`) | Links to other resources. |
 | `views` | yes | The table view and the detail view. |
 | `actions` | no (default `[]`) | Operator-triggered writes. |
+
+`labelField` is what a human reads instead of a record. A table showing a
+relation column renders the target's label rather than its raw foreign key, and
+every link to a record is titled with it. Left out, it falls back to
+`primaryKey` — always present, and almost never what anyone recognizes a record
+by, so setting it is worth the one line.
 
 Keys — resource, field, relationship, action keys and the table name — are
 letters, digits and underscores, never starting with a digit. The runtime
@@ -109,11 +117,12 @@ Two flags, both defaulting to `false`:
 ```
 
 - `sensitive` — never leaves the API unmasked, and never probeable: it may not
-  appear in table columns, search, filters, or an `httpCall` URL template, and
-  it may not be the target of a `dbUpdate` action.
+  appear in table columns, search, filters, or an `httpCall` URL template, it
+  may not be the target of a `dbUpdate` action, and it can be neither the
+  resource's `primaryKey` nor its `labelField`.
 - `hidden` — **detail-only**. Hidden fields are excluded from list payloads, so
-  a hidden field cannot be a table column, a search field, a filter, or the
-  default sort. It may still appear in a detail section.
+  a hidden field cannot be a table column, a search field, a filter, the
+  default sort, or the `labelField`. It may still appear in a detail section.
 
 ## Relationship
 
@@ -173,6 +182,11 @@ Fields of any other type cannot be filtered in v0.
 |---|---|---|
 | `sections` | yes, ≥1 | Ordered groups, each with a `title` and ≥1 field keys. |
 | `relatedLists` | no (default `[]`) | Relationship keys rendered as embedded lists. |
+
+A related list may name either kind of relationship. The runtime renders it as
+the target resource's table view — the target's columns, search, filters and
+sort — so a `hasMany` list is a page of records and a `belongsTo` list shows at
+most one.
 
 ## Action
 
@@ -235,16 +249,18 @@ then checks what a schema cannot express:
 
 - every navigation entry, column, sort field, search field, filter field,
   section field, related list, relationship target, relation-field target,
-  primary key, `dbUpdate` field and `httpCall` URL placeholder names something
-  that exists;
+  primary key, label field, `dbUpdate` field and `httpCall` URL placeholder
+  names something that exists;
 - resource, field, relationship and action keys are unique;
 - a `belongsTo` foreign key exists on the declaring resource, a `hasMany`
   foreign key on the target;
 - searchable fields are text-typed and filter kinds match field types;
 - sensitive fields never appear as table columns, search fields or filters,
-  and never inside an `httpCall` URL template;
-- hidden fields never appear as table columns, search fields, filters or the
-  default sort — detail sections may still use them;
+  never inside an `httpCall` URL template, and are never a resource's primary
+  key or label field;
+- hidden fields never appear as table columns, search fields, filters, the
+  default sort or the label field — detail sections may still use them;
+- a label field reads as a name: never a `json` or `relation` field;
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
   writes one of the enum's values or a boolean literal.
 

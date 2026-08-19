@@ -33,6 +33,13 @@ export const resourceSchema = z.strictObject({
   /** v0 binds a resource to a single postgres table. */
   source: z.strictObject({ table: identifierSchema }),
   primaryKey: identifierSchema,
+  /**
+   * The field a record is displayed by, wherever the admin names one rather
+   * than showing it: a relation column, a related list, a link. Falls back to
+   * `primaryKey`, which is always there and almost never what a human
+   * recognizes a record by.
+   */
+  labelField: identifierSchema.optional(),
   /** v0 has no write configuration beyond actions, so this is always true. */
   readOnly: z.literal(true).default(true),
   fields: z.array(fieldSchema).min(1),
@@ -54,5 +61,16 @@ export type Definition = z.infer<typeof definitionSchema>;
 export type DefinitionInput = z.input<typeof definitionSchema>;
 export type Resource = z.infer<typeof resourceSchema>;
 export type Relationship = z.infer<typeof relationshipSchema>;
+
+/**
+ * The field a record is displayed by. The default is resolved here rather than
+ * in the schema so that an unset `labelField` never reports a problem at a path
+ * the author did not write — a resource with a broken `primaryKey` has one
+ * mistake, and should be told about one.
+ */
+export function labelFieldOf(resource: Resource): string {
+  return resource.labelField ?? resource.primaryKey;
+}
+
 export type RelationshipKind = Relationship["kind"];
 export type NavigationGroup = z.infer<typeof navigationGroupSchema>;

@@ -194,7 +194,6 @@ component composition are untouched.**
 | Table cell | `p-2` -> 8, ~40 row | 36 / 10 |
 | Badge | `px-2 py-0.5 text-xs` -> 8 / 2 / 12 | 7 / 1 / 11.5 |
 | Inset panel | `m-2 rounded-xl shadow-sm` | `m-2 rounded-xl`, no shadow |
-| Nav icons | — | 17px, drawn 24x24 on a 1.5 stroke |
 
 Rhythm tokens: `--h-nav 32px`, `--h-control 32px`, `--h-row 36px`,
 `--h-head 34px`, `--h-top 48px`. 18 records visible at 1440x900.
@@ -206,8 +205,9 @@ Rhythm tokens: `--h-nav 32px`, `--h-control 32px`, `--h-row 36px`,
 Measured from the rendered DOM, both themes, 17 distinct text styles each:
 **zero failures**. Tightest passing pair 4.79:1 (dark) / 4.85:1 (light) against a
 4.5 requirement. No horizontal overflow at 768px
-(`scrollWidth === clientWidth === 768`); the sidebar collapses to a 52px icon
-rail. Focus is `--ring` at 3px with a matching border, on every control, nav item
+(`scrollWidth === clientWidth === 768`); the sidebar narrows to 180px and keeps
+its labels, and a table wider than the panel scrolls inside its own frame. (The
+52px icon rail this section first specified went with the icons — see §8.) Focus is `--ring` at 3px with a matching border, on every control, nav item
 and table row; it is never removed, only restyled.
 
 This floor is a gate, not an aspiration: any token change re-runs the
@@ -215,32 +215,34 @@ measurement before it lands.
 
 ---
 
-## 8. Navigation icons — pending schema work
+## 8. Navigation is text-first — resolved
 
-The sidebar carries per-resource icons, and they come from the definition.
-Assumed field, **not yet in the schema**:
+**Ruling: navigation is text-first in v0. Icon support is a future additive
+schema decision.**
 
-- **`resource.icon`** — optional, one name from a fixed vocabulary.
-- **Unknown name** -> validation error listing the whole vocabulary, never
-  truncated (#020).
-- **Omitted** -> falls back to `table`, so definitions written before the field
-  existed still render.
-- **Groups get none.** Resources are the navigable items; group labels are
-  section headers.
-- **Glyphs are drawn in-repo** (#026), 24x24 on a 1.5 stroke. No icon library.
+The sidebar carries the resource's label and nothing else. What was proposed
+here — an optional `resource.icon` drawn from a fixed vocabulary, an unknown
+name answered with a validation error listing the whole vocabulary (#020), an
+omitted one falling back to `table`, glyphs drawn in-repo (#026) — is a change
+to `packages/contracts`, which is public product contract: task 001's domain,
+needing its own decision entry, and outside task 010's binding scope. The
+proposal is recorded rather than built, and it is additive by construction: an
+optional field with a fallback breaks no definition written before it, so
+nothing here has to be right the first time.
 
-Proposed vocabulary (28): `user users building key shield cart receipt
-credit-card package truck tag wallet file folder image book message mail
-database webhook terminal activity bell clock calendar settings chart globe
+The proposed vocabulary, kept for that decision: `user users building key shield
+cart receipt credit-card package truck tag wallet file folder image book message
+mail database webhook terminal activity bell clock calendar settings chart globe
 link table`.
 
-A runtime that mapped resource keys to glyphs itself would be the per-resource
-hardcoding task 010's acceptance criteria forbid; a free-form icon name would put
-a silent missing-glyph state on screen, the failure mode #027 closed everywhere
-else. This is `packages/contracts` work (task 001's domain) and needs its own
-decision entry — **it is not in 010's scope and is unresolved.**
+Two consequences bind Stage 2:
 
----
+- §6's `Nav icons` row is withdrawn with the icons; nothing else in the sizing
+  table moves. The nav item keeps its 32px height and 14px label, and the label
+  starts at the item's own padding rather than an icon's gutter.
+- The runtime still never maps a resource key to a glyph. That mapping is what
+  task 010's acceptance criteria forbid ("no hardcoded resource/field names"),
+  and it stays forbidden whether or not the field exists.
 
 ## BUILD REQUIREMENTS
 

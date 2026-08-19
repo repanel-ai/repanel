@@ -42,3 +42,29 @@ export const userRecords: RecordDto[] = [
     },
   },
 ];
+
+/** Two orders, covering a quantity, a json blob and a relation with a label. */
+export const orderRecords: RecordDto[] = [
+  {
+    id: "o_1001",
+    values: {
+      reference: "AC-10241",
+      user_id: { id: "u_1", label: "maya.okonkwo@northwind.io" },
+      status: "paid",
+      total_cents: 1240000,
+      metadata: { channel: "web", coupon: "SPRING24" },
+      placed_at: "2026-07-14T11:41:00.000Z",
+    },
+  },
+  {
+    id: "o_1002",
+    values: {
+      reference: "AC-10242",
+      user_id: { id: "u_2", label: "p.laurent@meridian.fr" },
+      status: "pending",
+      total_cents: 4900,
+      metadata: { channel: "api" },
+      placed_at: "2026-07-13T16:05:00.000Z",
+    },
+  },
+];

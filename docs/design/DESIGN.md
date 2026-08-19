@@ -303,3 +303,21 @@ Conditions carried from direction approval. Each is binding on Stage 2.
 
 Beyond these five, the direction is approved as specified above. Anything not
 stated here is Stage 2's to propose, not to assume.
+
+---
+
+## Open items
+
+Questions this record has not answered. Each is additive by construction — the
+runtime's behaviour today is what happens while the answer is absent — and each
+needs its own decision entry before it is built.
+
+**A money field type.** Numbers are set flush right in tabular figures, and that
+is all the runtime does with them. It does not read `total_cents` and conclude
+that 1240000 is $12,400.00: the name of a column is not a unit, the minor-unit
+factor is not two everywhere, and the currency is a fact about the customer's
+data that no amount of staring at an integer reveals. Guessing it would put a
+wrong price in front of an operator who is about to act on it — the one mistake
+an admin may not make. The answer is a schema addition that says the unit out
+loud (a `money` field type, or a currency slot on `number`), which is task 001's
+domain and a change to a public contract.

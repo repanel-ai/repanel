@@ -23,6 +23,19 @@ const UNSORTABLE: ReadonlyArray<Field["type"]> = ["relation", "json"];
 
 const PENDING_ROWS = 20;
 
+/**
+ * A quantity is read against the quantities above and below it, so it is set
+ * flush right where the digits line up — with the tabular figures the root
+ * already guarantees, that makes a column of numbers one shape.
+ *
+ * An identity is not a quantity. It is a name that happens to be digits, it is
+ * never summed or compared, and it stays where names go — the same distinction
+ * `RecordCell` makes when it declines to put separators in an id.
+ */
+function isQuantity(field: Field, resource: Resource): boolean {
+  return field.type === "number" && field.key !== resource.primaryKey;
+}
+
 export interface RecordTableProps {
   projectKey: string;
   resource: Resource;
@@ -76,13 +89,14 @@ export function RecordTable({
                   field={field}
                   sort={sort}
                   onSort={onSort}
+                  alignRight={isQuantity(field, resource)}
                 />
               ))}
             </TableRow>
           </TableHeader>
 
           {isPending ? (
-            <PendingRows columns={columns.length} />
+            <PendingRows columns={columns.map((field) => isQuantity(field, resource))} />
           ) : (
             <TableBody>
               {records.map((record) => (
@@ -101,7 +115,10 @@ export function RecordTable({
                   className="cursor-pointer hover:bg-muted"
                 >
                   {columns.map((field) => (
-                    <TableCell key={field.key}>
+                    <TableCell
+                      key={field.key}
+                      className={cn(isQuantity(field, resource) && "text-right")}
+                    >
                       <RecordCell
                         projectKey={projectKey}
                         field={field}
@@ -133,10 +150,13 @@ function ColumnHeader({
   field,
   sort,
   onSort,
+  alignRight,
 }: {
   field: Field;
   sort: TableSort;
   onSort: (field: string) => void;
+  /** Whether the column's values sit against its right edge, so the head does too. */
+  alignRight: boolean;
 }) {
   const sortable = !UNSORTABLE.includes(field.type);
   const active = sort.field === field.key;
@@ -146,6 +166,7 @@ function ColumnHeader({
       aria-sort={
         sortable ? (active ? (sort.direction === "asc" ? "ascending" : "descending") : "none") : undefined
       }
+      className={cn(alignRight && "text-right")}
     >
       {sortable ? (
         <button
@@ -154,6 +175,9 @@ function ColumnHeader({
           className={cn(
             "-mx-1 inline-flex items-center gap-1 rounded-sm px-1 outline-none",
             "hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45",
+            // The arrow moves to the label's other side so the label itself
+            // stays flush with the edge the column is aligned to.
+            alignRight && "flex-row-reverse",
             active && "text-foreground",
           )}
         >
@@ -172,14 +196,17 @@ function ColumnHeader({
  * definition's, so they are already known and already drawn; only the values
  * are missing, and the rows say so without saying anything to a screen reader.
  */
-function PendingRows({ columns }: { columns: number }) {
+function PendingRows({ columns }: { columns: boolean[] }) {
   return (
     <tbody aria-hidden="true">
       {Array.from({ length: PENDING_ROWS }, (_, row) => (
         <tr key={row}>
-          {Array.from({ length: columns }, (_, cell) => (
+          {columns.map((alignRight, cell) => (
             <td key={cell} className="h-row border-b border-border px-2.5 align-middle">
-              <Skeleton className="h-3" style={{ width: widthFor(row, cell) }} />
+              <Skeleton
+                className={cn("h-3", alignRight && "ml-auto")}
+                style={{ width: widthFor(row, cell) }}
+              />
             </td>
           ))}
         </tr>

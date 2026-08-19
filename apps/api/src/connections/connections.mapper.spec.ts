@@ -32,12 +32,4 @@ describe("toConnectionDto", () => {
   it("leaves the row's own identifiers and its ciphertext behind", () => {
     expect(Object.keys(toConnectionDto(ROW, DSN))).toEqual(["kind", "host", "database"]);
   });
-
-  it("says nothing for a connection string that names no database", () => {
-    expect(toConnectionDto(ROW, "postgres://db.example.com")).toEqual({
-      kind: "postgres",
-      host: "db.example.com",
-      database: "",
-    });
-  });
 });

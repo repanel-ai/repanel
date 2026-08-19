@@ -9,7 +9,7 @@ export type ConnectionKind = "postgres";
 export interface ConnectionDto {
   kind: ConnectionKind;
   host: string;
-  /** The database the DSN names, or empty when it names none. */
+  /** The database the DSN names; validation refuses a DSN that names none. */
   database: string;
 }
 

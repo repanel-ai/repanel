@@ -26,8 +26,15 @@ test("setConnection trims a pasted connection string", () => {
 
 test("setConnection rejects a database RePanel does not speak", () => {
   assert.deepEqual(dsnErrors("mysql://admin:hunter2@db.example.com:3306/skyscout"), [
-    "dsn must be a postgres:// or postgresql:// connection string",
+    "dsn must be a postgres:// or postgresql:// connection string that names a database",
   ]);
+});
+
+test("setConnection rejects a connection string that names no database", () => {
+  // Legal for the driver, which would fall back to a database named after the
+  // role — a panel reading the wrong one, and nothing saying so.
+  assert.equal(dsnErrors("postgres://admin:hunter2@db.example.com:5432").length, 1);
+  assert.equal(dsnErrors("postgres://admin:hunter2@db.example.com:5432/").length, 1);
 });
 
 test("setConnection rejects a host that is not a connection string at all", () => {

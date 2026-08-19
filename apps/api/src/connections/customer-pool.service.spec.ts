@@ -17,6 +17,8 @@ const crypto = new CryptoService({
 /** Stands in for Postgres: whatever connection has been filed for a project. */
 class InMemoryConnectionsRepository implements Pick<ConnectionsRepository, "findByProjectId"> {
   private readonly rows = new Map<string, ConnectionRow>();
+  private parked: Promise<void> | undefined;
+  private answer: (() => void) | undefined;
 
   file(projectId: string, dsn: string): void {
     this.rows.set(projectId, {
@@ -29,8 +31,29 @@ class InMemoryConnectionsRepository implements Pick<ConnectionsRepository, "find
     });
   }
 
-  findByProjectId(projectId: string): Promise<ConnectionRow | undefined> {
-    return Promise.resolve(this.rows.get(projectId));
+  /** Holds the next read open, so a test can decide what happens during it. */
+  parkNextRead(): void {
+    this.parked = new Promise((resolve) => {
+      this.answer = resolve;
+    });
+  }
+
+  answerParkedRead(): void {
+    this.answer?.();
+  }
+
+  async findByProjectId(projectId: string): Promise<ConnectionRow | undefined> {
+    // The row as it stands when the read is made, not as it stands when the
+    // read answers. A database hands back what it was asked for, and an answer
+    // that has gone stale in flight is the whole of what is under test.
+    const row = this.rows.get(projectId);
+
+    const parked = this.parked;
+    if (!parked) return row;
+    this.parked = undefined;
+    await parked;
+
+    return row;
   }
 }
 
@@ -126,6 +149,23 @@ describe("CustomerPoolService", () => {
 
     it("has nothing to do when the project never opened one", async () => {
       await expect(pools.release(LEDGER)).resolves.toBeUndefined();
+    });
+
+    it("invalidates an open that is still reading the connection it replaced", async () => {
+      repository.parkNextRead();
+      const opening = pools.poolFor(SKYSCOUT);
+
+      // The replacement lands in the one moment `release` cannot see it: no
+      // pool is filed yet, so there is nothing for it to close.
+      repository.file(SKYSCOUT, REPLACEMENT);
+      await pools.release(SKYSCOUT);
+      repository.answerParkedRead();
+
+      const pool = await opening;
+
+      expect(pool.options.connectionString).toBe(REPLACEMENT);
+      // Reading again left one pool behind, not two.
+      expect(await pools.poolFor(SKYSCOUT)).toBe(pool);
     });
   });
 

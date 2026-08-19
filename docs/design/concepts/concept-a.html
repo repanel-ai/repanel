@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept A — preset baseline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONCEPT A — the shadcn preset b7Br6PMSh, rendered faithfully.
+   Every colour below is the preset's own value. Geist, --radius .45rem, the
+   amber primary, the cool-grey neutrals, shadcn's own component metrics
+   (h-9 controls, h-10 table head, p-2 cells, rounded-md badges) and shadcn's
+   sidebar "inset" variant: the page is --sidebar, the panel is --background.
+   Nothing here is invented; this is the honest baseline the others must beat.
+
+   Three deviations, all forced by the AA floor, all disclosed:
+   1. The brand mark uses --primary / --primary-foreground (4.85 light, 6.84
+      dark) instead of --sidebar-primary / --sidebar-primary-foreground, whose
+      own pairing measures 3.09 in light.
+   2. Light --muted-foreground darkened #67787c -> #607175. The preset's value
+      clears 4.5 only against pure white; against its own --sidebar (#f9fbfb)
+      and --muted (#f1f3f3) it measures 4.44 and 4.14, and secondary text sits
+      on both.
+   3. Dark --destructive-foreground white -> #090b0c. shadcn's destructive badge
+      is `bg-destructive text-white`; against this preset's dark --destructive
+      (#ff6467, a light red) that is 2.89.
+   =========================================================================== */
+:root {
+  --background:#ffffff; --foreground:#090b0c;
+  --card:#ffffff; --card-foreground:#090b0c;
+  --primary:#bb4d00; --primary-foreground:#fffbeb;
+  --secondary:#f4f4f5; --secondary-foreground:#1c1c1f;
+  --muted:#f1f3f3; --muted-foreground:#607175;               /* DEVIATION 2 */
+  --accent:#f1f3f3; --accent-foreground:#161b1d;
+  --destructive:#e7000b; --destructive-foreground:#ffffff;   /* preset */
+  --border:#e3e7e8; --input:#e3e7e8; --ring:#9ca8ab;
+  --sidebar:#f9fbfb; --sidebar-foreground:#090b0c;
+  --sidebar-primary:#e17100; --sidebar-accent:#f1f3f3;
+  --sidebar-accent-foreground:#161b1d; --sidebar-border:#e3e7e8;
+  --radius:0.45rem;
+  --radius-sm:calc(var(--radius) * .6); --radius-md:calc(var(--radius) * .8);
+  --radius-lg:var(--radius); --radius-xl:calc(var(--radius) * 1.4);
+}
+html.dark {
+  --background:#090b0c; --foreground:#f9fbfb;
+  --card:#161b1d; --card-foreground:#f9fbfb;
+  --primary:#973c00; --primary-foreground:#fffbeb;
+  --secondary:#27272a; --secondary-foreground:#fafafa;
+  --muted:#22292b; --muted-foreground:#9ca8ab;
+  --accent:#22292b; --accent-foreground:#f9fbfb;
+  --destructive:#ff6467; --destructive-foreground:#090b0c;   /* DEVIATION 3 */
+  --border:rgba(255,255,255,.10); --input:rgba(255,255,255,.15); --ring:#67787c;
+  --sidebar:#161b1d; --sidebar-foreground:#f9fbfb;
+  --sidebar-primary:#fe9a00; --sidebar-accent:#22292b;
+  --sidebar-accent-foreground:#f9fbfb; --sidebar-border:rgba(255,255,255,.10);
+}
+
+*,*::before,*::after { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; background:var(--sidebar); color:var(--foreground);
+  font-family:"Geist", ui-sans-serif, system-ui, sans-serif;
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+a { color:inherit; text-decoration:none; }
+button { font:inherit; color:inherit; }
+
+/* ---- shell: shadcn's sidebar-inset ---------------------------------------- */
+.shell { display:flex; height:100vh; overflow:hidden; }
+.sidebar {
+  width:256px; flex:0 0 256px; display:flex; flex-direction:column;
+  background:var(--sidebar); color:var(--sidebar-foreground); padding:8px;
+}
+.brand { display:flex; align-items:center; gap:8px; height:48px; padding:0 8px; }
+.brand-mark {
+  width:24px; height:24px; border-radius:var(--radius-md);
+  background:var(--primary); color:var(--primary-foreground);   /* DEVIATION 1 */
+  display:grid; place-items:center; font-size:12px; font-weight:600; flex:none;
+}
+.brand-name { font-weight:600; font-size:14px; letter-spacing:-.01em; }
+.brand-sub { font-size:12px; color:var(--muted-foreground); }
+.nav { flex:1; overflow:auto; padding-top:8px; }
+.nav-group {
+  padding:8px 8px 4px; font-size:12px; font-weight:500;
+  color:var(--muted-foreground);
+}
+.nav-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px; }
+.nav-item {
+  display:flex; align-items:center; gap:8px; height:32px; padding:0 8px;
+  border-radius:var(--radius-md); font-size:14px; color:var(--sidebar-foreground);
+}
+.nav-item:hover { background:var(--sidebar-accent); }
+.nav-item.is-active {
+  background:var(--sidebar-accent); color:var(--sidebar-accent-foreground); font-weight:500;
+}
+.nav-label { flex:1; }
+.nav-count { font-size:12px; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.user {
+  display:flex; align-items:center; gap:8px; height:48px; padding:0 8px;
+  border-radius:var(--radius-md);
+}
+.user:hover { background:var(--sidebar-accent); }
+.avatar {
+  width:32px; height:32px; border-radius:var(--radius-lg); flex:none;
+  background:var(--muted); color:var(--muted-foreground);
+  display:grid; place-items:center; font-size:12px; font-weight:600;
+}
+.user-name { font-size:14px; font-weight:500; line-height:1.2; }
+.user-mail { font-size:12px; color:var(--muted-foreground); line-height:1.3; }
+
+.inset {
+  flex:1; min-width:0; margin:8px 8px 8px 0;
+  background:var(--background); border:1px solid var(--border);
+  border-radius:var(--radius-xl); box-shadow:0 1px 2px rgba(0,0,0,.05);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.topbar {
+  display:flex; align-items:center; gap:12px; height:56px;
+  padding:0 16px; border-bottom:1px solid var(--border); flex:none;
+}
+.crumbs { font-size:14px; color:var(--muted-foreground); }
+.crumbs strong { color:var(--foreground); font-weight:500; }
+.spacer { flex:1; }
+.btn {
+  display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 16px;
+  border-radius:var(--radius-md); border:1px solid transparent; font-size:14px;
+  font-weight:500; cursor:pointer;
+}
+.btn-outline { background:var(--background); border-color:var(--border); }
+.btn-outline:hover { background:var(--accent); }
+.btn-primary { background:var(--primary); color:var(--primary-foreground); }
+.btn-ghost { background:transparent; padding:0 12px; }
+.btn-ghost:hover { background:var(--accent); }
+.btn-icon { width:36px; padding:0; justify-content:center; }
+
+.page { flex:1; min-height:0; display:flex; flex-direction:column; padding:16px; gap:16px; }
+.page-head { display:flex; align-items:flex-end; gap:12px; }
+h1 { margin:0; font-size:24px; font-weight:600; letter-spacing:-.02em; }
+.page-sub { font-size:14px; color:var(--muted-foreground); }
+
+.controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.field { position:relative; flex:0 0 288px; }
+.input {
+  width:100%; height:36px; padding:0 12px 0 32px; font:inherit; font-size:14px;
+  background:var(--background); color:var(--foreground);
+  border:1px solid var(--input); border-radius:var(--radius-md); outline:none;
+}
+.input::placeholder { color:var(--muted-foreground); }
+.search-icon {
+  position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  width:14px; height:14px; color:var(--muted-foreground); pointer-events:none;
+}
+.kbd {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:11px; color:var(--muted-foreground); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:1px 5px; background:var(--muted);
+}
+.select {
+  display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 10px;
+  font-size:14px; background:var(--background); border:1px solid var(--input);
+  border-radius:var(--radius-md); color:var(--foreground); cursor:pointer;
+}
+.select .val { color:var(--muted-foreground); }
+.select.is-set .val { color:var(--foreground); font-weight:500; }
+.chev { width:12px; height:12px; opacity:.55; }
+
+/* focus: the preset's own ring — border-ring + 3px ring/50 */
+.input:focus-visible, .select:focus-visible, .btn:focus-visible,
+.nav-item:focus-visible, tbody tr:focus-visible, .is-focused {
+  border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+  outline:none;
+}
+tbody tr:focus-visible { outline:2px solid var(--ring); outline-offset:-2px; box-shadow:none; }
+
+.active-filters { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:13px; }
+.chip {
+  display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 4px 0 8px;
+  border:1px solid var(--border); border-radius:var(--radius-md);
+  background:var(--muted); font-size:12px;
+}
+.chip b { font-weight:500; color:var(--muted-foreground); }
+.chip .x {
+  width:16px; height:16px; display:grid; place-items:center; border-radius:var(--radius-sm);
+  color:var(--muted-foreground); cursor:pointer;
+}
+.chip .x:hover { background:var(--accent); color:var(--foreground); }
+.clear-all { font-size:12px; color:var(--muted-foreground); text-decoration:underline; text-underline-offset:2px; }
+
+.table-wrap {
+  flex:1; min-height:0; border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:auto;
+}
+table { width:100%; border-collapse:collapse; font-size:14px; }
+thead th {
+  position:sticky; top:0; z-index:1; background:var(--background);
+  height:40px; padding:0 8px; text-align:left; font-weight:500; font-size:14px;
+  color:var(--muted-foreground); border-bottom:1px solid var(--border); white-space:nowrap;
+}
+thead th .sort { opacity:.6; margin-left:4px; font-size:11px; }
+tbody td { padding:8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:var(--muted); }
+.cell-email { font-weight:500; }
+.cell-date { color:var(--muted-foreground); white-space:nowrap; }
+.relation { box-shadow:0 1px 0 0 var(--muted-foreground); opacity:.999; }
+.relation:hover { box-shadow:0 1px 0 0 currentColor; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:4px; width:fit-content;
+  border:1px solid transparent; border-radius:var(--radius-md);
+  padding:2px 8px; font-size:12px; font-weight:500; line-height:1.35; white-space:nowrap;
+}
+.badge-secondary { background:var(--secondary); color:var(--secondary-foreground); }
+.badge-outline { border-color:var(--border); color:var(--foreground); }
+.badge-destructive { background:var(--destructive); color:var(--destructive-foreground); }
+
+.pager { display:flex; align-items:center; gap:12px; flex:none; }
+.pager-count { font-size:14px; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.pager-size { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted-foreground); }
+
+@media (max-width: 900px) {
+  .sidebar { width:56px; flex-basis:56px; }
+  .brand-name, .brand-sub, .nav-label, .nav-count, .user-name, .user-mail, .nav-group { display:none; }
+  .nav-item { justify-content:center; }
+  .nav-item::before { content:""; width:6px; height:6px; border-radius:2px; background:currentColor; opacity:.5; }
+  .nav-item.is-active::before { opacity:1; background:var(--sidebar-primary); }
+  .user { justify-content:center; }
+  .field { flex:1 1 200px; }
+  .page { padding:12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Acme Admin</div>
+        <div class="brand-sub">acme-prod</div>
+      </div>
+    </div>
+    <nav class="nav">
+        <div class="nav-group">Customers</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Organizations</span><span class="nav-count">68</span></a></li>
+        <li><a href="#" class="nav-item is-active" aria-current="page"><span class="nav-label">Users</span><span class="nav-count">1,284</span></a></li>
+        </ul>
+        <div class="nav-group">Commerce</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Orders</span><span class="nav-count">9,412</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Invoices</span><span class="nav-count">9,033</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Refunds</span><span class="nav-count">112</span></a></li>
+        </ul>
+        <div class="nav-group">Operations</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Webhooks</span><span class="nav-count">6</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Audit log</span><span class="nav-count">—</span></a></li>
+        </ul>
+    </nav>
+    <div class="user">
+      <div class="avatar">RW</div>
+      <div>
+        <div class="user-name">Rae Whitlock</div>
+        <div class="user-mail">rae@acme.test</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="inset">
+    <div class="topbar">
+      <div class="crumbs">Customers <span style="opacity:.5">/</span> <strong>Users</strong></div>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-icon" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button class="btn btn-outline">Refresh</button>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <h1>Users</h1>
+        <div class="page-sub">1,284 records</div>
+      </div>
+
+      <div class="controls">
+        <div class="field">
+          <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+          <input class="input is-focused" placeholder="Search email, name, notes" value="" aria-label="Search users">
+          <span class="kbd">/</span>
+        </div>
+        <button class="select is-set">Status <span class="val">Active</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select">Active <span class="val">Any</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select is-set">Organization <span class="val">Northwind Labs</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select">Created <span class="val">Any time</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+      </div>
+
+      <div class="active-filters">
+        <span class="chip"><b>Status</b> Active <span class="x">×</span></span>
+        <span class="chip"><b>Organization</b> Northwind Labs <span class="x">×</span></span>
+        <a href="#" class="clear-all">Clear all</a>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:26%">Email</th>
+              <th style="width:20%">Name</th>
+              <th style="width:14%">Status</th>
+              <th style="width:22%">Organization</th>
+              <th style="width:18%">Created <span class="sort">▼</span></th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr tabindex="0">
+            <td class="cell-email">maya.okonkwo@northwind.io</td>
+            <td>Maya Okonkwo</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-07-14 09:12 UTC">14 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">dev@ridgeline.dev</td>
+            <td>Devon Ashworth</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-07-12 16:40 UTC">12 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">p.laurent@meridian.fr</td>
+            <td>Paul Laurent</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-07-11 08:03 UTC">11 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">s.iyer@kestrel.co</td>
+            <td>Sana Iyer</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-07-09 21:55 UTC">09 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">ops@harborlight.com</td>
+            <td>Harborlight Ops</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-07-08 11:27 UTC">08 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">t.brennan@northwind.io</td>
+            <td>Tomas Brennan</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-07-06 14:19 UTC">06 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">aki.tanaka@lumen.jp</td>
+            <td>Aki Tanaka</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-07-05 02:44 UTC">05 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">r.mbeki@sable.co.za</td>
+            <td>Refilwe Mbeki</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-07-03 19:08 UTC">03 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">j.varga@meridian.fr</td>
+            <td>Julia Varga</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-07-01 07:31 UTC">01 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">n.haddad@kestrel.co</td>
+            <td>Nour Haddad</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-06-29 13:50 UTC">29 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">e.lindqvist@lumen.jp</td>
+            <td>Elsa Lindqvist</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-27 10:02 UTC">27 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">c.okafor@harborlight.com</td>
+            <td>Chidi Okafor</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-06-24 22:16 UTC">24 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">b.sorensen@ridgeline.dev</td>
+            <td>Bo Sorensen</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-06-22 05:41 UTC">22 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">m.delacroix@meridian.fr</td>
+            <td>Margot Delacroix</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-06-20 17:09 UTC">20 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">k.osei@sable.co.za</td>
+            <td>Kwame Osei</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-06-18 09:58 UTC">18 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">y.moreau@lumen.jp</td>
+            <td>Yuki Moreau</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-16 12:23 UTC">16 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">billing@northwind.io</td>
+            <td>Northwind Billing</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-06-14 06:35 UTC">14 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">h.nakamura@kestrel.co</td>
+            <td>Hana Nakamura</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-06-12 20:47 UTC">12 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">l.fitzgerald@harborlight.com</td>
+            <td>Liam Fitzgerald</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-06-10 15:12 UTC">10 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">z.abadi@ridgeline.dev</td>
+            <td>Zara Abadi</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-06-08 03:29 UTC">08 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">g.rossi@meridian.fr</td>
+            <td>Giulia Rossi</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-06-06 18:54 UTC">06 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">support@sable.co.za</td>
+            <td>Sable Support</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-06-04 08:17 UTC">04 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">w.mensah@lumen.jp</td>
+            <td>Wale Mensah</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-02 23:03 UTC">02 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">i.petrov@northwind.io</td>
+            <td>Irina Petrov</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-05-31 11:46 UTC">31 May 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">f.almeida@kestrel.co</td>
+            <td>Filipa Almeida</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-05-29 07:20 UTC">29 May 2026</time></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager-count">1–25 of 1,284</div>
+        <div class="spacer"></div>
+        <div class="pager-size">Rows
+          <button class="select">25 <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+        <button class="btn btn-outline" disabled style="opacity:.5">Previous</button>
+        <button class="btn btn-outline">Next</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+</body>
+</html>

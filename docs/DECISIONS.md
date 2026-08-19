@@ -190,3 +190,30 @@ made CSS the configuration surface, so a JS preset would be a second source of
 truth for the same names; and #026 puts every visual line in the repo, which is
 only true if the tokens are one file a human can read top to bottom.
 
+029 · 2026-08 · Badge severity comes only from an explicit signal in the
+definition: an additive optional `tones` map on enum fields (value ->
+positive | neutral | attention | critical). It is never inferred from how a
+value is spelled, and a value the map does not mention renders with the quiet
+treatment — which is also what every value gets until the map exists.
+Implementation lands with task 011. Why: the runtime has never seen the
+customer's vocabulary, and guessing severity from spelling is guessing about
+someone else's domain — `suspended` is routine in one product and an alarm in
+the next, and `active` can be the alarm. 010's badge language deliberately
+builds three treatments and spends one (DESIGN.md §4); the other two are
+unreachable until the schema can name them. The map is additive by
+construction — its absence is today's behaviour — so deferring it costs
+nothing and inventing it early would fix a vocabulary before any customer has
+one.
+
+030 · 2026-08 · Dates render in one fixed shape on every surface: `14 Jul 2026`
+in UTC, with the exact value on hover — never the reader's locale. A value that
+arrives without a zone is read as the clock it was written on rather than
+re-projected, because the API strips the zone from `date` and `timestamp`
+columns on purpose (#024's mapper) so the customer's stored reading survives
+the wire. A project-level display timezone is the future additive answer. Why:
+a column whose dates change shape per reader cannot be scanned, and two
+operators comparing the same table over a ticket have to mean the same row when
+they say "the 14th". Locale formatting would also make the design record's
+measurements unreproducible (DESIGN.md is measured, not remembered). The cost
+is that an operator outside UTC reads UTC; a display timezone chosen per
+project answers that additively, without a per-reader shape.

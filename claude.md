@@ -24,7 +24,8 @@ build; this file defines **how**.
 
 NestJS · Drizzle ORM · PostgreSQL · zod (all validation: env, DTOs, definition
 schema) · React + Vite · TanStack Query · shadcn-style owned components over
-Radix primitives + Tailwind (`packages/ui`); TanStack Table for data grids ·
+Radix primitives + Tailwind (`packages/ui`); owned table primitives (server-side
+v0); TanStack Table reserved for future client-side grid features ·
 pnpm workspaces.
 
 ## Backend architecture

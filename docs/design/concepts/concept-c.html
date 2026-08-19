@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept C — Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONCEPT C — "CONSOLE".  Dark designed first.
+
+   Thesis: the table IS the interface. The shell is a thin frame around data.
+
+   Type      ONE variable grotesque doing all the work — Instrument Sans, with
+             tabular figures switched on globally so every column aligns without
+             a monospace face. Hierarchy comes from three moves only: size,
+             weight, and a 10px micro-caps label layer at +0.12em. The opposite
+             bet from a mono data treatment: nothing is quarantined into
+             "code voice", so the screen reads as one document at speed.
+   Density   Compressed. 32px rows, 12.5px data. The most rows per screen of the
+             three, because the operator's real question is usually "which of
+             these 200" and scrolling is the tax on answering it.
+   Surfaces  ONE. The panel is the only raised plane; inside it there are no
+             cards, no wells, no nested borders. Depth is refused on principle —
+             separation is space and a single hairline weight.
+   Colour    Achromatic neutrals plus exactly one cold accent. Status is text
+             colour and a square mark, never a fill: a table of 25 rows should
+             not contain 25 coloured rectangles.
+   Signature THE QUERY LINE: one line under the title that renders the complete
+             view state — search, every filter, sort, page — exactly as it lives
+             in the URL, each segment individually clearable. Task 010 promises
+             "the URL is the state"; this is that promise made readable. An
+             operator can read their view aloud, and paste it.
+   =========================================================================== */
+:root {
+  --ground:#f3f3f3; --panel:#ffffff;
+  --fg:#0e0e0e; --muted:#575757; --faint:#6d6d6d;
+  --rule:#dcdcdc; --hair:#e8e8e8; --underline:#c4c4c4; --hover:rgba(0,0,0,.035);
+  --accent:#006b7b; --accent-fg:#fdfdfd;
+  --ok:#006f31; --warn:#845000; --bad:#b5171b; --off:#636363;
+}
+html.dark {
+  --ground:#080808; --panel:#141414;
+  --fg:#f5f5f5; --muted:#959595; --faint:#7f7f7f;
+  --rule:#2a2a2a; --hair:#202020; --underline:#414141; --hover:rgba(255,255,255,.04);
+  --accent:#56d3d6; --accent-fg:#051213;
+  --ok:#72dc8c; --warn:#f0c551; --bad:#ff7a73; --off:#8c8c8c;
+}
+
+*,*::before,*::after { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; background:var(--ground); color:var(--fg);
+  font-family:"Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:13px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"cv01" 1;
+}
+a { color:inherit; text-decoration:none; }
+button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+.caps {
+  font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint);
+}
+
+/* ---- shell: a thin frame -------------------------------------------------- */
+.shell { display:flex; height:100vh; overflow:hidden; }
+.sidebar {
+  width:212px; flex:0 0 212px; display:flex; flex-direction:column;
+  padding:14px 10px 10px; background:var(--ground);
+}
+.brand { display:flex; align-items:center; gap:9px; padding:0 6px 4px; }
+.brand-mark {
+  width:20px; height:20px; flex:none; border-radius:2px; background:var(--fg); color:var(--ground);
+  display:grid; place-items:center; font-size:11px; font-weight:700;
+}
+.brand-name { font-size:13.5px; font-weight:600; letter-spacing:-.012em; line-height:1.15; }
+.brand-sub { font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); }
+
+.nav { flex:1; overflow:auto; padding-top:18px; }
+.nav-group {
+  padding:16px 6px 7px; font-size:10px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--faint);
+}
+.nav-group:first-child { padding-top:0; }
+.nav-list { list-style:none; margin:0; padding:0; }
+.nav-item { display:flex; align-items:center; gap:8px; height:26px; padding:0 6px; color:var(--muted); }
+.nav-item:hover { color:var(--fg); }
+/* Active = the label takes the accent and one hairline under it. No fill, no
+   left bar: this shell has no boxes in it and the nav does not get an exception. */
+.nav-item.is-active { color:var(--accent); }
+.nav-item.is-active .nav-label { font-weight:600; box-shadow:0 1px 0 0 currentColor; }
+.nav-item.is-active .nav-count { color:var(--accent); }
+.nav-label { flex:1; font-size:13px; }
+.nav-count { font-size:11px; color:var(--faint); }
+
+.user { display:flex; align-items:center; gap:9px; padding:12px 6px 2px; border-top:1px solid var(--rule); }
+.avatar {
+  width:26px; height:26px; flex:none; border-radius:2px; background:var(--rule); color:var(--muted);
+  display:grid; place-items:center; font-size:10px; font-weight:700; letter-spacing:.05em;
+}
+.user-name { font-size:12px; font-weight:600; line-height:1.2; }
+.user-mail { font-size:11px; color:var(--faint); line-height:1.25; }
+
+/* the one raised plane */
+.inset {
+  flex:1; min-width:0; margin:10px 10px 10px 0; background:var(--panel);
+  border:1px solid var(--rule); border-radius:2px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.topbar {
+  display:flex; align-items:center; gap:8px; height:36px; padding:0 24px;
+  border-bottom:1px solid var(--hair); flex:none;
+}
+.spacer { flex:1; }
+.tbtn { font-size:12px; font-weight:500; color:var(--muted); padding:2px 0; }
+.tbtn:hover { color:var(--fg); box-shadow:0 1px 0 0 currentColor; }
+.pbtn {
+  background:var(--accent); color:var(--accent-fg); border-radius:2px;
+  height:26px; padding:0 12px; font-size:12px; font-weight:600;
+}
+
+.page { flex:1; min-height:0; display:flex; flex-direction:column; padding:20px 24px 12px; }
+.page-head { display:flex; align-items:baseline; gap:10px; }
+h1 { margin:0; font-size:19px; font-weight:600; letter-spacing:-.022em; }
+.total { font-size:12px; color:var(--faint); }
+
+/* ---- THE SIGNATURE: the query line ---------------------------------------- */
+.query {
+  display:flex; flex-wrap:wrap; align-items:center; gap:0 2px;
+  margin-top:7px; font-size:12px; color:var(--muted); line-height:20px;
+}
+.query .seg {
+  display:inline-flex; align-items:center; gap:5px; padding:0 6px; border-radius:2px;
+  white-space:nowrap;
+}
+.query .seg:hover { background:var(--hover); color:var(--fg); }
+.query .seg .k { color:var(--faint); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
+.query .seg .v { color:var(--fg); }
+.query .seg .x { color:var(--faint); font-size:13px; line-height:1; }
+.query .seg .x:hover { color:var(--fg); }
+.query .seg.is-open { background:var(--hover); color:var(--fg); }
+.query .sep { width:1px; align-self:stretch; margin:3px 5px; background:var(--rule); flex:none; }
+.query .reset { margin-left:6px; font-size:11px; color:var(--accent); font-weight:600; }
+
+/* ---- controls: bare, on one hairline -------------------------------------- */
+.controls {
+  display:flex; flex-wrap:wrap; align-items:center; gap:0 20px;
+  margin-top:14px; padding-bottom:10px; border-bottom:1px solid var(--rule);
+}
+.search { display:flex; align-items:center; gap:8px; flex:0 1 300px; min-width:180px; padding:4px 6px; border-radius:2px; }
+.search input {
+  flex:1; border:0; background:transparent; outline:none; padding:0; color:var(--fg);
+  font:inherit; font-size:13px;
+}
+.search input::placeholder { color:var(--faint); }
+.slash { font-size:10px; font-weight:600; color:var(--faint); border:1px solid var(--rule); border-radius:2px; padding:0 4px; }
+.filter { display:flex; align-items:center; gap:7px; padding:4px 2px; font-size:12.5px; color:var(--muted); border-radius:2px; }
+.filter:hover { color:var(--fg); }
+.filter .v { color:var(--fg); font-weight:600; }
+.filter .v.empty { color:var(--faint); font-weight:400; }
+/* a filter that is currently narrowing the view is marked, not spelled out —
+   the query line above already says what it is set to. */
+.filter .set { width:5px; height:5px; border-radius:1px; background:var(--accent); flex:none; }
+.chev { width:10px; height:10px; opacity:.55; flex:none; }
+
+/* focus: a crisp accent outline, offset so it never touches the glyphs */
+.search:focus-within, .filter:focus-visible, .tbtn:focus-visible, .pbtn:focus-visible,
+.nav-item:focus-visible, .query .seg:focus-visible, .is-focused {
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+tbody tr:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+
+/* ---- the table ------------------------------------------------------------ */
+.grid { flex:1; min-height:0; overflow:auto; margin-top:2px; }
+table { width:100%; border-collapse:collapse; }
+thead th {
+  position:sticky; top:0; z-index:1; background:var(--panel); height:30px; padding:0 14px 0 0;
+  text-align:left; white-space:nowrap; border-bottom:1px solid var(--rule);
+  font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--faint);
+}
+thead th:first-child, tbody td:first-child { padding-left:2px; }
+thead th .sort { color:var(--fg); margin-left:5px; font-size:8px; vertical-align:2px; }
+tbody td {
+  height:32px; padding:0 14px 0 0; border-bottom:1px solid var(--hair);
+  vertical-align:middle; font-size:12.5px; color:var(--muted);
+}
+tbody tr:hover td { background:var(--hover); }
+.c-strong { color:var(--fg)!important; font-weight:600; }
+.c-date { white-space:nowrap; color:var(--faint)!important; }
+.relation { color:var(--fg); box-shadow:0 1px 0 0 var(--underline); }
+.relation:hover { box-shadow:0 1px 0 0 currentColor; }
+
+/* status: a square mark and a micro-caps label, in the semantic hue. No fill. */
+.state {
+  display:inline-flex; align-items:center; gap:7px; font-size:10px; font-weight:600;
+  letter-spacing:.11em; text-transform:uppercase; white-space:nowrap;
+}
+.state i { width:6px; height:6px; flex:none; border-radius:1px; }
+.state-ok { color:var(--ok); }     .state-ok i { background:var(--ok); }
+.state-warn { color:var(--warn); } .state-warn i { background:var(--warn); }
+.state-bad { color:var(--bad); }   .state-bad i { background:var(--bad); }
+.state-off { color:var(--off); }   .state-off i { background:var(--off); }
+
+.pager { display:flex; align-items:center; gap:16px; padding-top:11px; border-top:1px solid var(--rule); flex:none; }
+.pager-count { font-size:11.5px; color:var(--faint); }
+.pager .filter { padding:2px; }
+
+@media (max-width:900px) {
+  .sidebar { width:48px; flex-basis:48px; padding:14px 6px 8px; }
+  .brand-name,.brand-sub,.nav-label,.nav-count,.user-name,.user-mail,.nav-group { display:none; }
+  .nav-item { justify-content:center; padding:0; }
+  .nav-item::before { content:""; width:5px; height:5px; border-radius:1px; background:currentColor; opacity:.5; }
+  .nav-item.is-active::before { opacity:1; }
+  .user { justify-content:center; }
+  .page { padding:16px 12px 10px; }
+  .controls { gap:0 14px; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; animation:none!important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Acme Admin</div>
+        <div class="brand-sub">acme-prod</div>
+      </div>
+    </div>
+    <nav class="nav">
+        <div class="nav-group">Customers</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Organizations</span><span class="nav-count">68</span></a></li>
+        <li><a href="#" class="nav-item is-active" aria-current="page"><span class="nav-label">Users</span><span class="nav-count">1,284</span></a></li>
+        </ul>
+        <div class="nav-group">Commerce</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Orders</span><span class="nav-count">9,412</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Invoices</span><span class="nav-count">9,033</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Refunds</span><span class="nav-count">112</span></a></li>
+        </ul>
+        <div class="nav-group">Operations</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Webhooks</span><span class="nav-count">6</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Audit log</span><span class="nav-count">—</span></a></li>
+        </ul>
+    </nav>
+    <div class="user">
+      <div class="avatar">RW</div>
+      <div>
+        <div class="user-name">Rae Whitlock</div>
+        <div class="user-mail">rae@acme.test</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="inset">
+    <div class="topbar">
+      <span class="caps">Customers</span>
+      <span class="caps" style="opacity:.45">/</span>
+      <span class="caps" style="color:var(--fg)">Users</span>
+      <div class="spacer"></div>
+      <button class="tbtn">Refresh</button>
+      <button class="tbtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <h1>Users</h1>
+        <span class="total">1,284 records</span>
+      </div>
+
+      <!-- THE QUERY LINE — the URL, made readable -->
+      <div class="query" role="group" aria-label="Current view">
+        <span class="seg"><span class="k">resource</span><span class="v">users</span></span>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="seg"><span class="k">q</span><span class="v">“ridge”</span><span class="x">×</span></button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="seg is-open"><span class="k">status</span><span class="v">active</span><span class="x">×</span></button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="seg"><span class="k">org</span><span class="v">Northwind Labs</span><span class="x">×</span></button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="seg"><span class="k">sort</span><span class="v">created ↓</span></button>
+        <span class="sep" aria-hidden="true"></span>
+        <span class="seg"><span class="k">page</span><span class="v">1 / 52</span></span>
+        <button class="reset">Reset view</button>
+      </div>
+
+      <div class="controls">
+        <label class="search is-focused">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="opacity:.55;flex:none"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+          <input placeholder="Search email, name, notes" value="ridge" aria-label="Search users">
+          <span class="slash">/</span>
+        </label>
+        <button class="filter"><span class="caps">Status</span><i class="set"></i><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="filter"><span class="caps">Active</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="filter"><span class="caps">Organization</span><i class="set"></i><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="filter"><span class="caps">Created</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+      </div>
+
+      <div class="grid">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:26%">Email</th>
+              <th style="width:19%">Name</th>
+              <th style="width:14%">Status</th>
+              <th style="width:22%">Organization</th>
+              <th style="width:15%">Created <span class="sort">▼</span></th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr tabindex="0">
+            <td class="c-strong">maya.okonkwo@northwind.io</td>
+            <td>Maya Okonkwo</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="c-date"><time title="2026-07-14 09:12 UTC">14 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">dev@ridgeline.dev</td>
+            <td>Devon Ashworth</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="c-date"><time title="2026-07-12 16:40 UTC">12 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">p.laurent@meridian.fr</td>
+            <td>Paul Laurent</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="c-date"><time title="2026-07-11 08:03 UTC">11 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">s.iyer@kestrel.co</td>
+            <td>Sana Iyer</td>
+            <td><span class="state state-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="c-date"><time title="2026-07-09 21:55 UTC">09 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">ops@harborlight.com</td>
+            <td>Harborlight Ops</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="c-date"><time title="2026-07-08 11:27 UTC">08 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">t.brennan@northwind.io</td>
+            <td>Tomas Brennan</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="c-date"><time title="2026-07-06 14:19 UTC">06 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">aki.tanaka@lumen.jp</td>
+            <td>Aki Tanaka</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="c-date"><time title="2026-07-05 02:44 UTC">05 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">r.mbeki@sable.co.za</td>
+            <td>Refilwe Mbeki</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="c-date"><time title="2026-07-03 19:08 UTC">03 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">j.varga@meridian.fr</td>
+            <td>Julia Varga</td>
+            <td><span class="state state-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="c-date"><time title="2026-07-01 07:31 UTC">01 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">n.haddad@kestrel.co</td>
+            <td>Nour Haddad</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="c-date"><time title="2026-06-29 13:50 UTC">29 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">e.lindqvist@lumen.jp</td>
+            <td>Elsa Lindqvist</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="c-date"><time title="2026-06-27 10:02 UTC">27 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">c.okafor@harborlight.com</td>
+            <td>Chidi Okafor</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="c-date"><time title="2026-06-24 22:16 UTC">24 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">b.sorensen@ridgeline.dev</td>
+            <td>Bo Sorensen</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="c-date"><time title="2026-06-22 05:41 UTC">22 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">m.delacroix@meridian.fr</td>
+            <td>Margot Delacroix</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="c-date"><time title="2026-06-20 17:09 UTC">20 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">k.osei@sable.co.za</td>
+            <td>Kwame Osei</td>
+            <td><span class="state state-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="c-date"><time title="2026-06-18 09:58 UTC">18 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">y.moreau@lumen.jp</td>
+            <td>Yuki Moreau</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="c-date"><time title="2026-06-16 12:23 UTC">16 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">billing@northwind.io</td>
+            <td>Northwind Billing</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="c-date"><time title="2026-06-14 06:35 UTC">14 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">h.nakamura@kestrel.co</td>
+            <td>Hana Nakamura</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="c-date"><time title="2026-06-12 20:47 UTC">12 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">l.fitzgerald@harborlight.com</td>
+            <td>Liam Fitzgerald</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="c-date"><time title="2026-06-10 15:12 UTC">10 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">z.abadi@ridgeline.dev</td>
+            <td>Zara Abadi</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="c-date"><time title="2026-06-08 03:29 UTC">08 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">g.rossi@meridian.fr</td>
+            <td>Giulia Rossi</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="c-date"><time title="2026-06-06 18:54 UTC">06 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">support@sable.co.za</td>
+            <td>Sable Support</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="c-date"><time title="2026-06-04 08:17 UTC">04 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">w.mensah@lumen.jp</td>
+            <td>Wale Mensah</td>
+            <td><span class="state state-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="c-date"><time title="2026-06-02 23:03 UTC">02 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">i.petrov@northwind.io</td>
+            <td>Irina Petrov</td>
+            <td><span class="state state-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="c-date"><time title="2026-05-31 11:46 UTC">31 May 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="c-strong">f.almeida@kestrel.co</td>
+            <td>Filipa Almeida</td>
+            <td><span class="state state-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="c-date"><time title="2026-05-29 07:20 UTC">29 May 2026</time></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <span class="pager-count">1–25 of 1,284</span>
+        <button class="filter"><span class="caps">Rows</span><span class="v">25</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <div class="spacer"></div>
+        <button class="tbtn" disabled style="opacity:.4">← Previous</button>
+        <button class="tbtn">Next →</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+</body>
+</html>

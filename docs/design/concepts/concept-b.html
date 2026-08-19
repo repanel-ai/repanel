@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept B — Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONCEPT B — "LEDGER".  Dark designed first.
+
+   Thesis: an admin is a document, not an app. Warm ink on warm paper.
+
+   Type      IBM Plex Sans for everything we drew; IBM Plex Mono for every value
+             that came out of the customer's database. One superfamily, so the
+             two share metrics and colour and the reader can tell chrome from
+             data without a box or a tint.
+   Density   Comfortable-dense: 40px rows, 13px data, a 10.5px micro-caps label
+             layer. A 50-row page is scannable; an 8-hour day is survivable.
+   Surfaces  Three measured layers. The panel is a sheet RAISED off the desk;
+             the table is a well MILLED INTO the sheet. Stated by a lightness
+             ladder and hairlines. No shadows anywhere.
+   Colour    Hue is reserved for meaning. The interaction accent is LIGHTNESS —
+             bone on ink, ink on paper. Every hue on screen says something about
+             the data, never about the chrome.
+   Signature THE KEY GUTTER: a recessed left column carrying each record's
+             primary key in mono, on every table, every related list. In RePanel
+             the primary key is the record's address (it is the :id in the URL)
+             and DECISIONS #014 guarantees it is never a secret — so it is the
+             one column that is always true and always safe to show.
+   =========================================================================== */
+:root {
+  --ground:#efece8; --panel:#ffffff; --well:#f8f7f3;
+  --fg:#1c1915; --muted:#625b53; --faint:#6f6962;
+  --rule:#dbd7d2; --hair:#e7e4e0; --underline:#c3bdb5;
+  --accent:#231b13; --accent-fg:#fbf8f1;
+  --ok:#006e33; --warn:#8a5600; --bad:#b31c1e; --off:#6d6861;
+  --r:3px;
+}
+html.dark {
+  --ground:#080605; --panel:#191714; --well:#110e0c;
+  --fg:#efece7; --muted:#a7a29b; --faint:#848078;
+  --rule:#35312d; --hair:#282522; --underline:#4b463f;
+  --accent:#eee7d9; --accent-fg:#15110d;
+  --ok:#62d691; --warn:#f4be4f; --bad:#ff7a73; --off:#96918a;
+}
+
+*,*::before,*::after { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; background:var(--ground); color:var(--fg);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:13.5px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  font-feature-settings:"tnum" 1;
+}
+a { color:inherit; text-decoration:none; }
+button { font:inherit; color:inherit; }
+.mono, .d, .pk, .nav-count, .tag, .pager-count {
+  font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.caps {
+  font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--faint);
+}
+
+/* ---- shell ---------------------------------------------------------------- */
+.shell { display:flex; height:100vh; overflow:hidden; padding:10px; gap:10px; }
+.sidebar { width:236px; flex:0 0 236px; display:flex; flex-direction:column; }
+.brand { display:flex; align-items:center; gap:10px; padding:6px 6px 14px; }
+.brand-mark {
+  width:26px; height:26px; flex:none; border:1px solid var(--fg); border-radius:var(--r);
+  display:grid; place-items:center; font-weight:600; font-size:12px; letter-spacing:.02em;
+}
+.brand-name { font-weight:600; font-size:14px; letter-spacing:-.005em; line-height:1.2; }
+.brand-sub { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--faint); line-height:1.3; }
+
+.nav { flex:1; overflow:auto; }
+.nav-group {
+  padding:14px 6px 6px; font-size:10.5px; font-weight:500; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--faint);
+}
+.nav-list { list-style:none; margin:0; padding:0; }
+.nav-item {
+  display:flex; align-items:center; gap:8px; height:30px; padding:0 8px;
+  border-radius:var(--r); border-top:1px solid transparent; border-bottom:1px solid transparent;
+}
+.nav-item:hover { background:var(--well); }
+/* Active = the ledger's current line: a step up in surface, bracketed by rules. */
+.nav-item.is-active {
+  background:var(--panel); border-top-color:var(--rule); border-bottom-color:var(--rule);
+  font-weight:600;
+}
+.nav-item.is-active .nav-count { color:var(--fg); }
+.nav-label { flex:1; font-size:13.5px; }
+.nav-count { font-size:11px; color:var(--faint); }
+
+.user {
+  margin-top:10px; padding:10px 8px 4px; border-top:1px solid var(--rule);
+  display:flex; align-items:center; gap:9px;
+}
+.avatar {
+  width:28px; height:28px; flex:none; border-radius:var(--r); border:1px solid var(--rule);
+  display:grid; place-items:center; font-size:10.5px; font-weight:600; letter-spacing:.04em;
+  color:var(--muted);
+}
+.user-name { font-size:12.5px; font-weight:500; line-height:1.25; }
+.user-mail { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); line-height:1.3; }
+
+/* the sheet */
+.inset {
+  flex:1; min-width:0; background:var(--panel); border:1px solid var(--rule);
+  border-radius:var(--r); display:flex; flex-direction:column; overflow:hidden;
+}
+.topbar {
+  display:flex; align-items:center; gap:10px; height:42px; padding:0 16px;
+  border-bottom:1px solid var(--rule); flex:none;
+}
+.spacer { flex:1; }
+.btn {
+  display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px;
+  border:1px solid var(--rule); border-radius:var(--r); background:transparent;
+  font-size:12.5px; font-weight:500; cursor:pointer;
+}
+.btn:hover { background:var(--well); }
+.btn-primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+.btn-primary:hover { filter:brightness(.94); }
+.btn-icon { width:30px; padding:0; justify-content:center; }
+
+.page { flex:1; min-height:0; display:flex; flex-direction:column; padding:18px 16px 14px; }
+.page-head { display:flex; align-items:baseline; gap:12px; padding-bottom:14px; }
+h1 { margin:0; font-size:21px; font-weight:600; letter-spacing:-.015em; }
+.page-count { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); }
+
+/* ---- controls: fields ruled like a form on paper, not boxed ---------------- */
+.controls {
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap:18px;
+  padding:0 0 14px; border-bottom:1px solid var(--rule);
+}
+.fld { display:flex; flex-direction:column; gap:3px; }
+.fld > .caps { line-height:1; }
+.fld-ctl {
+  display:flex; align-items:center; gap:7px; height:26px; padding:0 2px;
+  border:0; border-bottom:1px solid var(--rule); background:transparent; cursor:pointer;
+  font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--fg); min-width:96px;
+}
+.fld-ctl:hover { border-bottom-color:var(--fg); }
+.fld-ctl .val { flex:1; text-align:left; }
+.fld-ctl .val.empty { color:var(--faint); }
+.chev { width:11px; height:11px; opacity:.6; flex:none; }
+.fld-search { flex:0 1 300px; min-width:200px; }
+.fld-search .fld-ctl { cursor:text; }
+.fld-search input {
+  flex:1; border:0; background:transparent; outline:none; padding:0; color:var(--fg);
+  font-family:"IBM Plex Mono",monospace; font-size:12.5px;
+}
+.fld-search input::placeholder { color:var(--faint); }
+.slash {
+  font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint);
+  border:1px solid var(--rule); border-radius:2px; padding:0 4px; line-height:15px;
+}
+
+/* focus: a 2px ink/bone underline plus a soft halo — reads on both themes */
+.fld-ctl:focus-within, .fld-ctl:focus-visible, .btn:focus-visible,
+.nav-item:focus-visible, .is-focused {
+  outline:none; border-bottom-color:var(--accent); box-shadow:0 1px 0 0 var(--accent);
+  background:var(--well);
+}
+.btn:focus-visible, .nav-item:focus-visible {
+  box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--accent); border-radius:var(--r);
+}
+tbody tr:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+
+.applied { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:12px 0 12px; }
+.chip {
+  display:inline-flex; align-items:stretch; height:22px; border:1px solid var(--rule);
+  border-radius:2px; overflow:hidden; font-size:11px;
+}
+.chip .k {
+  display:flex; align-items:center; padding:0 6px; background:var(--well);
+  border-right:1px solid var(--rule); color:var(--faint);
+  font-size:10px; letter-spacing:.07em; text-transform:uppercase; font-weight:500;
+}
+.chip .v { display:flex; align-items:center; padding:0 6px; font-family:"IBM Plex Mono",monospace; }
+.chip .x { display:flex; align-items:center; padding:0 6px 0 2px; color:var(--faint); cursor:pointer; }
+.chip .x:hover { color:var(--fg); }
+.clear-all { font-size:11.5px; color:var(--muted); border-bottom:1px solid var(--rule); }
+
+/* ---- the well, and the table in it ---------------------------------------- */
+.well {
+  flex:1; min-height:0; background:var(--well);
+  border:1px solid var(--rule); border-radius:var(--r); overflow:auto;
+}
+table { width:100%; border-collapse:collapse; }
+thead th {
+  position:sticky; top:0; z-index:1; background:var(--well); height:32px; padding:0 12px;
+  text-align:left; white-space:nowrap; border-bottom:1px solid var(--rule);
+  font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--faint);
+}
+thead th.gutter { padding-left:12px; }
+thead th .sort { color:var(--fg); margin-left:5px; font-size:9px; vertical-align:1px; }
+tbody td { height:40px; padding:0 12px; border-bottom:1px solid var(--hair); vertical-align:middle; }
+/* the five-rule: accounting paper puts a heavier line every fifth entry, so a
+   wide row can be tracked across without zebra striping. */
+tbody tr:nth-child(5n) td { border-bottom-color:var(--rule); box-shadow:inset 0 -1px 0 0 var(--rule); }
+tbody tr:hover td { background:var(--panel); }
+
+/* THE SIGNATURE — the key gutter */
+td.gutter, th.gutter {
+  width:104px; background:var(--ground); border-right:1px solid var(--rule);
+  position:sticky; left:0; z-index:0;
+}
+tbody tr:hover td.gutter { background:var(--well); }
+.pk { font-size:11px; color:var(--faint); letter-spacing:-.01em; }
+
+.d { font-family:"IBM Plex Mono",monospace; font-size:12.5px; }
+.d-strong { color:var(--fg); font-weight:500; }
+.d-num { color:var(--muted); white-space:nowrap; }
+.relation {
+  font-size:13px; border-bottom:1px solid var(--underline); padding-bottom:1px;
+}
+.relation:hover { border-bottom-color:var(--fg); }
+
+/* status: one silhouette for every state, hue on a 2px stripe + the label */
+.tag {
+  display:inline-flex; align-items:center; height:20px; border:1px solid var(--rule);
+  border-radius:2px; padding:0 7px 0 0; font-size:10.5px; font-weight:500;
+  letter-spacing:.07em; text-transform:uppercase; overflow:hidden; white-space:nowrap;
+}
+.tag i { width:2px; align-self:stretch; margin-right:7px; flex:none; }
+.tag-ok { color:var(--ok); }       .tag-ok i { background:var(--ok); }
+.tag-warn { color:var(--warn); }   .tag-warn i { background:var(--warn); }
+.tag-bad { color:var(--bad); }     .tag-bad i { background:var(--bad); }
+.tag-off { color:var(--off); }     .tag-off i { background:var(--off); }
+
+.pager { display:flex; align-items:center; gap:12px; padding-top:12px; flex:none; }
+.pager-count { font-size:11.5px; color:var(--muted); }
+.pager-size { display:flex; align-items:center; gap:8px; }
+
+@media (max-width:900px) {
+  .sidebar { width:52px; flex-basis:52px; }
+  .brand-name,.brand-sub,.nav-label,.nav-count,.user-name,.user-mail,.nav-group { display:none; }
+  .nav-item { justify-content:center; padding:0; }
+  .nav-item::before { content:""; width:5px; height:5px; background:currentColor; opacity:.45; }
+  .nav-item.is-active::before { opacity:1; }
+  .user { justify-content:center; }
+  td.gutter, th.gutter { width:84px; }
+  .page { padding:14px 12px 12px; }
+  .controls { gap:14px; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; animation:none!important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Acme Admin</div>
+        <div class="brand-sub">acme-prod</div>
+      </div>
+    </div>
+    <nav class="nav">
+        <div class="nav-group">Customers</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Organizations</span><span class="nav-count">68</span></a></li>
+        <li><a href="#" class="nav-item is-active" aria-current="page"><span class="nav-label">Users</span><span class="nav-count">1,284</span></a></li>
+        </ul>
+        <div class="nav-group">Commerce</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Orders</span><span class="nav-count">9,412</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Invoices</span><span class="nav-count">9,033</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Refunds</span><span class="nav-count">112</span></a></li>
+        </ul>
+        <div class="nav-group">Operations</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><span class="nav-label">Webhooks</span><span class="nav-count">6</span></a></li>
+        <li><a href="#" class="nav-item"><span class="nav-label">Audit log</span><span class="nav-count">—</span></a></li>
+        </ul>
+    </nav>
+    <div class="user">
+      <div class="avatar">RW</div>
+      <div>
+        <div class="user-name">Rae Whitlock</div>
+        <div class="user-mail">rae@acme.test</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="inset">
+    <div class="topbar">
+      <span class="caps">Customers</span>
+      <span class="caps" style="opacity:.5">/</span>
+      <span class="caps" style="color:var(--fg)">Users</span>
+      <div class="spacer"></div>
+      <button class="btn btn-icon" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button class="btn">Refresh</button>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <h1>Users</h1>
+        <div class="page-count">1,284 records</div>
+      </div>
+
+      <div class="controls">
+        <label class="fld fld-search">
+          <span class="caps">Search</span>
+          <span class="fld-ctl is-focused">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="opacity:.6;flex:none"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+            <input placeholder="email, name, notes" aria-label="Search users">
+            <span class="slash">/</span>
+          </span>
+        </label>
+        <div class="fld">
+          <span class="caps">Status</span>
+          <button class="fld-ctl"><span class="val">active</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+        <div class="fld">
+          <span class="caps">Active</span>
+          <button class="fld-ctl"><span class="val empty">any</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+        <div class="fld">
+          <span class="caps">Organization</span>
+          <button class="fld-ctl"><span class="val">Northwind Labs</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+        <div class="fld">
+          <span class="caps">Created</span>
+          <button class="fld-ctl"><span class="val empty">any time</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+      </div>
+
+      <div class="applied">
+        <span class="chip"><span class="k">status</span><span class="v">active</span><span class="x">×</span></span>
+        <span class="chip"><span class="k">organization</span><span class="v">Northwind Labs</span><span class="x">×</span></span>
+        <a href="#" class="clear-all">Clear all</a>
+      </div>
+
+      <div class="well">
+        <table>
+          <thead>
+            <tr>
+              <th class="gutter">Key</th>
+              <th style="width:24%">Email</th>
+              <th style="width:18%">Name</th>
+              <th style="width:13%">Status</th>
+              <th style="width:20%">Organization</th>
+              <th style="width:15%">Created <span class="sort">▼</span></th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_8f2a</span></td>
+            <td class="d d-strong">maya.okonkwo@northwind.io</td>
+            <td class="d">Maya Okonkwo</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="d d-num"><time title="2026-07-14 09:12 UTC">14 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_7b19</span></td>
+            <td class="d d-strong">dev@ridgeline.dev</td>
+            <td class="d">Devon Ashworth</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="d d-num"><time title="2026-07-12 16:40 UTC">12 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_71c4</span></td>
+            <td class="d d-strong">p.laurent@meridian.fr</td>
+            <td class="d">Paul Laurent</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="d d-num"><time title="2026-07-11 08:03 UTC">11 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_6ee0</span></td>
+            <td class="d d-strong">s.iyer@kestrel.co</td>
+            <td class="d">Sana Iyer</td>
+            <td><span class="tag tag-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="d d-num"><time title="2026-07-09 21:55 UTC">09 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_6d3b</span></td>
+            <td class="d d-strong">ops@harborlight.com</td>
+            <td class="d">Harborlight Ops</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="d d-num"><time title="2026-07-08 11:27 UTC">08 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_6a55</span></td>
+            <td class="d d-strong">t.brennan@northwind.io</td>
+            <td class="d">Tomas Brennan</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="d d-num"><time title="2026-07-06 14:19 UTC">06 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_67f1</span></td>
+            <td class="d d-strong">aki.tanaka@lumen.jp</td>
+            <td class="d">Aki Tanaka</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="d d-num"><time title="2026-07-05 02:44 UTC">05 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_6320</span></td>
+            <td class="d d-strong">r.mbeki@sable.co.za</td>
+            <td class="d">Refilwe Mbeki</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="d d-num"><time title="2026-07-03 19:08 UTC">03 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_5f8d</span></td>
+            <td class="d d-strong">j.varga@meridian.fr</td>
+            <td class="d">Julia Varga</td>
+            <td><span class="tag tag-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="d d-num"><time title="2026-07-01 07:31 UTC">01 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_5c02</span></td>
+            <td class="d d-strong">n.haddad@kestrel.co</td>
+            <td class="d">Nour Haddad</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="d d-num"><time title="2026-06-29 13:50 UTC">29 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_5a77</span></td>
+            <td class="d d-strong">e.lindqvist@lumen.jp</td>
+            <td class="d">Elsa Lindqvist</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="d d-num"><time title="2026-06-27 10:02 UTC">27 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_5811</span></td>
+            <td class="d d-strong">c.okafor@harborlight.com</td>
+            <td class="d">Chidi Okafor</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="d d-num"><time title="2026-06-24 22:16 UTC">24 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_54c9</span></td>
+            <td class="d d-strong">b.sorensen@ridgeline.dev</td>
+            <td class="d">Bo Sorensen</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="d d-num"><time title="2026-06-22 05:41 UTC">22 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_5203</span></td>
+            <td class="d d-strong">m.delacroix@meridian.fr</td>
+            <td class="d">Margot Delacroix</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="d d-num"><time title="2026-06-20 17:09 UTC">20 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_4fb6</span></td>
+            <td class="d d-strong">k.osei@sable.co.za</td>
+            <td class="d">Kwame Osei</td>
+            <td><span class="tag tag-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="d d-num"><time title="2026-06-18 09:58 UTC">18 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_4d40</span></td>
+            <td class="d d-strong">y.moreau@lumen.jp</td>
+            <td class="d">Yuki Moreau</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="d d-num"><time title="2026-06-16 12:23 UTC">16 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_4a8e</span></td>
+            <td class="d d-strong">billing@northwind.io</td>
+            <td class="d">Northwind Billing</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="d d-num"><time title="2026-06-14 06:35 UTC">14 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_47d2</span></td>
+            <td class="d d-strong">h.nakamura@kestrel.co</td>
+            <td class="d">Hana Nakamura</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="d d-num"><time title="2026-06-12 20:47 UTC">12 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_4519</span></td>
+            <td class="d d-strong">l.fitzgerald@harborlight.com</td>
+            <td class="d">Liam Fitzgerald</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="d d-num"><time title="2026-06-10 15:12 UTC">10 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_4288</span></td>
+            <td class="d d-strong">z.abadi@ridgeline.dev</td>
+            <td class="d">Zara Abadi</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="d d-num"><time title="2026-06-08 03:29 UTC">08 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_3ff0</span></td>
+            <td class="d d-strong">g.rossi@meridian.fr</td>
+            <td class="d">Giulia Rossi</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="d d-num"><time title="2026-06-06 18:54 UTC">06 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_3d61</span></td>
+            <td class="d d-strong">support@sable.co.za</td>
+            <td class="d">Sable Support</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="d d-num"><time title="2026-06-04 08:17 UTC">04 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_3ac7</span></td>
+            <td class="d d-strong">w.mensah@lumen.jp</td>
+            <td class="d">Wale Mensah</td>
+            <td><span class="tag tag-bad"><i></i>Suspended</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="d d-num"><time title="2026-06-02 23:03 UTC">02 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_3822</span></td>
+            <td class="d d-strong">i.petrov@northwind.io</td>
+            <td class="d">Irina Petrov</td>
+            <td><span class="tag tag-ok"><i></i>Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="d d-num"><time title="2026-05-31 11:46 UTC">31 May 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="gutter"><span class="pk">usr_3590</span></td>
+            <td class="d d-strong">f.almeida@kestrel.co</td>
+            <td class="d">Filipa Almeida</td>
+            <td><span class="tag tag-warn"><i></i>Invited</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="d d-num"><time title="2026-05-29 07:20 UTC">29 May 2026</time></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager-count">rows 1–25 of 1,284</div>
+        <div class="spacer"></div>
+        <div class="pager-size">
+          <span class="caps">Rows</span>
+          <button class="fld-ctl" style="min-width:60px;height:24px"><span class="val">25</span><svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        </div>
+        <button class="btn" disabled style="opacity:.45">Previous</button>
+        <button class="btn">Next</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+</body>
+</html>

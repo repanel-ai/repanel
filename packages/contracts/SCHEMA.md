@@ -78,7 +78,8 @@ A resource binds one postgres table to one admin section.
 
 Keys — resource, field, relationship, action keys and the table name — are
 letters, digits and underscores, never starting with a digit. The runtime
-interpolates them into SQL identifiers, so the accepted set stays conservative.
+always double-quotes them in SQL, so they reach Postgres exactly as written:
+`avatarUrl` stays `avatarUrl` and is never folded to `avatarurl`.
 
 ## Field
 
@@ -254,11 +255,13 @@ would point at the wrong place. Fix the structure, validate again.
 ## Known limitations (v0)
 
 **Identifiers.** Resource, field, relationship and action keys — and the source
-table name — must match `[A-Za-z_][A-Za-z0-9_]*`. The runtime interpolates them
-into SQL identifiers, so the accepted set is deliberately narrow: quoted or
-exotic Postgres identifiers (`"First Name"`, names starting with a digit,
-non-ASCII letters) cannot be expressed in v0, and a table using one cannot
-expose that column until the schema grows an explicit quoting rule.
+table name — must match `[A-Za-z_][A-Za-z0-9_]*`. Case is not a limitation:
+every identifier is double-quoted on its way into SQL, so a Prisma-style
+schema — table `User`, column `avatarUrl` — is fully supported and reaches
+Postgres unfolded. What v0 cannot express is a name outside that pattern: a
+space (`First Name`), a leading digit, a non-ASCII letter, or an embedded
+quote. A table using one cannot expose that column until the schema grows a
+way to write it down.
 
 **`dbUpdate` targets.** A `dbUpdate` action may set only an `enum` or `boolean`
 field, and never a `sensitive` one. Text, numbers, dates, JSON and relations are

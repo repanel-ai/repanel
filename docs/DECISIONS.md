@@ -134,3 +134,11 @@ failure categories (unreachable | auth_failed | timeout | unknown) are
 public contract; the control plane renders per category and never renders
 driver text. Why: the customer DSN is the most dangerous value we hold;
 containment is structural, not reviewed-in.
+
+024 · 2026-08 · Runtime query safety: the query engine executes only
+definition-derived queries. Table/column identifiers come exclusively from a
+validated definition (quoted, allowlisted); user input enters only as bound
+parameters; sensitive fields are never selected; every query carries a
+statement timeout and a hard row limit. A query shape the definition cannot
+express does not run. Why: the customer DB connection is the most dangerous
+thing we hold; safety by construction, not by review.

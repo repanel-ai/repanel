@@ -1,0 +1,10 @@
+@import "@repanel/ui/tokens.css";
+
+/* Tailwind scans the app it is loaded from; the components live outside it. */
+@source "../../../packages/ui/src";
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}

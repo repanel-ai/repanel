@@ -5,6 +5,9 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev:api": "pnpm --filter @repanel/api dev",
+    "dev:web": "pnpm --filter @repanel/web dev",
+    "dev:runtime": "pnpm --filter @repanel/runtime dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"

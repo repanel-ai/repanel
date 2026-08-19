@@ -176,3 +176,42 @@ test("a hidden field may not be the default sort", () => {
   assert.equal(error.message, "Hidden field `created_at` cannot be the default sort.");
   assert.match(error.hint, /sort by a field the table displays/);
 });
+
+test("a sensitive field may not be the default sort", () => {
+  const errors = errorsFor((draft) => {
+    resourceIn(draft, "users").views.table.defaultSort.field = "password_hash";
+  });
+
+  const error = errorAt(errors, "resources[1].views.table.defaultSort.field");
+  assert.equal(error.message, "Sensitive field `password_hash` cannot be the default sort.");
+  assert.equal(error.expected, "a field that is not marked `sensitive`");
+  assert.equal(
+    error.hint,
+    "Ordering by a field exposes the order it puts the rows in, which is readable from the pages even though the values are not — change `resources[1].views.table.defaultSort.field` to a non-sensitive field such as one of: id, email, name, status, organization_id, is_active, notes, created_at.",
+  );
+});
+
+test("a sensitive default sort is never offered the bypass of unsetting the flag", () => {
+  const errors = errorsFor((draft) => {
+    resourceIn(draft, "users").views.table.defaultSort.field = "password_hash";
+  });
+
+  // DECISIONS #015: a `hidden` hint ends in "or unset `hidden` on …"; the
+  // sensitive one must offer no equivalent way out.
+  assert.doesNotMatch(errorAt(errors, "resources[1].views.table.defaultSort.field").hint, /unset/);
+});
+
+test("a field that is both sensitive and hidden reports the sensitive default sort", () => {
+  const errors = errorsFor((draft) => {
+    const users = resourceIn(draft, "users");
+    fieldIn(users, "password_hash").hidden = true;
+    users.views.table.defaultSort.field = "password_hash";
+  });
+
+  const matching = errors.filter(
+    (error) => error.path === "resources[1].views.table.defaultSort.field",
+  );
+  assert.equal(matching.length, 1, "one location reports one problem");
+  assert.equal(matching[0]?.message, "Sensitive field `password_hash` cannot be the default sort.");
+});
+

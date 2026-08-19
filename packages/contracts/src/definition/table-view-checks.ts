@@ -61,13 +61,26 @@ export function checkTableView(
     }
   });
 
+  const sortAt = `${tableAt}.defaultSort.field`;
   const sortEntry = fields.get(table.defaultSort.field);
   if (!sortEntry) {
-    errors.push(unknownField(`${tableAt}.defaultSort.field`, table.defaultSort.field, resource.key, fieldKeys));
+    errors.push(unknownField(sortAt, table.defaultSort.field, resource.key, fieldKeys));
+  } else if (sortEntry.field.sensitive) {
+    // An ordering is a comparison the caller can page through: the values never
+    // render, but the ranking they impose on the rows beside them does, one page
+    // boundary at a time. DECISIONS #014 counts that as probing.
+    errors.push(
+      sensitiveFieldError({
+        path: sortAt,
+        key: table.defaultSort.field,
+        problem: "cannot be the default sort",
+        fix: `Ordering by a field exposes the order it puts the rows in, which is readable from the pages even though the values are not — change \`${sortAt}\` to a non-sensitive field such as one of: ${formatList(sortableKeys(fields))}.`,
+      }),
+    );
   } else if (sortEntry.field.hidden) {
     errors.push(
       hiddenFieldError({
-        path: `${tableAt}.defaultSort.field`,
+        path: sortAt,
         key: table.defaultSort.field,
         problem: "cannot be the default sort",
         remedy: "sort by a field the table displays",
@@ -167,4 +180,11 @@ export function checkTableView(
   });
 
   return errors;
+}
+
+/** What a table may be ordered by: shown in the list, and safe to rank rows by. */
+function sortableKeys(fields: ReadonlyMap<string, FieldEntry>): string[] {
+  return [...fields.values()]
+    .filter((entry) => !entry.field.sensitive && !entry.field.hidden)
+    .map((entry) => entry.field.key);
 }

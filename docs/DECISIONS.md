@@ -164,3 +164,17 @@ from 010's design gate. Per-customer theming deferred post-MVP as a constrained
 CSS-variable override set. Why: the runtime's look is the product (#005) and
 its stability is a promise; neither sits downstream of a component library's
 release schedule.
+
+027 · 2026-08 · Two more sensitive-containment checks move into validation
+before the compatibility ratchet closes (#012): a table's `defaultSort.field`
+and a relationship's `foreignKey` may not be `sensitive`. Both were already
+refused by the runtime — the sort silently dropped, the traversal answered with
+`UnservableResourceError` — and both refusals stay as defense in depth for
+definitions stored before the rule existed. Why: a silent degradation is the
+one outcome #008 has no answer for. An ordering is probeable (paging reveals
+the ranking a secret column imposes, without rendering a value) and a foreign
+key is both selected and matched on, so #014 already covered them in spirit;
+what was missing was the repairable error that tells the authoring agent so.
+Hints name safe fixes only (#015). Narrowing validation is a breaking change
+for a definition that relied on the gap, which is exactly why it lands now.
+

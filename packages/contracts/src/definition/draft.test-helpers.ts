@@ -12,6 +12,7 @@ import { validateDefinition } from "./validate.js";
 
 export type DraftResource = DefinitionInput["resources"][number];
 export type DraftField = DraftResource["fields"][number];
+export type DraftRelationship = NonNullable<DraftResource["relationships"]>[number];
 
 export function errorsFor(mutate: (draft: DefinitionInput) => void): ValidationError[] {
   const draft = structuredClone(saasDefinition);
@@ -48,3 +49,10 @@ export function resourceIn(draft: DefinitionInput, key: string): DraftResource {
   if (!found) throw new Error(`the fixture has no resource \`${key}\``);
   return found;
 }
+
+export function relationshipIn(resource: DraftResource, key: string): DraftRelationship {
+  const found = resource.relationships?.find((relationship) => relationship.key === key);
+  if (!found) throw new Error(`the fixture's resource has no relationship \`${key}\``);
+  return found;
+}
+

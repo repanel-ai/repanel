@@ -117,9 +117,12 @@ Two flags, both defaulting to `false`:
 ```
 
 - `sensitive` — never leaves the API unmasked, and never probeable: it may not
-  appear in table columns, search, filters, or an `httpCall` URL template, it
-  may not be the target of a `dbUpdate` action, and it can be neither the
-  resource's `primaryKey` nor its `labelField`.
+  appear in table columns, search, filters, the table's `defaultSort`, or an
+  `httpCall` URL template, it may not be the target of a `dbUpdate` action, and
+  it can be neither the resource's `primaryKey`, its `labelField`, nor a
+  relationship's `foreignKey`. Ordering and joining are probes as much as
+  filtering is: a sort exposes the order it puts the rows in, and a foreign key
+  is a column the runtime reads and matches on.
 - `hidden` — **detail-only**. Hidden fields are excluded from list payloads, so
   a hidden field cannot be a table column, a search field, a filter, the
   default sort, or the `labelField`. It may still appear in a detail section.
@@ -135,7 +138,7 @@ Two flags, both defaulting to `false`:
 | `key` | Stable identifier, unique within the resource; detail views reference it. |
 | `kind` | `belongsTo` or `hasMany`. Many-to-many is out of scope in v0. |
 | `target` | Key of the resource on the other end. |
-| `foreignKey` | For `belongsTo`, a field on **this** resource; for `hasMany`, a field on the **target**. |
+| `foreignKey` | For `belongsTo`, a field on **this** resource; for `hasMany`, a field on the **target**. Must not be `sensitive`. |
 
 The runtime derives the label from the target's `label`, so a relationship
 carries no display configuration.
@@ -154,7 +157,7 @@ carries no display configuration.
 | Key | Required | Meaning |
 |---|---|---|
 | `columns` | yes, ≥1 | Ordered field keys. Sensitive and hidden fields are rejected. |
-| `defaultSort` | yes | `field` plus `direction` (`asc` \| `desc`). Required so pagination is deterministic; the field must not be hidden. |
+| `defaultSort` | yes | `field` plus `direction` (`asc` \| `desc`). Required so pagination is deterministic; the field must be neither hidden nor `sensitive`. |
 | `search` | no (default `[]`) | Field keys the free-text box queries — only `text`, `longText`, `email` and `url` fields, none of them hidden or sensitive. |
 | `filters` | no (default `[]`) | Faceted filters, each bound to one field that is neither hidden nor sensitive. |
 
@@ -239,9 +242,15 @@ Each error is written for a coding agent to act on:
   "path": "resources[1].views.table.columns[5]",
   "message": "Sensitive field `password_hash` cannot be a table column.",
   "expected": "a field that is not marked `sensitive`",
-  "hint": "Remove `password_hash` from `resources[1].views.table.columns`, or unset `sensitive` on `resources[1].fields[4]`."
+  "hint": "Remove `password_hash` from `resources[1].views.table.columns` and show a non-sensitive field instead; a sensitive value never leaves the API unmasked."
 }
 ```
+
+A hint suggests only safe fixes. Where the problem is containment — a
+`sensitive` field somewhere it may not be — the hint never offers relaxing the
+flag as the way out, because the shortest path an error describes is the path an
+authoring agent takes. A `hidden` field is a display choice, so unsetting it is
+a real remedy and its hints say so.
 
 Validation runs in two passes. The **structural** pass is the schema parse:
 types, required keys, allowed values, unknown keys. The **referential** pass
@@ -255,9 +264,9 @@ then checks what a schema cannot express:
 - a `belongsTo` foreign key exists on the declaring resource, a `hasMany`
   foreign key on the target;
 - searchable fields are text-typed and filter kinds match field types;
-- sensitive fields never appear as table columns, search fields or filters,
-  never inside an `httpCall` URL template, and are never a resource's primary
-  key or label field;
+- sensitive fields never appear as table columns, search fields, filters or
+  the default sort, never inside an `httpCall` URL template, and are never a
+  resource's primary key, its label field, or a relationship's foreign key;
 - hidden fields never appear as table columns, search fields, filters, the
   default sort or the label field — detail sections may still use them;
 - a label field reads as a name: never a `json` or `relation` field;

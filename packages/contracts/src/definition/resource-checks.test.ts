@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { errorAt, errorsFor, fieldIn, resourceIn, validFor } from "./draft.test-helpers.js";
+import { errorAt, errorsFor, fieldIn, relationshipIn, resourceIn, validFor } from "./draft.test-helpers.js";
 import { labelFieldOf } from "./schema.js";
 
 /** One resource's own references: its keys are unique, and everything it names exists. */
@@ -170,4 +170,54 @@ test("a hasMany foreign key must exist on the target resource", () => {
   const error = errorAt(errors, "resources[1].relationships[0].foreignKey");
   assert.equal(error.message, "Foreign key `owner_id` does not exist on resource `orders`.");
   assert.match(error.hint, /A `hasMany` relationship reads its foreign key from `orders`.*user_id/);
+});
+
+test("a sensitive field may not be the foreign key of a belongsTo", () => {
+  const errors = errorsFor((draft) => {
+    const users = resourceIn(draft, "users");
+    const organization = relationshipIn(users, "organization");
+    organization.foreignKey = "password_hash";
+  });
+
+  const error = errorAt(errors, "resources[1].relationships[0].foreignKey");
+  assert.equal(error.message, "Sensitive field `password_hash` cannot be a foreign key.");
+  assert.equal(error.expected, "a field that is not marked `sensitive`");
+  assert.match(
+    error.hint,
+    /^A `belongsTo` relationship is traversed by reading `users`'s `password_hash` and matching on it/,
+  );
+  assert.match(error.hint, /one of: id, email, name, status, organization_id, is_active, notes, created_at/);
+  assert.match(error.hint, /drop the relationship at `resources\[1\]\.relationships\[0\]`/);
+});
+
+test("a sensitive field may not be the foreign key of a hasMany", () => {
+  const errors = errorsFor((draft) => {
+    resourceIn(draft, "orders").fields.push({
+      key: "claim_token",
+      label: "Claim token",
+      type: "text",
+      sensitive: true,
+    });
+    relationshipIn(resourceIn(draft, "users"), "orders").foreignKey = "claim_token";
+  });
+
+  const error = errorAt(errors, "resources[1].relationships[1].foreignKey");
+  assert.equal(error.message, "Sensitive field `claim_token` cannot be a foreign key.");
+  assert.match(
+    error.hint,
+    /^A `hasMany` relationship is traversed by reading `orders`'s `claim_token` and matching on it/,
+  );
+  assert.match(error.hint, /one of: id, reference, user_id, status, total_cents, metadata, placed_at/);
+});
+
+test("a sensitive foreign key is never offered the bypass of unsetting the flag", () => {
+  const errors = errorsFor((draft) => {
+    relationshipIn(resourceIn(draft, "users"), "organization").foreignKey = "password_hash";
+  });
+
+  const error = errorAt(errors, "resources[1].relationships[0].foreignKey");
+  // DECISIONS #015: the remedy for a containment error never includes weakening
+  // the flag that raised it. `hidden` hints end in "or unset `hidden` on …"; a
+  // sensitive one must offer no equivalent.
+  assert.doesNotMatch(error.hint, /unset/);
 });

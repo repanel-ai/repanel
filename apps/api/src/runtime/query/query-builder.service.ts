@@ -210,9 +210,10 @@ function sortField(
   const { defaultSort } = resource.views.table;
   const field = fields.get(defaultSort.field);
   // The default sort is the definition's choice rather than the caller's, so it
-  // can never fail a request. A sensitive one is dropped and the primary key
-  // below carries the ordering: validation allows that field to be sensitive,
-  // and a resource nobody can list at all is the worse of the two answers.
+  // can never fail a request. Validation now refuses a sensitive one outright,
+  // so nothing an agent submits reaches here; a definition stored before that
+  // rule existed still can, and for it a dropped sort with the primary key
+  // below carrying the ordering beats a resource nobody can list at all.
   if (!field || field.sensitive) return undefined;
 
   return { field, direction: query.direction ?? defaultSort.direction };

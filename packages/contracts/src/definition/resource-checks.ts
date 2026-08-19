@@ -200,17 +200,36 @@ function checkRelationship(
   // `belongsTo` stores the foreign key on this resource; `hasMany` reads it
   // from the target.
   const owner = relationship.kind === "belongsTo" ? resource : target;
-  const ownerFieldKeys =
-    relationship.kind === "belongsTo" ? [...fields.keys()] : target.fields.map((field) => field.key);
-  if (ownerFieldKeys.includes(relationship.foreignKey)) return [];
-
+  const ownerFields =
+    relationship.kind === "belongsTo" ? [...fields.values()].map((entry) => entry.field) : target.fields;
   const path = `${at}.foreignKey`;
+  const foreignKey = ownerFields.find((field) => field.key === relationship.foreignKey);
+
+  if (!foreignKey) {
+    return [
+      {
+        path,
+        message: `Foreign key \`${relationship.foreignKey}\` does not exist on resource \`${owner.key}\`.`,
+        expected: `a field key defined on \`${owner.key}\``,
+        hint: `A \`${relationship.kind}\` relationship reads its foreign key from \`${owner.key}\`; change \`${path}\` to one of: ${formatList(ownerFields.map((field) => field.key))}.`,
+      },
+    ];
+  }
+
+  if (!foreignKey.sensitive) return [];
+
+  // Traversal reads the column and compares against it: a `belongsTo` selects
+  // the key out of the record to find the other end, a `hasMany` narrows the
+  // target's list by it. Both are surfaces DECISIONS #014 admits no sensitive
+  // value onto — the second answers "which records carry this value" from a
+  // count, without ever rendering one.
+  const joinable = ownerFields.filter((field) => !field.sensitive).map((field) => field.key);
   return [
-    {
+    sensitiveFieldError({
       path,
-      message: `Foreign key \`${relationship.foreignKey}\` does not exist on resource \`${owner.key}\`.`,
-      expected: `a field key defined on \`${owner.key}\``,
-      hint: `A \`${relationship.kind}\` relationship reads its foreign key from \`${owner.key}\`; change \`${path}\` to one of: ${formatList(ownerFieldKeys)}.`,
-    },
+      key: relationship.foreignKey,
+      problem: "cannot be a foreign key",
+      fix: `A \`${relationship.kind}\` relationship is traversed by reading \`${owner.key}\`'s \`${relationship.foreignKey}\` and matching on it, so the value is both selected and probeable — point \`${path}\` at a non-sensitive join column such as one of: ${formatList(joinable)}, or drop the relationship at \`${at}\`.`,
+    }),
   ];
 }

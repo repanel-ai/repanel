@@ -178,3 +178,15 @@ what was missing was the repairable error that tells the authoring agent so.
 Hints name safe fixes only (#015). Narrowing validation is a breaking change
 for a definition that relied on the gap, which is exactly why it lands now.
 
+028 · 2026-08 · Design tokens are Tailwind 4 CSS-first: `packages/ui/src/tokens.css`
+owns the single `@theme` block, and there is no `tailwind.config.js` and no JS
+preset anywhere in the repo. Both apps import the file; a token is added by
+naming a CSS variable there and nowhere else. Dark mode re-points the same names
+under a `.dark` class (`@custom-variant`), never a media query, so an operator's
+choice is not overridden by the OS and no component carries a `dark:` class.
+Task 010's approved palette lands as values in that block — the structure is
+already in place, the concept replaces what the names are worth. Why: Tailwind 4
+made CSS the configuration surface, so a JS preset would be a second source of
+truth for the same names; and #026 puts every visual line in the repo, which is
+only true if the tokens are one file a human can read top to bottom.
+

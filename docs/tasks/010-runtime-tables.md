@@ -17,7 +17,12 @@ legible; restraint over decoration. Wait for approval; screenshots at the
 end go to checkpoint C.
 
 ## Scope
-- `features/runtime/` in apps/web:
+Placement (DECISIONS #025): every screen below is the renderer's, so it lives in
+**apps/runtime**. Anything another surface would also use — button, input,
+badge, table primitives, skeleton — is a component in **packages/ui**; anything
+that knows what a resource is stays in apps/runtime.
+
+- `features/runtime/` in apps/runtime:
   - `use-runtime.ts`: definition query + records query (params: page, size,
     search, sort, filters) with a single cache-key factory.
   - Shell at `/a/:projectKey`: sidebar navigation from definition navigation
@@ -40,8 +45,10 @@ end go to checkpoint C.
   - Row click navigates to the detail route (placeholder page until 011).
 - Keyboard: `/` focuses search; table rows reachable by tab; visible focus
   states. Reduced motion respected.
-- All styling through the approved token plan (Tailwind theme extension /
-  HeroUI theme), no ad-hoc hex values in components.
+- All styling through the approved token plan. The palette lands as `@theme`
+  values in `packages/ui/src/tokens.css` — the one place tokens are declared
+  (DECISIONS #028) — and components spend those names. No ad-hoc hex values, no
+  `dark:` classes, no second config file.
 
 ## Out of scope (binding)
 Detail pages (011), actions (012), control plane, per-customer theming,
@@ -55,6 +62,7 @@ scrolling, mobile-first layouts (must not break at 768px; that is the bar).
 - [ ] Manual checklist in summary: light + dark screenshots of shell, table
       with data, empty, loading, error — for checkpoint C review
 - [ ] No hardcoded resource/field names anywhere in runtime code
+- [ ] apps/runtime imports nothing but `@repanel/ui` and `@repanel/contracts`
 
 ## Allowed dependencies
 None new beyond 009's set.

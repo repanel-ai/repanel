@@ -18,7 +18,9 @@ export interface SidebarProps {
  */
 export function Sidebar({ appName, projectKey, navigation, resources, user }: SidebarProps) {
   return (
-    <aside className="flex w-sidebar-narrow flex-none flex-col bg-linear-to-b from-sidebar-top to-sidebar-bottom p-2 pb-2.5 wide:w-sidebar">
+    // No ground of its own: the shell paints one surface under the sidebar and
+    // the panel's margin alike, so there is no seam between them.
+    <aside className="flex w-sidebar-narrow flex-none flex-col p-2 pb-2.5 wide:w-sidebar">
       <div className="flex h-11 items-center gap-2.5 px-2">
         <div className="grid size-[22px] flex-none place-items-center rounded-md bg-primary text-micro font-semibold text-primary-foreground">
           {appName.slice(0, 1).toUpperCase()}

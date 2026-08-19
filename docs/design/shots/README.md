@@ -32,9 +32,11 @@ contrast      light  16 distinct text styles, 0 below AA   tightest 4.63
 type scale    badge 11.5 · column header 12.5 · cell 13.5 · control 13.5
               page title 20 · nav item 14 · group label 12   (measured, px)
 
-surface       light  sidebar .7720 → .7121   page .8808   panel 1.0000   row hover #f2f3f3
-ladder        dark   sidebar .0019 → .0010   page .0062   panel .0104    row hover #2b2b2d
-              (relative luminance; four distinct steps, panel above sidebar in both themes)
+surface       light  chrome .7720 → .7121   panel 1.0000   row hover #f2f3f3
+ladder        dark   chrome .0019 → .0010   panel .0104    row hover #2b2b2d
+              (relative luminance; three steps, panel above the chrome in both
+              themes. The ground the panel floats in measures identical to the
+              sidebar's top — they are one surface, see DESIGN.md §2)
 
 768px         scrollWidth === clientWidth === 768, both themes
 footer        gap between the last row and the footer at four records: 0px

@@ -22,7 +22,7 @@ are declared (DECISIONS #028). Dark re-points the same names under `.dark`.
 |---|---|---|
 | `--sidebar-top` | `#e7e3de` | `#080605` |
 | `--sidebar-bottom` | `#dfdbd6` | `#040302` |
-| `--page` | `#f3f1ed` | `#14120f` |
+| `--page` (the ground) | = `--sidebar-top` | = `--sidebar-top` |
 | `--background` (panel) | `#ffffff` | `#1a1a1b` |
 | `--card` | `#ffffff` | `#222324` |
 | `--muted` (row hover) | `#f2f3f3` | `#2b2b2d` |
@@ -67,33 +67,33 @@ preset's chroma. Lightness values throughout are the preset's own.
 
 ---
 
-## 2. The dark surface ladder — spec
+## 2. The surface ladder — spec
 
-Four distinct steps, deepest first. Elevation is stated by lightness and a
+Three distinct steps, deepest first. Elevation is stated by lightness and a
 hairline; **no drop shadows anywhere** — all three references build depth this
 way, and the panel shadow was dropped for muddying the edge once the step was real.
 
-| # | surface | dark | step to next |
+| # | surface | dark | light |
 |---|---|---|---|
-| 1 | sidebar (darkest; slight fall top→bottom) | `#080605 → #040302` | 1.081 |
-| 2 | page — what the panel floats in | `#14120f` | 1.075 |
-| 3 | raised content panel | `#1a1a1b` | 1.231 |
-| 4 | row under the cursor | `#2b2b2d` | — |
+| 1 | the chrome: sidebar **and** the ground the panel floats in | `#080605 → #040302` | `#e7e3de → #dfdbd6` |
+| 2 | raised content panel | `#1a1a1b` | `#ffffff` |
+| 3 | row under the cursor | `#2b2b2d` | `#f2f3f3` |
 
 Light mirrors the ordering with one inversion inherent to light mode: the panel
 is the *lightest* surface (`#ffffff`) and the row hover is a **darkening**
 (`#f2f3f3`), not a further lift.
 
-| # | surface | light | step to next |
-|---|---|---|---|
-| 1 | sidebar | `#e7e3de → #dfdbd6` | 1.132 |
-| 2 | page | `#f3f1ed` | 1.128 |
-| 3 | raised content panel | `#ffffff` | 1.112 (down, to hover) |
-| 4 | row under the cursor | `#f2f3f3` | — |
+**The chrome is one surface, not two.** This started as four steps, with the
+page a separate flat tone between the sidebar and the panel. Built, that step
+read as a seam down the panel's margin rather than as depth — two warm greys a
+hair apart look like a mistake, not a ladder. So the gradient moved from the
+aside to the shell: it now falls across the whole screen, and the sidebar and
+the panel's margin are literally the same paint. `--page` is a reference to
+`--sidebar-top` rather than a value, so the two cannot drift apart again.
 
-The sidebar's fall is a gradient on the aside; the page is flat. Dark **must**
-keep the panel above the sidebar in lightness — shadcn's own `sidebar-inset`
-variant puts it below, which reads as recessed and was corrected here.
+Dark **must** keep the panel above the chrome in lightness — shadcn's own
+`sidebar-inset` variant puts it below, which reads as recessed and was
+corrected here.
 
 ---
 

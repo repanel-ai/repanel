@@ -1,5 +1,5 @@
 import type { Definition } from "@repanel/contracts";
-import { Button } from "@repanel/ui";
+import { Button, cn } from "@repanel/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useMatch } from "react-router";
 import { ApiError } from "../../lib/api-client";
@@ -11,6 +11,12 @@ import { TablePage } from "./table-page";
 import { ThemeToggle } from "./theme-toggle";
 import { runtimeKeys, useDefinition } from "./use-runtime";
 import { useTheme } from "./use-theme";
+
+/**
+ * The one surface every screen sits on: the chrome, falling slightly from top to
+ * bottom, under the sidebar and the panel's margin alike.
+ */
+const GROUND = "bg-linear-to-b from-sidebar-top to-sidebar-bottom";
 
 /**
  * The admin an operator works inside: navigation on the left, one screen on the
@@ -26,7 +32,7 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
 
   if (definition.isPending) {
     return (
-      <div className="flex h-screen items-center justify-center bg-page">
+      <div className={cn("flex h-screen items-center justify-center", GROUND)}>
         <span role="status" className="text-small text-muted-foreground">
           Loading admin
         </span>
@@ -36,7 +42,7 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
 
   if (definition.isError || !definition.data) {
     return (
-      <div className="flex h-screen items-center justify-center bg-page p-6">
+      <div className={cn("flex h-screen items-center justify-center p-6", GROUND)}>
         <div className="w-full max-w-md">
           <ErrorState
             title="This admin could not be loaded"
@@ -57,7 +63,7 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
   const current = onResource?.params.resourceKey;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-page">
+    <div className={cn("flex h-screen overflow-hidden", GROUND)}>
       <Sidebar
         appName={admin.app.name}
         projectKey={projectKey}

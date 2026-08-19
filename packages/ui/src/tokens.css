@@ -94,10 +94,16 @@
   --radius-xl: calc(var(--radius) * 1.4);
 
   /* ---- surfaces, deepest first ----------------------------------------- */
-  /* The sidebar falls slightly top to bottom; the page it sits on is flat. */
+  /*
+   * The chrome is one continuous surface: the sidebar and the ground the panel
+   * floats in are the same gradient, falling slightly top to bottom across the
+   * whole screen. They were two tones once, and the seam that left down the
+   * panel's margin read as a mistake rather than as a step.
+   */
   --color-sidebar-top: #e7e3de;
   --color-sidebar-bottom: #dfdbd6;
-  --color-page: #f3f1ed;
+  /* The ground, which is the chrome — never a colour of its own. */
+  --color-page: var(--color-sidebar-top);
   --color-background: #ffffff;
   --color-card: #ffffff;
   --color-muted: #f2f3f3; /* the row under the cursor */
@@ -137,7 +143,6 @@
 .dark {
   --color-sidebar-top: #080605;
   --color-sidebar-bottom: #040302;
-  --color-page: #14120f;
   --color-background: #1a1a1b;
   --color-card: #222324;
   --color-muted: #2b2b2d;

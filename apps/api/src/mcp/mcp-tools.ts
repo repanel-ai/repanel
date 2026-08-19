@@ -3,6 +3,7 @@ import type { Logger } from "@nestjs/common";
 import type { ValidationError } from "@repanel/contracts";
 import { z } from "zod";
 import type { AgentPrincipal } from "../auth/principal";
+import type { ConnectionsService } from "../connections/connections.service";
 import type { StoredValidation } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import type { ProjectsService } from "../projects/projects.service";
@@ -13,18 +14,11 @@ import { renderValidationReport } from "./validation-report";
 /** What the tools need to answer. They own no state of their own. */
 export interface ToolDependencies {
   projects: ProjectsService;
+  connections: ConnectionsService;
   definitions: DefinitionsService;
   schemaDocumentation: SchemaDocumentationService;
   logger: Logger;
 }
-
-/**
- * Whether a customer database connection exists. Connections arrive with their
- * own task, so today no project can have one and the answer is the same for
- * all of them. The key ships now because agents author against this shape, and
- * a key that appears later is a contract change we would rather not make.
- */
-const PROJECT_HAS_CONNECTION = false;
 
 /** No tool takes a project: the token names one, and that one is the only one. */
 const NO_ARGUMENTS = {};
@@ -75,12 +69,13 @@ access token fixes which project you are working on.`,
     () =>
       runTool(deps.logger, async () => {
         const project = await deps.projects.requireAccess(agent, projectId);
+        const hasConnection = await deps.connections.hasConnection(agent, projectId);
         const stored = await deps.definitions.getValidationResult(agent, projectId);
 
         return toolResult({
           name: project.name,
           key: project.key,
-          hasConnection: PROJECT_HAS_CONNECTION,
+          hasConnection,
           definitionStatus: statusOf(stored),
           definitionUpdatedAt: stored?.updatedAt ?? null,
         });

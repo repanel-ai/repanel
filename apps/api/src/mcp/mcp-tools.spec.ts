@@ -6,6 +6,7 @@ import { Test } from "@nestjs/testing";
 import { validateDefinition, type ProjectDto, type ValidationError } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import type { AgentPrincipal, Principal } from "../auth/principal";
+import { ConnectionsService } from "../connections/connections.service";
 import { MAX_PAYLOAD_BYTES } from "../definitions/definition-size";
 import {
   DefinitionsRepository,
@@ -94,6 +95,24 @@ class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
   }
 }
 
+/** Stands in for the connections feature: the projects that have been pointed
+ *  at a database, refusing anything SkyScout's token cannot reach. */
+class ConnectedProjects implements Pick<ConnectionsService, "hasConnection"> {
+  private readonly connected = new Set<string>();
+
+  /** Points a project at a customer database, as setting one would. */
+  add(projectId: string): void {
+    this.connected.add(projectId);
+  }
+
+  hasConnection(principal: Principal, projectId: string): Promise<boolean> {
+    if (principal.kind !== "agent" || principal.projectId !== projectId || projectId !== SKYSCOUT) {
+      return Promise.reject(new NotFoundError("Project not found"));
+    }
+    return Promise.resolve(this.connected.has(projectId));
+  }
+}
+
 /** The errors validation reported for a payload; fails the test if it liked it. */
 function errorsFor(payload: unknown): ValidationError[] {
   const result = validateDefinition(payload);
@@ -106,7 +125,10 @@ describe("MCP tools", () => {
   const logger = { error: (message: string) => logged.push(message) } as unknown as Logger;
 
   let repository: InMemoryDefinitionsRepository;
+  /** The store a test writes to, and the same object as the tools receive it. */
+  let connected: ConnectedProjects;
   let definitions: DefinitionsService;
+  let connections: ConnectionsService;
   let projects: ProjectsService;
   let schemaDocumentation: SchemaDocumentationService;
   let clients: Client[];
@@ -115,11 +137,13 @@ describe("MCP tools", () => {
     logged.length = 0;
     clients = [];
     repository = new InMemoryDefinitionsRepository();
+    connected = new ConnectedProjects();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         DefinitionsService,
         { provide: DefinitionsRepository, useValue: repository },
+        { provide: ConnectionsService, useValue: connected },
         { provide: ProjectsService, useValue: new ReachableProjects() },
         {
           provide: SchemaDocumentationService,
@@ -129,6 +153,7 @@ describe("MCP tools", () => {
     }).compile();
 
     definitions = moduleRef.get(DefinitionsService);
+    connections = moduleRef.get(ConnectionsService);
     projects = moduleRef.get(ProjectsService);
     schemaDocumentation = moduleRef.get(SchemaDocumentationService);
   });
@@ -141,6 +166,7 @@ describe("MCP tools", () => {
   async function connect(agent: AgentPrincipal = AGENT): Promise<Client> {
     const server = createMcpServer(agent, {
       projects,
+      connections,
       definitions,
       schemaDocumentation,
       logger,
@@ -229,6 +255,15 @@ describe("MCP tools", () => {
         definitionStatus: "none",
         definitionUpdatedAt: null,
       });
+    });
+
+    it("reports the customer database once the project has been pointed at one", async () => {
+      connected.add(SKYSCOUT);
+      const client = await connect();
+
+      const result = await call(client, "get_project");
+
+      expect(payloadOf(result)).toMatchObject({ hasConnection: true });
     });
 
     it("reports how the definition stands once one has been submitted", async () => {

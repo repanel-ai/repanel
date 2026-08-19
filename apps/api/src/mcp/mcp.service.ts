@@ -2,6 +2,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { Injectable, Logger } from "@nestjs/common";
 import type { Request, Response } from "express";
 import type { AgentPrincipal } from "../auth/principal";
+import { ConnectionsService } from "../connections/connections.service";
 import { DefinitionsService } from "../definitions/definitions.service";
 import { ProjectsService } from "../projects/projects.service";
 import { createMcpServer } from "./mcp-server";
@@ -18,6 +19,7 @@ export class McpService {
 
   constructor(
     private readonly projects: ProjectsService,
+    private readonly connections: ConnectionsService,
     private readonly definitions: DefinitionsService,
     private readonly schemaDocumentation: SchemaDocumentationService,
   ) {}
@@ -25,6 +27,7 @@ export class McpService {
   async handle(agent: AgentPrincipal, request: Request, response: Response): Promise<void> {
     const server = createMcpServer(agent, {
       projects: this.projects,
+      connections: this.connections,
       definitions: this.definitions,
       schemaDocumentation: this.schemaDocumentation,
       logger: this.logger,

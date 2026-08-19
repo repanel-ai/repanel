@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from "@nestjs/common";
-import type { ValidationError } from "@repanel/contracts";
+import type { ErrorEnvelope, ValidationError } from "@repanel/contracts";
 import type { Response } from "express";
 import {
   ConflictError,
@@ -19,18 +19,9 @@ import {
   ValidationFailedError,
 } from "./domain-errors";
 
-/** The only error shape a client ever sees. */
-interface ErrorBody {
-  error: {
-    code: string;
-    message: string;
-    details?: readonly ValidationError[];
-  };
-}
-
 interface Failure {
   status: number;
-  body: ErrorBody;
+  body: ErrorEnvelope;
 }
 
 /** Turns anything thrown into a safe response; internals are logged, never sent. */
@@ -87,7 +78,7 @@ function failure(
   error: DomainError,
   details?: readonly ValidationError[],
 ): Failure {
-  const body: ErrorBody = { error: { code: error.code, message: error.message } };
+  const body: ErrorEnvelope = { error: { code: error.code, message: error.message } };
   if (details) body.error.details = details;
   return { status, body };
 }

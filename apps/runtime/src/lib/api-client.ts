@@ -1,3 +1,5 @@
+import type { ErrorEnvelope } from "@repanel/contracts";
+
 /**
  * The renderer's own client. It shares the console's conventions and none of
  * its code: the two apps' API surfaces diverge from here on, and one client
@@ -32,25 +34,27 @@ export const api = {
 };
 
 /**
- * Normalizes the API's `{ error: { code, message } }`. Anything else — a
- * proxy's HTML, a body that never arrived — still becomes an ApiError.
+ * Normalizes the API's `ErrorEnvelope`. Anything else — a proxy's HTML, a body
+ * that never arrived — still becomes an ApiError. The renderer surfaces code
+ * and message only; `details` belongs to the console, which is where a
+ * definition is repaired.
  */
 async function errorFrom(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => undefined);
-  if (!isErrorBody(body)) {
+  if (!isErrorEnvelope(body)) {
     return new ApiError(response.status, "unexpected_error", `Request failed (${response.status})`);
   }
   return new ApiError(response.status, body.error.code, body.error.message);
 }
 
-interface ErrorBody {
-  error: { code: string; message: string };
-}
-
-function isErrorBody(body: unknown): body is ErrorBody {
+function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
   if (typeof body !== "object" || body === null) return false;
   const error: unknown = (body as { error?: unknown }).error;
   if (typeof error !== "object" || error === null) return false;
-  const { code, message } = error as Record<string, unknown>;
-  return typeof code === "string" && typeof message === "string";
+  const { code, message, details } = error as Record<string, unknown>;
+  return (
+    typeof code === "string" &&
+    typeof message === "string" &&
+    (details === undefined || Array.isArray(details))
+  );
 }

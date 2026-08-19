@@ -33,8 +33,14 @@ import { toRecordDtos, toTotal } from "./records.mapper";
 /** The customer's database ran out of the time the pool gave the statement. */
 const STATEMENT_TIMEOUT = "57014";
 
-/** A value the column's type cannot read — an id or a filter that is not one. */
-const INVALID_TEXT_REPRESENTATION = "22P02";
+/**
+ * Class 22, a value the column it is compared against cannot hold: not that
+ * type's syntax (22P02), not a number it can fit (22003), not a date (22007).
+ * The class rather than a list of codes, because this engine writes no
+ * arithmetic and no assignments — every class-22 failure it can raise came in
+ * as an id or a filter from the caller.
+ */
+const DATA_EXCEPTION = "22";
 
 const NO_DEFINITION = "This project has no valid definition yet";
 
@@ -195,7 +201,7 @@ export class RuntimeService {
       if (code === STATEMENT_TIMEOUT) {
         throw new QueryTimeoutError("The database took too long to answer this query.");
       }
-      if (code === INVALID_TEXT_REPRESENTATION) throw unusableValue();
+      if (typeof code === "string" && code.startsWith(DATA_EXCEPTION)) throw unusableValue();
       throw error;
     }
   }

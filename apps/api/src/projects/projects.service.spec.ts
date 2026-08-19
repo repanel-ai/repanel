@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError } from "../errors/domain-errors";
 import { ProjectsRepository, type NewProjectRow, type ProjectRow } from "./projects.repository";
 import { ProjectsService } from "./projects.service";
 
-type ProjectStore = Pick<ProjectsRepository, "create" | "findById" | "listByOwner">;
+type ProjectStore = Pick<ProjectsRepository, "create" | "findById" | "findByKey" | "listByOwner">;
 
 /** Stands in for Postgres: same behavior, including how a taken key is refused. */
 class InMemoryProjectsRepository implements ProjectStore {
@@ -36,6 +36,10 @@ class InMemoryProjectsRepository implements ProjectStore {
 
   findById(id: string): Promise<ProjectRow | undefined> {
     return Promise.resolve(this.projects.find((project) => project.id === id));
+  }
+
+  findByKey(key: string): Promise<ProjectRow | undefined> {
+    return Promise.resolve(this.projects.find((project) => project.key === key));
   }
 
   listByOwner(ownerId: string): Promise<ProjectRow[]> {
@@ -163,6 +167,34 @@ describe("ProjectsService", () => {
 
       expect(nothingAtAll).toBeInstanceOf(NotFoundError);
       // Told apart, the two would let a caller probe for other people's ids.
+      expect(nothingAtAll.message).toBe(somebodyElses.message);
+    });
+  });
+
+  describe("requireOwnedByKey", () => {
+    it("answers with the project when the key is the caller's", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      await expect(service.requireOwnedByKey(project.key, ADA)).resolves.toEqual(project);
+    });
+
+    it("answers another user's key as missing, not as forbidden", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+
+      const refusal = await refusalFrom(service.requireOwnedByKey(project.key, ADA));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    it("answers a key no project carries the same way", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+
+      const somebodyElses = await refusalFrom(service.requireOwnedByKey(project.key, ADA));
+      const nothingAtAll = await refusalFrom(service.requireOwnedByKey("compiler-zzzzzz", ADA));
+
+      expect(nothingAtAll).toBeInstanceOf(NotFoundError);
+      // A key is guessable in a way an id is not, so telling the two apart here
+      // would be the more useful oracle of the two.
       expect(nothingAtAll.message).toBe(somebodyElses.message);
     });
   });

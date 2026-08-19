@@ -3,7 +3,9 @@ import {
   ConflictError,
   DomainError,
   ForbiddenError,
+  InvalidQueryError,
   NotFoundError,
+  QueryTimeoutError,
   UnauthorizedError,
   ValidationFailedError,
 } from "./domain-errors";
@@ -50,6 +52,16 @@ describe("DomainExceptionFilter", () => {
     [new UnauthorizedError("Sign in to continue"), HttpStatus.UNAUTHORIZED, "unauthorized"],
     [new ForbiddenError("Not your project"), HttpStatus.FORBIDDEN, "forbidden"],
     [new ConflictError("Email already registered"), HttpStatus.CONFLICT, "conflict"],
+    [
+      new InvalidQueryError("Cannot sort resource `users` by `password_hash`."),
+      HttpStatus.BAD_REQUEST,
+      "invalid_query",
+    ],
+    [
+      new QueryTimeoutError("The database took too long to answer this query."),
+      HttpStatus.GATEWAY_TIMEOUT,
+      "query_timeout",
+    ],
   ])("maps %s to its status", (error, status, code) => {
     const sent = respondTo(error);
 

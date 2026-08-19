@@ -60,6 +60,16 @@ export class QueryBuilderService {
     query: ListRecordsQuery,
     owner?: Ownership,
   ): RecordsQuery {
+    // Narrowing is probing: whoever gets a page back learns which records
+    // carry the value they supplied, and a count comes back even when the page
+    // is empty. `lookup` refuses a sensitive column on the other side of the
+    // same traversal, and a rule that holds on one side only is not one.
+    if (owner?.field.sensitive) {
+      throw new UnservableResourceError(
+        `Resource \`${resource.key}\` cannot be narrowed by \`${owner.field.key}\`: the field is marked sensitive.`,
+      );
+    }
+
     const fields = indexFields(resource);
     const selection = selectFields(listFields(resource), resources);
     const parameters = new Parameters();

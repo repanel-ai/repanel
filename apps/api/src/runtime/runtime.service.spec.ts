@@ -28,7 +28,13 @@ class FakePool {
   readonly statements: Statement[] = [];
   respond: (text: string) => QueryResult | Error = () => rows([], []);
 
-  poolFor(): Promise<Pool> {
+  poolFor(projectId: string): Promise<Pool> {
+    // Only the project the owner was found to have. Anything else gets what the
+    // real pool gives a project it holds no connection for, so a statement can
+    // never quietly run against somebody else's database.
+    if (projectId !== PROJECT.id) {
+      return Promise.reject(new NotFoundError("This project has no database connection"));
+    }
     return Promise.resolve(this as unknown as Pool);
   }
 
@@ -193,8 +199,11 @@ describe("RuntimeService", () => {
       expect(refusal.message).not.toContain("driver said");
     });
 
-    it("answers a filter value the column cannot read as a bad request", async () => {
-      pool.respond = () => failure("22P02");
+    it.each([
+      ["is not the column's syntax", "22P02"],
+      ["does not fit the column's type", "22003"],
+    ])("answers a filter value that %s as a bad request", async (_case, code) => {
+      pool.respond = () => failure(code);
 
       const refusal = await refusalFrom(
         runtime.listRecords(OWNER, PROJECT.key, "users", {
@@ -229,8 +238,11 @@ describe("RuntimeService", () => {
       expect(refusal.message).toBe("Record not found");
     });
 
-    it("says the same for an id the primary key's type cannot read", async () => {
-      pool.respond = () => failure("22P02");
+    it.each([
+      ["is not the column's syntax", "22P02"],
+      ["is too large for the column", "22003"],
+    ])("says the same for an id that %s", async (_case, code) => {
+      pool.respond = () => failure(code);
 
       const refusal = await refusalFrom(runtime.getRecord(OWNER, PROJECT.key, "users", "not-a-uuid"));
 

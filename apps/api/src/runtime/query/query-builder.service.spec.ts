@@ -392,6 +392,23 @@ describe("QueryBuilderService", () => {
         expect(total.values).toEqual(["user-1"]);
       });
 
+      it("refuses to narrow on a column that is a secret", () => {
+        const orders = structuredClone(ORDERS);
+        fieldOf(orders, "user_id").sensitive = true;
+
+        // Narrowing on it would answer, for any id the caller supplies, exactly
+        // which records carry it — the column read back one value at a time.
+        const refusal = refusalFrom(() =>
+          builder.records(SAAS_RESOURCES, orders, listQuery(), {
+            field: fieldOf(orders, "user_id"),
+            id: "user-1",
+          }),
+        );
+
+        expect(refusal).toBeInstanceOf(UnservableResourceError);
+        expect(refusal.message).toContain("cannot be narrowed by `user_id`");
+      });
+
       it("still allowlists against the target rather than whoever owns it", () => {
         const orders = resourceOf(SAAS, "orders");
         const owner = { field: fieldOf(orders, "user_id"), id: "user-1" };

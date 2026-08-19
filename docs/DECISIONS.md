@@ -126,3 +126,11 @@ identifiers fully supported (pin with a mixed-case test in 008; fix
 SCHEMA.md wording); repo convention is repanel/definition.json at repo root
 (server = execution truth, file = reviewable source; standardized in 013);
 definition-vs-live-schema drift check backlogged post-POC.
+
+023 · 2026-08 · Connection secrets containment: the DSN never crosses the
+API boundary in either direction — stored AES-256-GCM (v1 format), responses
+carry only kind/host/database, logs verified DSN-free. The four probe
+failure categories (unreachable | auth_failed | timeout | unknown) are
+public contract; the control plane renders per category and never renders
+driver text. Why: the customer DSN is the most dangerous value we hold;
+containment is structural, not reviewed-in.

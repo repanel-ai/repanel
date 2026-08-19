@@ -39,7 +39,7 @@ describe("the table page", () => {
 
     // Inside the table: `active` is also one of the status filter's options.
     const table = within(screen.getByRole("table"));
-    expect(table.getByText("active").dataset.treatment).toBe("quiet");
+    expect(table.getByText("active").dataset.tone).toBe("positive");
     expect(table.getByText("14 Jul 2026")).toBeDefined();
   });
 

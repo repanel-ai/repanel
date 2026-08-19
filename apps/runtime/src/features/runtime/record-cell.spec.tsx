@@ -29,21 +29,33 @@ function renderCell(key: string, value: unknown) {
 }
 
 describe("RecordCell", () => {
-  it("says nothing loudly: a state is a badge, and a quiet one", () => {
+  it("says a state as loudly as the definition marked it, and no louder", () => {
+    renderCell("status", "suspended");
+
+    expect(screen.getByText("suspended").dataset.tone).toBe("critical");
+  });
+
+  it("says a state the definition marked positive in the positive tone", () => {
     renderCell("status", "active");
 
-    expect(screen.getByText("active").dataset.treatment).toBe("quiet");
+    expect(screen.getByText("active").dataset.tone).toBe("positive");
   });
 
   /**
-   * Severity is not something a runtime may read out of a spelling. Until a
-   * definition can say which states are grave, every state is stated the same
-   * way — including one the definition never declared.
+   * Severity is not something a runtime may read out of a spelling. A value the
+   * `tones` map leaves out is quiet, and so is one the definition never
+   * declared at all — the runtime has no opinion about either.
    */
+  it("leaves a value the tone map does not mention quiet", () => {
+    renderCell("status", "invited");
+
+    expect(screen.getByText("invited").dataset.tone).toBe("neutral");
+  });
+
   it("renders a state the definition never declared, just as quietly", () => {
     renderCell("status", "archived");
 
-    expect(screen.getByText("archived").dataset.treatment).toBe("quiet");
+    expect(screen.getByText("archived").dataset.tone).toBe("neutral");
   });
 
   it("marks a relation as one, and points at the record it names", () => {

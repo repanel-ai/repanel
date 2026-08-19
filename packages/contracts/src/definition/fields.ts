@@ -4,6 +4,17 @@ import { identifierSchema } from "./identifier.js";
 /** Field types that free-text search may target. */
 export const TEXT_FIELD_TYPES = ["text", "longText", "email", "url"] as const;
 
+/**
+ * How grave one value of an enum is. The vocabulary is fixed and small on
+ * purpose: an admin that renders every customer's states has to draw a bounded
+ * set of severities, and a free-form one would be a styling hook (DECISIONS #029).
+ */
+export const TONES = ["positive", "neutral", "attention", "critical"] as const;
+
+export const toneSchema = z.enum(TONES);
+
+export type Tone = z.infer<typeof toneSchema>;
+
 const fieldBase = {
   key: identifierSchema,
   label: z.string().min(1),
@@ -30,6 +41,14 @@ export const fieldSchema = z.discriminatedUnion("type", [
     ...fieldBase,
     type: z.literal("enum"),
     values: z.array(z.string().min(1)).min(1),
+    /**
+     * Which of this field's values are grave and which are routine. The runtime
+     * has never seen the customer's vocabulary, so severity is said here or not
+     * at all — `suspended` is routine in one product and an alarm in the next.
+     * A value the map leaves out renders quiet, which is what every value gets
+     * until the map exists.
+     */
+    tones: z.record(z.string().min(1), toneSchema).default({}),
   }),
   z.strictObject({
     ...fieldBase,

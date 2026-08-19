@@ -3,7 +3,7 @@ import type { DefinitionInput } from "../schema.js";
 /**
  * Reference definition for a small SaaS: organizations own users, users place
  * orders. Exercises every v0 concept — enum, relation, json and sensitive
- * fields, both action kinds, and navigation groups.
+ * fields, enum tones, both action kinds, and navigation groups.
  */
 export const saasDefinition: DefinitionInput = {
   schemaVersion: "0.1",
@@ -68,7 +68,15 @@ export const saasDefinition: DefinitionInput = {
         { key: "id", label: "ID", type: "text" },
         { key: "email", label: "Email", type: "email" },
         { key: "name", label: "Name", type: "text" },
-        { key: "status", label: "Status", type: "enum", values: ["invited", "active", "suspended"] },
+        {
+          key: "status",
+          label: "Status",
+          type: "enum",
+          values: ["invited", "active", "suspended"],
+          // `invited` is deliberately left out: a value with no tone is legal,
+          // and it renders exactly as every value did before tones existed.
+          tones: { active: "positive", suspended: "critical" },
+        },
         { key: "password_hash", label: "Password hash", type: "text", sensitive: true },
         { key: "organization_id", label: "Organization", type: "relation", target: "organizations" },
         { key: "is_active", label: "Active", type: "boolean" },

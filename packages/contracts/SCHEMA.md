@@ -105,9 +105,31 @@ always double-quotes them in SQL, so they reach Postgres exactly as written:
 | `dateTime` | Timestamp. |
 | `email` | String rendered as a mail link. |
 | `url` | String rendered as a link. |
-| `enum` | Requires `values` (≥1 strings). |
+| `enum` | Requires `values` (≥1 strings). May carry `tones`. |
 | `json` | Structured blob, rendered as inspectable JSON. |
 | `relation` | Requires `target`: the key of the resource it points at. |
+
+An `enum` may say how grave each of its values is:
+
+```json
+{
+  "key": "status",
+  "label": "Status",
+  "type": "enum",
+  "values": ["invited", "active", "suspended"],
+  "tones": { "active": "positive", "suspended": "critical" }
+}
+```
+
+| Key | Required | Meaning |
+|---|---|---|
+| `tones` | no (default `{}`) | Value → `positive` \| `neutral` \| `attention` \| `critical`. Every key must be one of the field's own `values`. |
+
+Severity is stated here or not at all: the runtime has never seen the
+customer's vocabulary, and it never reads a value's spelling for meaning —
+`suspended` is routine in one product and an alarm in the next. A value the map
+leaves out renders quiet, which is also what every value gets while the map is
+absent.
 
 Two flags, both defaulting to `false`:
 
@@ -271,7 +293,8 @@ then checks what a schema cannot express:
   default sort or the label field — detail sections may still use them;
 - a label field reads as a name: never a `json` or `relation` field;
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
-  writes one of the enum's values or a boolean literal.
+  writes one of the enum's values or a boolean literal;
+- every key of an enum's `tones` map is one of that enum's declared `values`.
 
 A structural failure skips the referential pass: those checks need a
 well-typed definition to walk, and errors invented from a half-parsed tree

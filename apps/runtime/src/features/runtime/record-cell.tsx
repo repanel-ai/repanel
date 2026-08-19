@@ -22,10 +22,10 @@ export function RecordCell({ projectKey, field, value, isIdentity }: RecordCellP
 
   switch (field.type) {
     case "enum":
-      // Every state gets the quiet treatment. The badge language has a louder
-      // one, and nothing in v0's schema can say which state has earned it —
-      // guessing from a value's spelling is exactly what this must not do.
-      return <Badge>{String(value)}</Badge>;
+      // The severity is the definition's to state and nobody else's: a value
+      // the `tones` map does not mention stays quiet, and the spelling of a
+      // value is never read for meaning (DECISIONS #029).
+      return <Badge tone={field.tones[String(value)]}>{String(value)}</Badge>;
 
     case "relation":
       return <RelationCell projectKey={projectKey} target={field.target} value={value} />;

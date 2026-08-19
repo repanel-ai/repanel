@@ -11,6 +11,7 @@ import {
 } from "./reference-errors.js";
 import type { Relationship, Resource } from "./schema.js";
 import { checkTableView } from "./table-view-checks.js";
+import { checkTones } from "./tone-checks.js";
 
 /** Types with no single reading to show, so nothing to name a record with. */
 const UNLABELLABLE_FIELD_TYPES: ReadonlySet<FieldType> = new Set(["json", "relation"]);
@@ -77,6 +78,7 @@ export function checkResource(
     errors.push(...checkRelationship(relationship, `${at}.relationships[${index}]`, resource, fields, resources, resourceKeys));
   });
 
+  errors.push(...checkTones(resource, at));
   errors.push(...checkTableView(resource, at, fields, fieldKeys));
   errors.push(...checkDetailView(resource, at, fields, fieldKeys, [...relationships.keys()]));
   errors.push(...checkActions(resource, at, fields, fieldKeys));

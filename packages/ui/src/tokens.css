@@ -130,6 +130,20 @@
   --color-destructive-line: #f8b8bb;
   /* Not `--destructive` itself: that measures 4.01:1 on its own tint. */
   --color-destructive-text: #c2191c;
+
+  /*
+   * The other two severities a definition can name (DECISIONS #029), built to
+   * the destructive trio's recipe: a soft fill, a hairline a shade deeper, and
+   * text measured on that fill. Their weights are matched to the destructive
+   * family's rather than maximized — a positive state that reads louder than a
+   * critical one would break the one rule the badge language has.
+   */
+  --color-positive-soft: #e4f4e9;
+  --color-positive-line: #b7ddc4;
+  --color-positive-text: #137a3f; /* 4.74:1 on its own tint */
+  --color-attention-soft: #fceedb;
+  --color-attention-line: #f2cf9e;
+  --color-attention-text: #9a5500; /* 5.01:1 on its own tint */
   --color-border: #e0e1e3;
   --color-input: #dbdcde;
   --color-ring: #a4a5a8;
@@ -164,6 +178,13 @@
   --color-destructive-soft: #3f2627;
   --color-destructive-line: #683335;
   --color-destructive-text: #ff6467;
+
+  --color-positive-soft: #1c3125;
+  --color-positive-line: #2f5540;
+  --color-positive-text: #46ad72; /* 4.94:1 on its own tint */
+  --color-attention-soft: #3a2a15;
+  --color-attention-line: #5e4526;
+  --color-attention-text: #c98c48; /* 4.82:1 on its own tint */
   --color-border: #353537;
   --color-input: #3b3c3d;
   --color-ring: #7f8083;

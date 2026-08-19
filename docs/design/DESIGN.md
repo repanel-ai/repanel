@@ -51,6 +51,12 @@ are declared (DECISIONS #028). Dark re-points the same names under `.dark`.
 | `--destructive-soft` | `#fde6e7` | `#3f2627` |
 | `--destructive-line` | `#f8b8bb` | `#683335` |
 | `--destructive-text` | `#c2191c` | `#ff6467` |
+| `--positive-soft` | `#e4f4e9` | `#1c3125` |
+| `--positive-line` | `#b7ddc4` | `#2f5540` |
+| `--positive-text` | `#137a3f` | `#46ad72` |
+| `--attention-soft` | `#fceedb` | `#3a2a15` |
+| `--attention-line` | `#f2cf9e` | `#5e4526` |
+| `--attention-text` | `#9a5500` | `#c98c48` |
 | `--border` | `#e0e1e3` | `#353537` |
 | `--input` | `#dbdcde` | `#3b3c3d` |
 | `--ring` | `#a4a5a8` | `#7f8083` |
@@ -128,26 +134,46 @@ or any future face swap — reintroduces ragged columns silently.
 
 ---
 
-## 4. Status badge language
+## 4. Status badge language — resolved by the tone map
 
 One family: all states share border, padding (`1px 7px`), radius (`--radius-md`)
-and size (`--t-micro`). Only fill weight and text colour differ, so no state
-shouts louder than its peers.
+and size (`--t-micro`). Only fill and text colour differ, and their contrasts are
+matched, so no state shouts louder than its peers.
 
-| state | treatment | light | dark |
+**The vocabulary is the definition's.** DECISIONS #029 gives an enum field an
+optional `tones` map — value → `positive | neutral | attention | critical` — and
+those four names *are* the badge's treatments. There is no translation table
+between what a customer wrote down and what is drawn.
+
+| tone | fill / hairline / text | light | dark |
 |---|---|---|---|
-| **Active** — quiet | filled `--secondary`, hairline `--border`, text `--secondary-foreground` | `#ecedee` / `#1c1d1e` | `#2d2e2f` / `#f3f3f4` |
-| **Invited** — outlined | transparent fill, hairline `--input`, text `--foreground` | `#dbdcde` edge | `#3b3c3d` edge |
-| **Suspended** — tinted | fill `--destructive-soft`, hairline `--destructive-line`, text `--destructive-text` | `#fde6e7` / `#f8b8bb` / `#c2191c` | `#3f2627` / `#683335` / `#ff6467` |
+| `neutral`, and every unmapped value | `--secondary` / `--border` / `--secondary-foreground` | `#ecedee` / `#e0e1e3` / `#1c1d1e` | `#2d2e2f` / `#353537` / `#f3f3f4` |
+| `positive` | `--positive-soft` / `--positive-line` / `--positive-text` | `#e4f4e9` / `#b7ddc4` / `#137a3f` | `#1c3125` / `#2f5540` / `#46ad72` |
+| `attention` | `--attention-soft` / `--attention-line` / `--attention-text` | `#fceedb` / `#f2cf9e` / `#9a5500` | `#3a2a15` / `#5e4526` / `#c98c48` |
+| `critical` | `--destructive-soft` / `--destructive-line` / `--destructive-text` | `#fde6e7` / `#f8b8bb` / `#c2191c` | `#3f2627` / `#683335` / `#ff6467` |
 
-shadcn's stock `destructive` variant is a saturated fill; against outline and
-secondary neighbours it made "suspended" the loudest thing on a page where it is
-an ordinary state. The light text is `#c2191c` rather than the raw token because
+Text measured on its own tint: `positive` 4.74 / 4.94, `attention` 5.01 / 4.82,
+`critical` 5.12 / 4.79 (light / dark), against a 4.5 requirement. The two new
+families are tuned *to* the destructive family's weight rather than to the
+maximum available — a positive state reading louder than a critical one would
+break the one rule this language has. Their hairlines measure 1.48–2.07 against
+the panel, the same band as `--border` (1.31 / 1.42) and `--destructive-line`
+(1.67 / 1.75).
+
+shadcn's stock `destructive` variant is a saturated fill; against its
+neighbours it made "suspended" the loudest thing on a page where it is an
+ordinary state. The light text is `#c2191c` rather than the raw token because
 `--destructive` on its own tint measures 4.01:1.
 
-Enum values beyond these three inherit the *quiet* treatment by default. A state
-only earns the tinted treatment where the definition marks it as such — the
-runtime never guesses severity from a value's spelling.
+**The outlined treatment is withdrawn.** It was the third of the three this
+section first specified — transparent fill, hairline `--input` — and nothing in
+the schema can ask for it: #029 fixed the vocabulary at four tones, `neutral`
+and unmapped both land on the quiet fill, and a treatment nothing can reach is
+not a treatment. It goes the way §8's icon row went.
+
+A state earns a louder tone only where the definition marks it as such. The
+runtime never guesses severity from a value's spelling — `suspended` is routine
+in one product and an alarm in the next, and `active` can be the alarm.
 
 ---
 

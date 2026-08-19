@@ -142,3 +142,25 @@ parameters; sensitive fields are never selected; every query carries a
 statement timeout and a hard row limit. A query shape the definition cannot
 express does not run. Why: the customer DB connection is the most dangerous
 thing we hold; safety by construction, not by review.
+
+025 · 2026-08 · Web splits into two apps before any web code exists: apps/web
+(console/control plane) and apps/runtime (the generated admin renderer), with
+packages/ui as a second shared package (owned components + tokens, strictly
+presentational). Amends #001's "contracts is the only shared package" by its
+own criterion — a component system consumed by two frontends is absolutely
+shared. Runtime imports only ui + contracts, enforced by structure. Each app
+owns its own api-client (surfaces diverge; error shape from contracts). Dev
+runs two origins (log in on each; accepted); production composition decided at
+deployment. Supersedes the earlier one-app-two-surfaces framing (#001) —
+reversed because the split is free before 009 runs and the runtime app is the
+product (future snapshot versioning, custom domains, operator-only access).
+
+026 · 2026-08 · Runtime UI is built from owned components (shadcn-style copy-in
+over Radix + Tailwind in packages/ui), reversing the north star's HeroUI
+choice; TanStack Table for grids. Depend on behavior (Radix a11y/focus/
+keyboard), own presentation (every visual line in-repo). Presets/theme
+generators are references, not designs — the runtime's default identity comes
+from 010's design gate. Per-customer theming deferred post-MVP as a constrained
+CSS-variable override set. Why: the runtime's look is the product (#005) and
+its stability is a promise; neither sits downstream of a component library's
+release schedule.

@@ -11,15 +11,21 @@ build; this file defines **how**.
 ## Monorepo
 
 - `apps/api` — NestJS backend: control plane, MCP server, validation, data providers
-- `apps/web` — React frontend: control plane UI + the generated admin runtime
-- `packages/contracts` — the ONLY shared package: DTOs, shared enums/unions,
-  zod schemas, and the public RePanel definition schema. Nothing else is ever
-  extracted into a package. Drizzle schemas and all persistence live in `apps/api`.
+- `apps/web` — the console: RePanel's own control-plane UI (login, projects, setup)
+- `apps/runtime` — the generated admin renderer: the product's face; imports only
+  `@repanel/ui` and `@repanel/contracts`
+- `packages/contracts` — shared wire contract: DTOs, shared enums/unions, zod
+  schemas, the public definition schema. Drizzle schemas and all persistence
+  live in `apps/api`.
+- `packages/ui` — shared owned component system + design tokens (strictly
+  presentational; no data logic, no API clients)
 
 ## Stack (decided — do not substitute)
 
 NestJS · Drizzle ORM · PostgreSQL · zod (all validation: env, DTOs, definition
-schema) · React + Vite · TanStack Query · HeroUI (runtime UI) · pnpm workspaces.
+schema) · React + Vite · TanStack Query · shadcn-style owned components over
+Radix primitives + Tailwind (`packages/ui`); TanStack Table for data grids ·
+pnpm workspaces.
 
 ## Backend architecture
 

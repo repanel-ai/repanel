@@ -46,6 +46,17 @@ export class ProjectsService {
   }
 
   /**
+   * The same answer as `requireOwned`, for the key the runtime routes by. A
+   * key names one project across the whole install, so someone else's reads as
+   * missing here for the reason it does there.
+   */
+  async requireOwnedByKey(key: string, ownerId: string): Promise<ProjectDto> {
+    const project = await this.repository.findByKey(key);
+    if (!project || project.userId !== ownerId) throw new NotFoundError("Project not found");
+    return toProjectDto(project);
+  }
+
+  /**
    * The project this caller may act on, whoever the caller is. An agent token
    * names exactly one project, so every other project reads as missing to it —
    * the same answer a human gets for someone else's, and for the same reason.

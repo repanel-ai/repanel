@@ -17,6 +17,10 @@ const BODY_LIMIT = MAX_PAYLOAD_BYTES + 64 * 1024;
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useBodyParser("json", { limit: BODY_LIMIT });
+  // Express 5 parses a query string flat, so `filter[status]=active` would
+  // arrive as one key with brackets in its name. The runtime's filters are
+  // nested by design, and this is the parser express ships for reading them.
+  app.set("query parser", "extended");
   app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();

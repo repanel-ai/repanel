@@ -37,6 +37,15 @@ export class ProjectsRepository {
     return project;
   }
 
+  async findByKey(key: string): Promise<ProjectRow | undefined> {
+    const [project] = await this.database.db
+      .select()
+      .from(projects)
+      .where(eq(projects.key, key))
+      .limit(1);
+    return project;
+  }
+
   async listByOwner(ownerId: string): Promise<ProjectRow[]> {
     return this.database.db
       .select()

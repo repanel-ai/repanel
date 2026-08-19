@@ -10,6 +10,7 @@ import { DomainExceptionFilter } from "./errors/domain-exception.filter";
 import { HealthModule } from "./health/health.module";
 import { McpModule } from "./mcp/mcp.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { RuntimeModule } from "./runtime/runtime.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ProjectsModule } from "./projects/projects.module";
     HealthModule,
     McpModule,
     ProjectsModule,
+    RuntimeModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: DomainExceptionFilter }],
 })

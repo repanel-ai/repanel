@@ -12,7 +12,9 @@ import {
   ConflictError,
   DomainError,
   ForbiddenError,
+  InvalidQueryError,
   NotFoundError,
+  QueryTimeoutError,
   UnauthorizedError,
   ValidationFailedError,
 } from "./domain-errors";
@@ -69,6 +71,8 @@ function statusOf(error: DomainError): number {
   if (error instanceof UnauthorizedError) return HttpStatus.UNAUTHORIZED;
   if (error instanceof ForbiddenError) return HttpStatus.FORBIDDEN;
   if (error instanceof ConflictError) return HttpStatus.CONFLICT;
+  if (error instanceof InvalidQueryError) return HttpStatus.BAD_REQUEST;
+  if (error instanceof QueryTimeoutError) return HttpStatus.GATEWAY_TIMEOUT;
   return HttpStatus.INTERNAL_SERVER_ERROR;
 }
 

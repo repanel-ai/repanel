@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept A2 — preset, refined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONCEPT A2 — concept A, refined against ref-1 (Untitled UI).
+
+   Keeps: Geist, the amber primary, --radius .45rem, shadcn component anatomy.
+   Changes, all deliberate and all listed here:
+
+   1. TYPE comes down a step everywhere. Four sizes, no more. ref-1's own
+      proportion between its page title and its nav label measures ~1.4x; A was
+      running 1.7x, which is what read as "too big".
+   2. NEUTRALS are near-achromatic with a whisper of cool. Hue moves off the
+      preset's 214 (which reads faintly cyan here) to 265, and chroma comes down
+      to 30% of the preset's — enough that the greys lean cool against the warm
+      amber, not enough to read as a cool tone. Lightness is the preset's own
+      throughout. This governs the DATA SURFACE only — the ground has its own
+      cast, see 6.
+   3. THE SIDEBAR STEP becomes real. ref-1 runs its sidebar 1.27:1 against the
+      panel; concept A ran 1.04:1, which is why the "raised inset panel" was
+      carried entirely by a hairline. A2 runs 1.23:1 in light, 1.13:1 in dark.
+   4. DARK NOW AGREES WITH LIGHT about which surface is raised. shadcn's inset
+      variant puts the panel BELOW the sidebar in lightness; here the panel is
+      above it in both themes, so "raised" means one thing.
+   5. SIDEBAR STRUCTURE follows ref-1: brand block, hairline, quiet group
+      labels with their resources indented beneath, hairline, account card
+      pinned to the bottom.
+   6. FOUR SURFACES, NOT TWO. Deepest first: the sidebar (warm, with a slight
+      fall top to bottom), the page it and the panel sit on, the raised panel,
+      and the row under the cursor. ref-1 runs a warm sidebar against a neutral
+      white panel, and that reads as chrome-vs-content rather than two shades of
+      the same grey — so the chrome keeps a warm cast while the data surface
+      stays neutral.
+   7. THE SIDEBAR RUNS ONE TYPE STEP ABOVE THE TABLE. It is persistent chrome
+      read at a glance, not dense data, and it has its own secondary-text token
+      so the ground can move without dragging the table's greys with it.
+
+   ICONS come from the definition, never from the runtime. This mock assumes an
+   additive `icon` on `resource` drawn from a fixed vocabulary — an unknown name
+   is a validation error listing the whole vocabulary, and an omitted one falls
+   back to `table`. A runtime that mapped resource keys to glyphs itself would be
+   the hardcoding task 010's acceptance criteria forbid, and a free-form icon
+   name would put a silent missing-glyph state on screen, which is the failure
+   mode DECISIONS #027 just closed everywhere else. Glyphs are drawn in-repo
+   (#026), 24x24 on a 1.5 stroke, rendered at 16px.
+   =========================================================================== */
+:root {
+  /* ---- type scale: four sizes ------------------------------------------- */
+  --t-micro:11.5px;   /* counts, badges, the / hint, the brand's project line   */
+  --t-small:12.5px;   /* column headers, page meta, pagination, breadcrumb      */
+  --t-body:13.5px;    /* nav labels, table cells, controls, buttons             */
+  --t-title:20px;   /* the page title, and nothing else                       */
+
+  /* The sidebar is persistent chrome read at a glance, not dense data, so it
+     runs one step above the table it sits beside. */
+  --t-nav:14px;       /* nav labels, brand name                                 */
+  --t-nav-meta:12px;  /* group labels, counts, project line, account mail       */
+
+  /* ---- rhythm ------------------------------------------------------------ */
+  --h-nav:32px; --h-control:32px; --h-row:36px; --h-head:34px; --h-top:48px;
+
+  /* ---- colour: preset lightness, chroma x .30, hue 214 -> 265 ----------- */
+  --background:#ffffff; --foreground:#0a0b0b;
+  --card:#ffffff; --card-foreground:#0a0b0b;
+  --primary:#bb4d00; --primary-foreground:#fffbeb;
+  --secondary:#ecedee; --secondary-foreground:#1c1d1e;
+  --muted:#f2f3f3; --muted-foreground:#64666a;
+  --accent:#eff0f1; --accent-foreground:#191a1b;
+  --destructive:#e7000b; --destructive-foreground:#ffffff;
+  --destructive-soft:#fde6e7; --destructive-line:#f8b8bb; --destructive-text:#c2191c;
+  --border:#e0e1e3; --input:#dbdcde; --ring:#a4a5a8;
+  /* Four distinct surfaces, deepest first: the sidebar, the page the panel
+     floats in, the raised panel, the row under the cursor. */
+  --sidebar-top:#e7e3de; --sidebar-bottom:#dfdbd6;
+  --page:#f3f1ed;
+  --sidebar-accent:#f7f4f0; --sidebar-border:#d5d0ca; --sidebar-muted:#665e53;
+  --utility-foreground:var(--foreground);
+  --radius:0.45rem;
+  --radius-sm:calc(var(--radius) * .6); --radius-md:calc(var(--radius) * .8);
+  --radius-lg:var(--radius); --radius-xl:calc(var(--radius) * 1.4);
+}
+html.dark {
+  --background:#1a1a1b; --foreground:#f5f6f6;
+  --card:#222324; --card-foreground:#f5f6f6;
+  --primary:#973c00; --primary-foreground:#fffbeb;
+  --secondary:#2d2e2f; --secondary-foreground:#f3f3f4;
+  --muted:#2b2b2d; --muted-foreground:#95979b;
+  --accent:#2b2b2d; --accent-foreground:#f5f6f6;
+  --destructive:#ff6467; --destructive-foreground:#1a1a1b;
+  --destructive-soft:#3f2627; --destructive-line:#683335; --destructive-text:#ff6467;
+  --border:#353537; --input:#3b3c3d; --ring:#7f8083;
+  --sidebar-top:#080605; --sidebar-bottom:#040302;
+  --page:#14120f;
+  --sidebar-accent:#191714; --sidebar-border:#2a2622; --sidebar-muted:#8b857d;
+  /* Utility chrome sits one step behind the data it frames. */
+  --utility-foreground:var(--muted-foreground);
+}
+
+*,*::before,*::after { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; background:var(--page); color:var(--foreground);
+  font-family:"Geist", ui-sans-serif, system-ui, sans-serif;
+  font-size:var(--t-body); line-height:1.45; -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums;
+}
+a { color:inherit; text-decoration:none; }
+button { font:inherit; color:inherit; }
+
+/* ---- shell ---------------------------------------------------------------- */
+.shell {
+  display:flex; height:100vh; overflow:hidden; background:var(--page);
+}
+.sidebar {
+  width:236px; flex:0 0 236px; display:flex; flex-direction:column;
+  color:var(--foreground); padding:8px 8px 10px;
+  background:linear-gradient(180deg, var(--sidebar-top) 0%, var(--sidebar-bottom) 100%);
+}
+.brand { display:flex; align-items:center; gap:9px; height:44px; padding:0 8px; }
+.brand-mark {
+  width:22px; height:22px; border-radius:var(--radius-md); flex:none;
+  background:var(--primary); color:var(--primary-foreground);
+  display:grid; place-items:center; font-size:var(--t-micro); font-weight:600;
+}
+.brand-name { font-size:var(--t-nav); font-weight:600; letter-spacing:-.01em; line-height:1.2; }
+.brand-sub { font-size:var(--t-nav-meta); color:var(--sidebar-muted); line-height:1.3; }
+.rule { height:1px; background:var(--sidebar-border); margin:6px 8px; flex:none; }
+
+.nav { flex:1; overflow:auto; padding-top:2px; }
+.nav-group {
+  padding:12px 8px 5px; font-size:var(--t-nav-meta); font-weight:500;
+  color:var(--sidebar-muted);
+}
+.nav-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px; }
+.nav-item {
+  display:flex; align-items:center; gap:9px; height:var(--h-nav); padding:0 8px;
+  border-radius:var(--radius-md); font-size:var(--t-nav); color:var(--sidebar-muted);
+}
+.nav-item:hover { background:var(--sidebar-accent); color:var(--foreground); }
+.nav-item.is-active {
+  background:var(--sidebar-accent); color:var(--accent-foreground); font-weight:500;
+}
+.nav-icon { width:17px; height:17px; flex:none; opacity:.8; }
+.nav-item.is-active .nav-icon, .nav-item:hover .nav-icon { opacity:1; }
+.nav-label { flex:1; }
+.nav-count { font-size:var(--t-nav-meta); color:var(--sidebar-muted); }
+.nav-item.is-active .nav-count { color:var(--accent-foreground); }
+
+.user { display:flex; align-items:center; gap:9px; height:44px; padding:0 8px; border-radius:var(--radius-md); }
+.user:hover { background:var(--sidebar-accent); }
+.avatar {
+  width:26px; height:26px; border-radius:var(--radius-lg); flex:none;
+  background:var(--secondary); color:var(--secondary-foreground);
+  display:grid; place-items:center; font-size:var(--t-micro); font-weight:600;
+}
+.user-name { font-size:var(--t-body); font-weight:500; line-height:1.2; }
+.user-mail { font-size:var(--t-nav-meta); color:var(--sidebar-muted); line-height:1.3; }
+
+.inset {
+  flex:1; min-width:0; margin:8px 8px 8px 0;
+  background:var(--background); border:1px solid var(--sidebar-border);
+  border-radius:var(--radius-xl);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.topbar {
+  display:flex; align-items:center; gap:10px; height:var(--h-top);
+  padding:0 16px; border-bottom:1px solid var(--border); flex:none;
+}
+.crumbs { font-size:var(--t-small); color:var(--muted-foreground); }
+.crumbs strong { color:var(--foreground); font-weight:500; }
+.spacer { flex:1; }
+
+.btn {
+  display:inline-flex; align-items:center; gap:6px; height:var(--h-control); padding:0 12px;
+  border-radius:var(--radius-md); border:1px solid transparent; font-size:var(--t-body);
+  font-weight:500; cursor:pointer;
+}
+.btn-outline { background:var(--background); border-color:var(--input); }
+.topbar .btn { color:var(--utility-foreground); }
+.topbar .btn:hover { color:var(--foreground); }
+.btn-outline:hover { background:var(--accent); }
+.btn-ghost { background:transparent; }
+.btn-ghost:hover { background:var(--accent); }
+.btn-icon { width:var(--h-control); padding:0; justify-content:center; }
+
+.page { flex:1; min-height:0; display:flex; flex-direction:column; padding:14px 16px 12px; gap:12px; }
+.page-head { display:flex; align-items:baseline; gap:10px; }
+h1 { margin:0; font-size:var(--t-title); font-weight:600; letter-spacing:-.02em; }
+.page-sub { font-size:var(--t-small); color:var(--muted-foreground); }
+
+.controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.field { position:relative; flex:0 0 268px; }
+.input {
+  width:100%; height:var(--h-control); padding:0 30px 0 30px; font:inherit; font-size:var(--t-body);
+  background:var(--background); color:var(--foreground);
+  border:1px solid var(--input); border-radius:var(--radius-md); outline:none;
+}
+.input::placeholder { color:var(--muted-foreground); }
+.search-icon {
+  position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  width:13px; height:13px; color:var(--muted-foreground); pointer-events:none;
+}
+.kbd {
+  position:absolute; right:7px; top:50%; transform:translateY(-50%);
+  font-size:var(--t-micro); color:var(--muted-foreground); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:0 4px; line-height:16px; background:var(--muted);
+}
+.select {
+  display:inline-flex; align-items:center; gap:5px; height:var(--h-control); padding:0 9px;
+  font-size:var(--t-body); background:var(--background); border:1px solid var(--input);
+  border-radius:var(--radius-md); color:var(--muted-foreground); cursor:pointer;
+}
+.select .val { color:var(--muted-foreground); }
+.select.is-set { color:var(--foreground); }
+.select.is-set .val { color:var(--foreground); font-weight:500; }
+.chev { width:11px; height:11px; opacity:.55; flex:none; }
+
+.input:focus-visible, .select:focus-visible, .btn:focus-visible,
+.nav-item:focus-visible, .is-focused {
+  border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
+  outline:none;
+}
+tbody tr:focus-visible { outline:2px solid var(--ring); outline-offset:-2px; }
+
+/* Filter state has one owner: the trigger. `Clear all` is the only thing that
+   speaks for the set as a whole. */
+.clear-all {
+  font-size:var(--t-small); color:var(--muted-foreground);
+  text-decoration:underline; text-underline-offset:3px;
+}
+.clear-all:hover { color:var(--foreground); }
+
+/* The table and its footer are one bounded object: the footer is the last thing
+   inside the frame, so it meets the final row instead of being pushed to the
+   bottom of a stretched container with dead space above it. */
+.table-shell {
+  flex:0 1 auto; min-height:0; display:flex; flex-direction:column;
+  border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden;
+}
+.table-wrap { flex:0 1 auto; min-height:0; overflow:auto; }
+table { width:100%; border-collapse:collapse; }
+thead th {
+  position:sticky; top:0; z-index:1; background:var(--background);
+  height:var(--h-head); padding:0 10px; text-align:left; font-weight:500;
+  font-size:var(--t-small); color:var(--muted-foreground);
+  border-bottom:1px solid var(--border); white-space:nowrap;
+}
+thead th .sort { opacity:.65; margin-left:4px; font-size:9px; vertical-align:1px; }
+tbody td {
+  height:var(--h-row); padding:0 10px; border-bottom:1px solid var(--border);
+  vertical-align:middle; font-size:var(--t-body);
+}
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover td { background:var(--muted); }
+.cell-email { font-weight:500; }
+.cell-date { color:var(--muted-foreground); white-space:nowrap; }
+/*
+ * THE SIGNATURE. A relation is the one cell whose value belongs to another
+ * record, and the dotted rule says so wherever it appears — table cell, detail
+ * field, related list, breadcrumb. Dotted rather than solid because a solid
+ * underline is already spoken for by links, and the distinction has to survive
+ * being seen a thousand times a day.
+ */
+.relation {
+  text-decoration:underline dotted;
+  text-decoration-color:var(--muted-foreground);
+  text-decoration-thickness:1px;
+  text-underline-offset:3px;
+}
+.relation:hover { text-decoration-color:currentColor; }
+
+.badge {
+  display:inline-flex; align-items:center; width:fit-content;
+  border:1px solid transparent; border-radius:var(--radius-md);
+  padding:1px 7px; font-size:var(--t-micro); font-weight:500; line-height:1.5; white-space:nowrap;
+}
+.badge-secondary { background:var(--secondary); border-color:var(--border); color:var(--secondary-foreground); }
+.badge-outline { border-color:var(--input); color:var(--foreground); }
+.badge-destructive {
+  background:var(--destructive-soft); border-color:var(--destructive-line);
+  color:var(--destructive-text);
+}
+
+.pager {
+  display:flex; align-items:center; gap:10px; flex:none;
+  padding:8px 10px; border-top:1px solid var(--border);
+}
+.pager-count { font-size:var(--t-small); color:var(--muted-foreground); }
+.pager-size { display:flex; align-items:center; gap:7px; font-size:var(--t-small); color:var(--muted-foreground); }
+
+@media (max-width:900px) {
+  .sidebar { width:52px; flex-basis:52px; }
+  .brand-name,.brand-sub,.nav-label,.nav-count,.user-name,.user-mail,.nav-group { display:none; }
+  .nav-item { justify-content:center; padding:0; }
+  .user { justify-content:center; }
+  .field { flex:1 1 200px; }
+  .page { padding:12px; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; animation:none!important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Acme Admin</div>
+        <div class="brand-sub">acme-prod</div>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <nav class="nav">
+<div class="nav-group">Customers</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4.5A1.5 1.5 0 0 1 5.5 3h7A1.5 1.5 0 0 1 14 4.5V21"/><path d="M14 10h4.5A1.5 1.5 0 0 1 20 11.5V21"/><path d="M3 21h18"/><path d="M7 7h1.5M10 7h1.5M7 11h1.5M10 11h1.5M7 15h1.5M10 15h1.5"/><path d="M9.5 21v-3"/></svg><span class="nav-label">Organizations</span><span class="nav-count">68</span></a></li>
+        <li><a href="#" class="nav-item is-active" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20"/><circle cx="8.5" cy="7.5" r="3.5"/><path d="M22 20v-1.5a4 4 0 0 0-3-3.87"/><path d="M16 4.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">Users</span><span class="nav-count">1,284</span></a></li>
+        </ul>
+        <div class="nav-group">Commerce</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.2l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h9.1a1.6 1.6 0 0 0 1.6-1.3L21 7.2H6"/></svg><span class="nav-label">Orders</span><span class="nav-count">9,412</span></a></li>
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17l-2.7-1.6L14 21l-2.5-1.6L9 21l-2.6-1.6z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></svg><span class="nav-label">Invoices</span><span class="nav-count">9,033</span></a></li>
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3 8.8"/><path d="M3 4.2v4.8h4.8"/></svg><span class="nav-label">Refunds</span><span class="nav-count">112</span></a></li>
+        </ul>
+        <div class="nav-group">Operations</div>
+        <ul class="nav-list">
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 2.5 4.8 13.4h6l-1.1 8.1 8.5-10.9h-6z"/></svg><span class="nav-label">Webhooks</span><span class="nav-count">6</span></a></li>
+        <li><a href="#" class="nav-item"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.8V12l3.4 2.1"/></svg><span class="nav-label">Audit log</span><span class="nav-count">—</span></a></li>
+        </ul>
+    </nav>
+    <div class="rule"></div>
+    <div class="user">
+      <div class="avatar">RW</div>
+      <div>
+        <div class="user-name">Rae Whitlock</div>
+        <div class="user-mail">rae@acme.test</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="inset">
+    <div class="topbar">
+      <div class="crumbs">Customers <span style="opacity:.5">/</span> <strong>Users</strong></div>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-icon" data-toggle-theme title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <button class="btn btn-outline">Refresh</button>
+    </div>
+
+    <div class="page">
+      <div class="page-head">
+        <h1>Users</h1>
+        <div class="page-sub">1,284 records</div>
+      </div>
+
+      <div class="controls">
+        <div class="field">
+          <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+          <input class="input is-focused" placeholder="Search email, name, notes" aria-label="Search users">
+          <span class="kbd">/</span>
+        </div>
+        <button class="select is-set">Status <span class="val">Active</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select">Active <span class="val">Any</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select is-set">Organization <span class="val">Northwind Labs</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <button class="select">Created <span class="val">Any time</span> <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button>
+        <a href="#" class="clear-all">Clear all</a>
+      </div>
+
+      <div class="table-shell">
+        <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:26%">Email</th>
+              <th style="width:20%">Name</th>
+              <th style="width:14%">Status</th>
+              <th style="width:22%">Organization</th>
+              <th style="width:18%">Created <span class="sort">▼</span></th>
+            </tr>
+          </thead>
+          <tbody>
+          <tr tabindex="0">
+            <td class="cell-email">maya.okonkwo@northwind.io</td>
+            <td>Maya Okonkwo</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-07-14 09:12 UTC">14 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">dev@ridgeline.dev</td>
+            <td>Devon Ashworth</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-07-12 16:40 UTC">12 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">p.laurent@meridian.fr</td>
+            <td>Paul Laurent</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-07-11 08:03 UTC">11 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">s.iyer@kestrel.co</td>
+            <td>Sana Iyer</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-07-09 21:55 UTC">09 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">ops@harborlight.com</td>
+            <td>Harborlight Ops</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-07-08 11:27 UTC">08 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">t.brennan@northwind.io</td>
+            <td>Tomas Brennan</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-07-06 14:19 UTC">06 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">aki.tanaka@lumen.jp</td>
+            <td>Aki Tanaka</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-07-05 02:44 UTC">05 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">r.mbeki@sable.co.za</td>
+            <td>Refilwe Mbeki</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-07-03 19:08 UTC">03 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">j.varga@meridian.fr</td>
+            <td>Julia Varga</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-07-01 07:31 UTC">01 Jul 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">n.haddad@kestrel.co</td>
+            <td>Nour Haddad</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-06-29 13:50 UTC">29 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">e.lindqvist@lumen.jp</td>
+            <td>Elsa Lindqvist</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-27 10:02 UTC">27 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">c.okafor@harborlight.com</td>
+            <td>Chidi Okafor</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-06-24 22:16 UTC">24 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">b.sorensen@ridgeline.dev</td>
+            <td>Bo Sorensen</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-06-22 05:41 UTC">22 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">m.delacroix@meridian.fr</td>
+            <td>Margot Delacroix</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-06-20 17:09 UTC">20 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">k.osei@sable.co.za</td>
+            <td>Kwame Osei</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-06-18 09:58 UTC">18 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">y.moreau@lumen.jp</td>
+            <td>Yuki Moreau</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-16 12:23 UTC">16 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">billing@northwind.io</td>
+            <td>Northwind Billing</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-06-14 06:35 UTC">14 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">h.nakamura@kestrel.co</td>
+            <td>Hana Nakamura</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-06-12 20:47 UTC">12 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">l.fitzgerald@harborlight.com</td>
+            <td>Liam Fitzgerald</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Harborlight</a></td>
+            <td class="cell-date"><time title="2026-06-10 15:12 UTC">10 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">z.abadi@ridgeline.dev</td>
+            <td>Zara Abadi</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Ridgeline</a></td>
+            <td class="cell-date"><time title="2026-06-08 03:29 UTC">08 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">g.rossi@meridian.fr</td>
+            <td>Giulia Rossi</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Meridian SA</a></td>
+            <td class="cell-date"><time title="2026-06-06 18:54 UTC">06 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">support@sable.co.za</td>
+            <td>Sable Support</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Sable Holdings</a></td>
+            <td class="cell-date"><time title="2026-06-04 08:17 UTC">04 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">w.mensah@lumen.jp</td>
+            <td>Wale Mensah</td>
+            <td><span class="badge badge-destructive">Suspended</span></td>
+            <td><a class="relation" href="#">Lumen KK</a></td>
+            <td class="cell-date"><time title="2026-06-02 23:03 UTC">02 Jun 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">i.petrov@northwind.io</td>
+            <td>Irina Petrov</td>
+            <td><span class="badge badge-secondary">Active</span></td>
+            <td><a class="relation" href="#">Northwind Labs</a></td>
+            <td class="cell-date"><time title="2026-05-31 11:46 UTC">31 May 2026</time></td>
+          </tr>
+          <tr tabindex="0">
+            <td class="cell-email">f.almeida@kestrel.co</td>
+            <td>Filipa Almeida</td>
+            <td><span class="badge badge-outline">Invited</span></td>
+            <td><a class="relation" href="#">Kestrel Group</a></td>
+            <td class="cell-date"><time title="2026-05-29 07:20 UTC">29 May 2026</time></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+        <div class="pager">
+        <div class="pager-count">1–25 of 1,284</div>
+        <div class="spacer"></div>
+        <div class="pager-size">Rows <button class="select">25 <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4.5 6 7.5 9 4.5"/></svg></button></div>
+        <button class="btn btn-outline" disabled style="opacity:.5">Previous</button>
+          <button class="btn btn-outline">Next</button>
+        </div>
+    </div>
+  </main>
+</div>
+<script>
+  var root = document.documentElement;
+  if (new URLSearchParams(location.search).get("theme") === "dark") root.classList.add("dark");
+  document.addEventListener("click", function (event) {
+    if (event.target.closest("[data-toggle-theme]")) root.classList.toggle("dark");
+  });
+</script>
+</body>
+</html>

@@ -301,6 +301,48 @@ names"), and it stays forbidden now that the field exists — a resource called
 §6's `Nav icons` row stays withdrawn: the icon takes the item's existing gutter
 rather than a column of its own, so nothing in the sizing table moves for it.
 
+## 9. Related records — set apart by the signature that already means it
+
+A record's page holds two kinds of thing: the record's own facts, and lists of
+*other* records. Drawn the same way they read as one long page of sections, and
+an operator scanning it has to read a heading to know which they are looking at.
+
+The design already has an answer, and it did not need a new one. §5's dotted
+rule is the mark for "this belongs to a different record", and it is applied
+here at the scale of a whole block rather than a value:
+
+- **Inline**, a related list's heading wears the dotted rule. The record's own
+  section titles do not. That is the whole distinction, and it is the same
+  distinction the operator already reads a thousand times a day in the cells.
+- **Tabbed**, the relationship tabs wear it and `Details` does not.
+
+The rule survives being applied at both scales because it is not decoration:
+the block under a dotted heading is exactly the thing a dotted cell points at.
+Nothing else changes — same frame, same type, same density — because the
+sameness is what makes one difference legible.
+
+### Tabs
+
+A tab is a **link**, not a widget: which panel is open lives in the address, so
+it can be linked to, gone back from and reloaded into, exactly as the table's
+search and filters are (BUILD REQUIREMENT 1's single-ownership rule, applied to
+a screen rather than a filter). That also means no tab-widget keyboard
+behaviour is written here — the browser has owned links since it existed.
+
+| | value |
+|---|---|
+| bar | `--h-head` 34px, hairline `--border` along the bottom |
+| tab | `--t-body` 13.5 / 500, 16px gap |
+| current | `--foreground`, 2px rule sitting **on** the bar's hairline |
+| at rest | `--muted-foreground`, lifting to `--foreground` on hover |
+
+No fill and no accent colour: the current tab is marked on a line the eye is
+already following, which is the cheapest mark available and the quietest.
+
+The header — the record's name, its state, its key, and the way back — sits
+above the bar and does not move between tabs. It identifies the record, and the
+record is the same record on every panel.
+
 ## BUILD REQUIREMENTS
 
 Conditions carried from direction approval. Each is binding on Stage 2.

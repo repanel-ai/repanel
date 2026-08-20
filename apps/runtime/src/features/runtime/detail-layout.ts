@@ -1,4 +1,4 @@
-import type { DetailSection, Field, Resource } from "@repanel/contracts";
+import type { Definition, DetailSection, Field, Relationship, Resource } from "@repanel/contracts";
 
 type EnumField = Extract<Field, { type: "enum" }>;
 
@@ -38,4 +38,33 @@ export function sectionFields(resource: Resource, section: DetailSection): Field
     .map((key) => resource.fields.find((field) => field.key === key))
     .filter((field): field is Field => field !== undefined)
     .filter((field) => !field.sensitive && field.key !== promoted);
+}
+
+/** One related list, with both ends of the relationship already resolved. */
+export interface RelatedList {
+  relationship: Relationship;
+  /** The resource on the other end, whose table view the list is drawn from. */
+  target: Resource;
+}
+
+/**
+ * The related lists a detail view names, in its order, with the ones it names
+ * that no longer exist left out — a definition can outlive the shape it was
+ * written against, and half a page is better than none.
+ */
+export function relatedListsOf(definition: Definition, resource: Resource): RelatedList[] {
+  return resource.views.detail.relatedLists.flatMap((key) => {
+    const relationship = resource.relationships.find((candidate) => candidate.key === key);
+    const target = definition.resources.find((candidate) => candidate.key === relationship?.target);
+    return relationship && target ? [{ relationship, target }] : [];
+  });
+}
+
+/**
+ * What a related list is called. The name is the target's, because a
+ * relationship carries no display configuration — and it is singular for a
+ * `belongsTo`, which points at one record and not at a collection.
+ */
+export function relatedTitle({ relationship, target }: RelatedList): string {
+  return relationship.kind === "belongsTo" ? target.label.singular : target.label.plural;
 }

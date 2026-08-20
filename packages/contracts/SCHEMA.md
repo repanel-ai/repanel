@@ -223,11 +223,20 @@ Fields of any other type cannot be filtered in v0.
 |---|---|---|
 | `sections` | yes, ≥1 | Ordered groups, each with a `title` and ≥1 field keys. |
 | `relatedLists` | no (default `[]`) | Relationship keys rendered as embedded lists. |
+| `relatedLayout` | no (default `inline`) | `inline` \| `tabs` — whether related records are read alongside the record or reached from it. |
 
 A related list may name either kind of relationship. The runtime renders it as
 the target resource's table view — the target's columns, search, filters and
 sort — so a `hasMany` list is a page of records and a `belongsTo` list shows at
 most one.
+
+`relatedLayout` says what the related records *are* to this resource, not how to
+draw them. `inline` stacks them under the record's own sections: they are part
+of reading the record. `tabs` gives the sections one tab and every related list
+its own: they are their own subject, reached deliberately. A user's orders are
+often the reason the user was opened; an organization's members are a list you
+go and look at, and only the author knows which. Asking for `tabs` while naming
+no related lists is an error — one tab is a page.
 
 ## Action
 

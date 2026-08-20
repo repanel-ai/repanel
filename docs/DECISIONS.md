@@ -234,3 +234,27 @@ and it is additive exactly as predicted, so the cost of landing it is a
 decision entry and thirty paths; and a sidebar of five bare words is the one
 place the runtime looked less finished than the admins it is meant to replace.
 The vocabulary grows additively; nothing in it may ever be removed.
+
+032 · 2026-08 · A detail view says whether its related records are read
+alongside the record or reached from it: `views.detail.relatedLayout`, one of
+`inline | tabs`, defaulting to `inline`. `tabs` gives the record's own sections
+one tab and every related list its own; validation refuses `tabs` with no
+related lists, because one tab is a page.
+
+This is the schema's first word about arrangement, and the line it does not
+cross is worth stating plainly. It names which of two things the related
+records *are* to this resource — part of reading the record, or their own
+subject — and not how to draw either. The runtime still owns the tab, its
+underline, its order, the panel and every pixel of both answers, and stays free
+to render either differently tomorrow without touching a definition; that is
+what #012's reversibility rests on. #010 admits "relationship context" as a
+growth area gated on "can the runtime render it excellently for everyone?", and
+both values can be.
+
+Why: the runtime cannot see the difference and the author cannot avoid knowing
+it. A user's orders are usually the reason the user was opened; an
+organization's members are a list you go and look at. Left to the runtime the
+only input would be a count, and choosing a screen from a count is guessing
+about someone else's domain — the same mistake #029 refuses for badge severity.
+The vocabulary is closed and grows additively; `inline` is what every
+definition written before this one already meant.

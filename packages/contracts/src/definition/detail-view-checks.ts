@@ -26,6 +26,21 @@ export function checkDetailView(
     });
   });
 
+  // Tabs with nothing to put in them is one tab, which is a page. The author
+  // meant something by asking for tabs, and this is the one chance to say that
+  // what they asked for cannot happen.
+  if (resource.views.detail.relatedLayout === "tabs" && resource.views.detail.relatedLists.length === 0) {
+    errors.push({
+      path: `${detailAt}.relatedLayout`,
+      message: `Resource \`${resource.key}\` asks for tabs but names no related lists.`,
+      expected: "at least one related list, or the `inline` layout",
+      hint:
+        relationshipKeys.length > 0
+          ? `Add a relationship key to \`${detailAt}.relatedLists\` — one of: ${formatList(relationshipKeys)} — or set \`${detailAt}.relatedLayout\` to \`inline\`.`
+          : `Resource \`${resource.key}\` defines no relationships to put in a tab; set \`${detailAt}.relatedLayout\` to \`inline\`.`,
+    });
+  }
+
   resource.views.detail.relatedLists.forEach((key, index) => {
     if (relationshipKeys.includes(key)) return;
     const path = `${detailAt}.relatedLists[${index}]`;

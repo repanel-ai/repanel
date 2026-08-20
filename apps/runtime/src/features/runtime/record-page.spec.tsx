@@ -8,6 +8,7 @@ import { App } from "../../app";
 import {
   adminDefinition,
   orderRecords,
+  organizationRecord,
   organizationRecords,
   sparseUserRecord,
   userRecord,
@@ -207,6 +208,82 @@ describe("the record page", () => {
       expect(await screen.findByText("No orders")).toBeDefined();
       expect(screen.getByText("Nothing links this user to any order.")).toBeDefined();
     });
+  });
+
+  /**
+   * A list of other records is not another group of this record's facts, and
+   * the design says so the one way it says it everywhere: the dotted rule.
+   */
+  it("marks a list of other records as belonging elsewhere", async () => {
+    await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+    const heading = screen.getByRole("heading", { name: "Orders" });
+    expect(heading.querySelector("[data-slot='relation']")).not.toBeNull();
+    // The record's own sections carry no such mark.
+    expect(
+      screen.getByRole("heading", { name: "Account" }).querySelector("[data-slot='relation']"),
+    ).toBeNull();
+  });
+
+  describe("when the definition asks for tabs", () => {
+    const ORG = "/a/acme/r/organizations/o_1";
+
+    it("opens on the record's own facts, with a tab for each related list", async () => {
+      renderAdmin(ORG, { record: organizationRecord });
+
+      const tabs = await screen.findByRole("navigation", { name: "Record" });
+      expect(within(tabs).getAllByRole("link").map((tab) => tab.textContent)).toEqual([
+        "Details",
+        "Users",
+      ]);
+      expect(within(tabs).getByRole("link", { name: "Details" }).getAttribute("aria-current")).toBe(
+        "page",
+      );
+      expect(screen.getByRole("heading", { name: "Organization" })).toBeDefined();
+    });
+
+    it("puts the open tab in the address, and shows only that list", async () => {
+      renderAdmin(`${ORG}?tab=members`, { record: organizationRecord, related: userRecords });
+
+      const tabs = await screen.findByRole("navigation", { name: "Record" });
+      expect(within(tabs).getByRole("link", { name: "Users" }).getAttribute("aria-current")).toBe(
+        "page",
+      );
+      // The record's sections are not on this panel, and the list does not
+      // repeat the name the tab has already given it.
+      expect(screen.queryByRole("heading", { name: "Organization" })).toBeNull();
+      expect(await screen.findByText("Maya Okonkwo")).toBeDefined();
+      expect(screen.queryByRole("heading", { name: "Users" })).toBeNull();
+    });
+
+    it("keeps the way back to the table while moving between tabs", async () => {
+      renderAdmin("/a/acme/r/organizations?search=north", { record: organizationRecord });
+
+      fireEvent.click(await screen.findByText("Maya Okonkwo"));
+      const tabs = await screen.findByRole("navigation", { name: "Record" });
+      fireEvent.click(within(tabs).getByRole("link", { name: "Users" }));
+
+      await waitFor(() => expect(currentUrl()).toBe("/a/acme/r/organizations/u_1?tab=members"));
+      const back = within(screen.getByRole("main")).getByRole("link", { name: "Organizations" });
+      expect(back.getAttribute("href")).toBe("/a/acme/r/organizations?search=north");
+    });
+
+    it("falls back to the record's own facts when the address names no such tab", async () => {
+      renderAdmin(`${ORG}?tab=nowhere`, { record: organizationRecord });
+
+      const tabs = await screen.findByRole("navigation", { name: "Record" });
+      expect(within(tabs).getByRole("link", { name: "Details" }).getAttribute("aria-current")).toBe(
+        "page",
+      );
+    });
+  });
+
+  it("stacks the related lists on the page when the definition asks for that", async () => {
+    await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+    expect(screen.queryByRole("navigation", { name: "Record" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Organization" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Orders" })).toBeDefined();
   });
 
   describe("the way back", () => {

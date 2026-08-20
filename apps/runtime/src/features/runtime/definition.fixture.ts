@@ -123,3 +123,16 @@ export const sparseUserRecord: RecordDto = {
     preferences: null,
   },
 };
+
+/** One organization in full — the record whose related list is a tab. */
+export const organizationRecord: RecordDto = {
+  id: "o_1",
+  values: {
+    id: "o_1",
+    name: "Northwind Labs",
+    plan: "enterprise",
+    billing_email: "accounts@northwind.io",
+    settings: { seats: 250, sso: "okta", retention_days: 730 },
+    created_at: "2025-11-02T14:30:00.000Z",
+  },
+};

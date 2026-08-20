@@ -25,5 +25,6 @@ export { Relation } from "./relation";
 export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./resource-icons";
 export { Section, type SectionProps } from "./section";
 export { Select, type SelectProps } from "./select";
+export { TabBar, tabClasses } from "./tab-bar";
 export { Skeleton } from "./skeleton";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";

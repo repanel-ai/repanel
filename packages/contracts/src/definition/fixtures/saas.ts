@@ -48,6 +48,10 @@ export const saasDefinition: DefinitionInput = {
             { title: "Activity", fields: ["created_at"] },
           ],
           relatedLists: ["members"],
+          // An organization's members are their own subject, so they are
+          // reached rather than scrolled past; a user's orders are the point of
+          // opening the user, so that record keeps them inline.
+          relatedLayout: "tabs",
         },
       },
       actions: [

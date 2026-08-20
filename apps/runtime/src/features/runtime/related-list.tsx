@@ -1,8 +1,9 @@
 import type { Field, RecordId, Relationship, Resource } from "@repanel/contracts";
-import { EmptyPanel, Section } from "@repanel/ui";
+import { EmptyPanel, Relation, Section } from "@repanel/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ApiError } from "../../lib/api-client";
+import { relatedTitle } from "./detail-layout";
 import { ErrorState } from "./error-state";
 import { Pagination } from "./pagination";
 import { RecordTable } from "./record-table";
@@ -24,6 +25,11 @@ export interface RelatedListProps {
   relationship: Relationship;
   /** The resource on the other end. Its table view is what this list draws. */
   target: Resource;
+  /**
+   * Whether the list has to name itself. Inside a tab it does not: the tab has
+   * already named it, and saying it twice is saying it once too often.
+   */
+  titled?: boolean;
 }
 
 /**
@@ -32,7 +38,14 @@ export interface RelatedListProps {
  * target's — a relationship carries no display configuration, so there is
  * nothing here for a definition to have got wrong.
  */
-export function RelatedList({ projectKey, resource, recordId, relationship, target }: RelatedListProps) {
+export function RelatedList({
+  projectKey,
+  resource,
+  recordId,
+  relationship,
+  target,
+  titled = true,
+}: RelatedListProps) {
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
 
@@ -47,14 +60,13 @@ export function RelatedList({ projectKey, resource, recordId, relationship, targ
     .filter((field): field is Field => field !== undefined);
 
   const total = records.data?.total ?? 0;
-  // A `belongsTo` points at one record, so its list is named for one.
-  const title = relationship.kind === "belongsTo" ? target.label.singular : target.label.plural;
+  const title = relatedTitle({ relationship, target });
+  const count = records.data
+    ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}`
+    : undefined;
 
-  return (
-    <Section
-      title={title}
-      meta={records.data ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}` : undefined}
-    >
+  const body = (
+    <>
       {records.isError ? (
         <ErrorState
           title={`${title} could not be read`}
@@ -94,6 +106,20 @@ export function RelatedList({ projectKey, resource, recordId, relationship, targ
           }
         />
       )}
+    </>
+  );
+
+  // The heading wears the dotted rule: what is under it belongs to a different
+  // record, which is the one thing this design says the same way everywhere
+  // (DESIGN.md §5).
+  return titled ? (
+    <Section title={<Relation>{title}</Relation>} meta={count}>
+      {body}
     </Section>
+  ) : (
+    <div className="flex min-w-0 flex-col gap-2">
+      {count && <p className="text-small text-muted-foreground">{count}</p>}
+      {body}
+    </div>
   );
 }

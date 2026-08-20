@@ -2,8 +2,11 @@ import type { ReactNode } from "react";
 import { cn } from "./class-names";
 
 export interface SectionProps {
-  /** What this group of facts is called. */
-  title: string;
+  /**
+   * What this group is called. A node rather than a string because a group of
+   * records that belong elsewhere wears the relation signature (DESIGN.md §5).
+   */
+  title: ReactNode;
   /** A count or a note, said beside the title the way a page says its total. */
   meta?: ReactNode;
   children: ReactNode;

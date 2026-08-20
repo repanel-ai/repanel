@@ -4,10 +4,11 @@ import { ArrowLeftIcon, Badge, CopyButton, FieldRow, Fields, Section } from "@re
 import { Link, useLocation, useParams, type To } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { DetailValue } from "./detail-value";
-import { headerStatusField, sectionFields } from "./detail-layout";
+import { headerStatusField, relatedListsOf, sectionFields, type RelatedList as Related } from "./detail-layout";
 import { ErrorState } from "./error-state";
 import { RecordNotFound } from "./record-not-found";
 import { RecordSkeleton } from "./record-skeleton";
+import { DETAILS_TAB, RecordTabs, currentTab } from "./record-tabs";
 import { RelatedList } from "./related-list";
 import { runtimeRoutes } from "./routes";
 import { Screen } from "./screen";
@@ -55,6 +56,14 @@ function RecordScreen({
 }) {
   const record = useRecord(projectKey, resource.key, recordId);
   const back = useTableAddress(projectKey, resource.key);
+  const location = useLocation();
+
+  const lists = relatedListsOf(definition, resource);
+  // Tabs need something to put in a tab; validation refuses the combination,
+  // and a definition stored before that rule existed still has to render.
+  const tabbed = resource.views.detail.relatedLayout === "tabs" && lists.length > 0;
+  const tab = tabbed ? currentTab(location.search, lists) : DETAILS_TAB;
+  const open = lists.filter((list) => tab === list.relationship.key);
 
   return (
     <Screen scrolls>
@@ -93,46 +102,44 @@ function RecordScreen({
         <>
           <RecordHeader resource={resource} record={record.data} />
 
-          {resource.views.detail.sections.map((section) => {
-            const fields = sectionFields(resource, section);
-            if (fields.length === 0) return null;
+          {tabbed && <RecordTabs lists={lists} current={tab} />}
 
-            return (
-              <Section key={section.title} title={section.title}>
-                <Fields>
-                  {fields.map((field) => (
-                    <FieldRow key={field.key} label={field.label}>
-                      <DetailValue
-                        projectKey={projectKey}
-                        field={field}
-                        value={record.data.values[field.key] ?? null}
-                        isIdentity={field.key === resource.primaryKey}
-                      />
-                    </FieldRow>
-                  ))}
-                </Fields>
-              </Section>
-            );
-          })}
+          {tab === DETAILS_TAB &&
+            resource.views.detail.sections.map((section) => {
+              const fields = sectionFields(resource, section);
+              if (fields.length === 0) return null;
 
-          {resource.views.detail.relatedLists.map((key) => {
-            const relationship = resource.relationships.find((candidate) => candidate.key === key);
-            const target = definition.resources.find(
-              (candidate) => candidate.key === relationship?.target,
-            );
-            if (!relationship || !target) return null;
+              return (
+                <Section key={section.title} title={section.title}>
+                  <Fields>
+                    {fields.map((field) => (
+                      <FieldRow key={field.key} label={field.label}>
+                        <DetailValue
+                          projectKey={projectKey}
+                          field={field}
+                          value={record.data.values[field.key] ?? null}
+                          isIdentity={field.key === resource.primaryKey}
+                        />
+                      </FieldRow>
+                    ))}
+                  </Fields>
+                </Section>
+              );
+            })}
 
-            return (
-              <RelatedList
-                key={key}
-                projectKey={projectKey}
-                resource={resource}
-                recordId={record.data.id}
-                relationship={relationship}
-                target={target}
-              />
-            );
-          })}
+          {/* Inline, every list is on the page under the record's own facts;
+              tabbed, only the one whose tab is open. */}
+          {(tabbed ? open : lists).map((list: Related) => (
+            <RelatedList
+              key={list.relationship.key}
+              projectKey={projectKey}
+              resource={resource}
+              recordId={record.data.id}
+              relationship={list.relationship}
+              target={list.target}
+              titled={!tabbed}
+            />
+          ))}
         </>
       )}
     </Screen>

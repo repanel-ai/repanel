@@ -83,6 +83,17 @@ one record exercises every renderer.
 | Loading — light | `record-loading-light.png` | `record-loading-mono-light.png` |
 | Loading — dark | `record-loading-dark.png` | `record-loading-mono-dark.png` |
 
+The same record page with `relatedLayout: "tabs"` — `organizations` in the
+fixture asks for it, `users` stays inline, so both answers are real:
+
+| | light | dark |
+|---|---|---|
+| Tabs, on the record's own facts | `record-tabs-light.png` | `record-tabs-dark.png` |
+| Tabs, on a related list | `record-tabs-related-light.png` | `record-tabs-related-dark.png` |
+
+`record-tabs-related-*` is also the first shot with all three spent tones in one
+column: `active` positive, `invited` neutral, `suspended` critical.
+
 1440 wide at 2×. The record shots are 1324 tall rather than 900: the panel
 scrolls its own content, so a shot of the real screen would end mid-record —
 the viewport is grown to the record's height so the whole of it is reviewable
@@ -131,6 +142,13 @@ overflow      scrollWidth === clientWidth === 1440, both themes
 rhythm        field row 36px (20px line box + 8px air, both cells)
               related list: head 28px, row 30px — one step under the table's
               34/36, and nothing else about it changes
+
+related       inline: the list's heading wears §5's dotted rule and the
+              record's own section titles do not — one mark, at the scale of a
+              block instead of a cell
+              tabbed: the relationship tabs wear it and `Details` does not; the
+              current tab's 2px rule sits on the bar's hairline, ~10px below
+              the dotted one, so the two marks never collide
 
 sidebar       group label 11.5/600 #665e53 · item 13.5/500 #4a443b ·
               current 13.5/500 #191a1b on fill · row 30px

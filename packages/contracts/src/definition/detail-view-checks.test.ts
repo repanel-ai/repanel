@@ -50,3 +50,33 @@ test("a hidden field may still appear in a detail section", () => {
   const shown = users.views.detail.sections.flatMap((section) => section.fields);
   assert.ok(shown.includes("notes"), "hidden means detail-only, not invisible");
 });
+
+test("tabs must have something to put in a tab", () => {
+  const errors = errorsFor((draft) => {
+    const detail = resourceIn(draft, "users").views.detail;
+    detail.relatedLayout = "tabs";
+    detail.relatedLists = [];
+  });
+
+  const error = errorAt(errors, "resources[1].views.detail.relatedLayout");
+  assert.equal(error.message, "Resource `users` asks for tabs but names no related lists.");
+  assert.match(error.hint, /one of: organization, orders/);
+  assert.match(error.hint, /`inline`/);
+});
+
+test("a resource with no relationships is told to stop asking for tabs", () => {
+  const errors = errorsFor((draft) => {
+    const orders = resourceIn(draft, "orders");
+    orders.relationships = [];
+    orders.views.detail.relatedLayout = "tabs";
+  });
+
+  const error = errorAt(errors, "resources[2].views.detail.relatedLayout");
+  assert.match(error.hint, /defines no relationships to put in a tab/);
+});
+
+test("related records are read alongside the record unless the definition says otherwise", () => {
+  const definition = validFor(() => {});
+
+  assert.equal(definition.resources[1]?.views.detail.relatedLayout, "inline");
+});

@@ -131,5 +131,16 @@ overflow      scrollWidth === clientWidth === 1440, both themes
 rhythm        field row 36px (20px line box + 8px air, both cells)
               related list: head 28px, row 30px — one step under the table's
               34/36, and nothing else about it changes
+
+sidebar       group label 11.5/600 #665e53 · item 13.5/500 #4a443b ·
+              current 13.5/500 #191a1b on fill · row 30px
+              (three steps, moving in size and colour together — DESIGN §3)
+
+768px         scrollWidth === clientWidth === 768, both themes; the sidebar
+              narrows to 180px and no nav label is clipped, icons and all
 ```
+
+The shots were re-taken after the navigation landed its marks and its corrected
+type ladder (DECISIONS #031, DESIGN §3/§8), so what they show is the sidebar as
+it now is.
 

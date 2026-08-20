@@ -72,6 +72,7 @@ A resource binds one postgres table to one admin section.
 | `source.table` | yes | Postgres table name. |
 | `primaryKey` | yes | Field key used to address one record. Must not be `sensitive`. |
 | `labelField` | no (default `primaryKey`) | Field key a record is displayed by. Must not be `sensitive`, `hidden`, `json` or `relation`. |
+| `icon` | no (default `table`) | The mark navigation draws this resource with, from the fixed vocabulary below. |
 | `readOnly` | no (default `true`) | v0 accepts only `true`. |
 | `fields` | yes, ≥1 | Columns the admin knows about. |
 | `relationships` | no (default `[]`) | Links to other resources. |
@@ -83,6 +84,21 @@ relation column renders the target's label rather than its raw foreign key, and
 every link to a record is titled with it. Left out, it falls back to
 `primaryKey` — always present, and almost never what anyone recognizes a record
 by, so setting it is worth the one line.
+
+`icon` is one name from a closed vocabulary:
+
+```
+user      users     building  key       shield    cart      receipt   credit-card
+package   truck     tag       wallet    file      folder    image     book
+message   mail      database  webhook   terminal  activity  bell      clock
+calendar  settings  chart     globe     link      table
+```
+
+The runtime draws every glyph itself, so a name it cannot draw is a name it
+cannot honour — which is why the vocabulary is closed rather than free text, and
+why an unknown name is a validation error listing all thirty. Left out, a
+resource wears `table`: the runtime never reads a resource key and decides what
+it looks like, any more than it reads a value and decides how grave it is.
 
 Keys — resource, field, relationship, action keys and the table name — are
 letters, digits and underscores, never starting with a digit. The runtime

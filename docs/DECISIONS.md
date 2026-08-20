@@ -217,3 +217,20 @@ they say "the 14th". Locale formatting would also make the design record's
 measurements unreproducible (DESIGN.md is measured, not remembered). The cost
 is that an operator outside UTC reads UTC; a display timezone chosen per
 project answers that additively, without a per-reader shape.
+
+031 · 2026-08 · Navigation is icon-and-text, reversing #8's text-first ruling
+(DESIGN.md §8). A resource may name its own mark: an optional `icon` on the
+resource, one of a closed thirty-name vocabulary, defaulting to `table` — so
+every definition written before this one keeps rendering, and a definition that
+says nothing gets the generic mark rather than nothing at all. The glyphs are
+drawn in-repo (#026) in `packages/ui`, and an unknown name is a validation
+error naming all thirty (#020's "never truncated"). The rule #8 built the
+ruling on is untouched and is the reason the slot exists: **the runtime still
+never maps a resource key to a glyph.** A customer's resource may be called
+`tbl_cust_01`, and picturing that from its spelling is the same mistake as
+reading `suspended` and deciding it is an alarm (#029) — the definition says it
+or nobody does. Why: #8 deferred this as "a future additive schema decision"
+and it is additive exactly as predicted, so the cost of landing it is a
+decision entry and thirty paths; and a sidebar of five bare words is the one
+place the runtime looked less finished than the admins it is meant to replace.
+The vocabulary grows additively; nothing in it may ever be removed.

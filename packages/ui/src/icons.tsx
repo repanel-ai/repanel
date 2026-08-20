@@ -5,13 +5,14 @@ import type { ReactNode, SVGProps } from "react";
  * 24x24 box, a 1.5 stroke, and `currentColor`, so a glyph is coloured and sized
  * by the thing it sits inside and never by itself.
  *
- * They are chrome — search, a chevron, a sort direction, a yes. Nothing here
- * stands for a resource: what a resource looks like is the definition's to say,
- * and in v0 it says it in words (DESIGN.md §8).
+ * These are chrome — search, a chevron, a sort direction, a yes. The marks a
+ * resource may be drawn with are a separate, fixed vocabulary the definition
+ * names (`resource-icons.tsx`, DECISIONS #031); nothing here maps a resource
+ * key to a glyph, and nothing ever may.
  */
-type IconProps = Omit<SVGProps<SVGSVGElement>, "children">;
+export type IconProps = Omit<SVGProps<SVGSVGElement>, "children">;
 
-function Glyph({ children, ...props }: IconProps & { children: ReactNode }) {
+export function Glyph({ children, ...props }: IconProps & { children: ReactNode }) {
   return (
     <svg
       viewBox="0 0 24 24"

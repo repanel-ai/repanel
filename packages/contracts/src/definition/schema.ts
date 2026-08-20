@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { actionSchema } from "./actions.js";
 import { fieldSchema } from "./fields.js";
+import { DEFAULT_ICON, iconNameSchema } from "./icons.js";
 import { identifierSchema } from "./identifier.js";
 import { viewsSchema } from "./views.js";
 
@@ -40,6 +41,12 @@ export const resourceSchema = z.strictObject({
    * recognizes a record by.
    */
   labelField: identifierSchema.optional(),
+  /**
+   * The mark the navigation draws this resource with, out of a fixed
+   * vocabulary. Left out it is the generic one, which is what every resource
+   * looked like before the vocabulary existed.
+   */
+  icon: iconNameSchema.default(DEFAULT_ICON),
   /** v0 has no write configuration beyond actions, so this is always true. */
   readOnly: z.literal(true).default(true),
   fields: z.array(fieldSchema).min(1),

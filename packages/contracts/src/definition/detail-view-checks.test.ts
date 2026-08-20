@@ -47,5 +47,6 @@ test("a hidden field may still appear in a detail section", () => {
 
   const users = definition.resources.find((resource) => resource.key === "users");
   assert.ok(users);
-  assert.deepEqual(users.views.detail.sections.at(-1)?.fields, ["notes"], "hidden means detail-only, not invisible");
+  const shown = users.views.detail.sections.flatMap((section) => section.fields);
+  assert.ok(shown.includes("notes"), "hidden means detail-only, not invisible");
 });

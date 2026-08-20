@@ -74,6 +74,26 @@ export function ThemeIcon(props: IconProps) {
   );
 }
 
+/** Back to where the record came from. */
+export function ArrowLeftIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M19 12H5" />
+      <path d="m11 18-6-6 6-6" />
+    </Glyph>
+  );
+}
+
+/** Two sheets, one behind the other: the value is taken, not moved. */
+export function CopyIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15" />
+    </Glyph>
+  );
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <Glyph {...props}>

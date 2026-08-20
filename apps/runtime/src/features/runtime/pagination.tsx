@@ -9,7 +9,11 @@ export interface PaginationProps {
   /** How many are on this page — the range is what came back, not what was asked for. */
   count: number;
   onPage: (page: number) => void;
-  onPageSize: (pageSize: number) => void;
+  /**
+   * How to change the size of a page. A list whose size is not the operator's
+   * to choose is given none, and the control is not offered.
+   */
+  onPageSize?: (pageSize: number) => void;
 }
 
 /**
@@ -27,18 +31,20 @@ export function Pagination({ page, pageSize, total, count, onPage, onPageSize }:
         {count === 0 ? "No records" : `${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()}`}
       </span>
       <div className="flex-1" />
-      <Select
-        label="Rows"
-        value={String(pageSize)}
-        onChange={(event) => onPageSize(Number(event.target.value))}
-        className="text-small"
-      >
-        {PAGE_SIZES.map((size) => (
-          <option key={size} value={size}>
-            {size}
-          </option>
-        ))}
-      </Select>
+      {onPageSize && (
+        <Select
+          label="Rows"
+          value={String(pageSize)}
+          onChange={(event) => onPageSize(Number(event.target.value))}
+          className="text-small"
+        >
+          {PAGE_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </Select>
+      )}
       <Button variant="outline" disabled={page === 1} onClick={() => onPage(page - 1)}>
         Previous
       </Button>

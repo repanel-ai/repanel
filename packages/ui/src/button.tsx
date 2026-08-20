@@ -21,6 +21,28 @@ const SIZES: Record<ButtonSize, string> = {
   icon: "w-control px-0",
 };
 
+/**
+ * What a button looks like, apart from being one. It is separate so that
+ * something which has to be a real link — a destination, not an action — can
+ * wear the same clothes without this file growing a way to render as an
+ * anchor, and without the classes being written down twice.
+ */
+export function buttonClasses({
+  variant = "primary",
+  size = "default",
+  className,
+}: { variant?: ButtonVariant; size?: ButtonSize; className?: string } = {}): string {
+  return cn(
+    "inline-flex h-control shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent",
+    "text-body font-medium whitespace-nowrap transition-colors outline-none",
+    "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
+    "disabled:pointer-events-none disabled:opacity-50",
+    VARIANTS[variant],
+    SIZES[size],
+    className,
+  );
+}
+
 /** Something to press. */
 export function Button({
   className,
@@ -33,15 +55,7 @@ export function Button({
     <button
       type={type}
       data-variant={variant}
-      className={cn(
-        "inline-flex h-control shrink-0 items-center justify-center gap-1.5 rounded-md border border-transparent",
-        "text-body font-medium whitespace-nowrap transition-colors outline-none",
-        "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
-        "disabled:pointer-events-none disabled:opacity-50",
-        VARIANTS[variant],
-        SIZES[size],
-        className,
-      )}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     />
   );

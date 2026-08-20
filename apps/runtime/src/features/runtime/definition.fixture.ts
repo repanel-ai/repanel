@@ -43,6 +43,20 @@ export const userRecords: RecordDto[] = [
   },
 ];
 
+/** One organization, for the `belongsTo` list a user's record hangs off. */
+export const organizationRecords: RecordDto[] = [
+  {
+    id: "o_1",
+    values: {
+      id: "o_1",
+      name: "Northwind Labs",
+      plan: "enterprise",
+      billing_email: "accounts@northwind.io",
+      created_at: "2025-11-02T14:30:00.000Z",
+    },
+  },
+];
+
 /** Two orders, covering a quantity, a json blob and a relation with a label. */
 export const orderRecords: RecordDto[] = [
   {
@@ -68,3 +82,44 @@ export const orderRecords: RecordDto[] = [
     },
   },
 ];
+
+/**
+ * One user in full: a value of every field type the definition has, which is
+ * what makes it the record every detail renderer is reviewed against.
+ */
+export const userRecord: RecordDto = {
+  id: "u_1",
+  values: {
+    id: "u_1",
+    email: "maya.okonkwo@northwind.io",
+    name: "Maya Okonkwo",
+    status: "active",
+    avatar_url: "https://cdn.northwind.io/avatars/maya-okonkwo.png",
+    organization_id: { id: "o_1", label: "Northwind Labs" },
+    is_active: true,
+    created_at: "2026-07-14T09:12:00.000Z",
+    trial_ends_on: "2026-08-30",
+    login_count: 1284,
+    notes: "Asked for SSO before the September rollout.\n\nInvoicing goes to accounts@northwind.io, not to this address.",
+    preferences: { theme: "dark", digest: "weekly", locale: "en-GB", beta: ["insights", "audit-log"] },
+  },
+};
+
+/** The same record with its optional half empty, so every nothing is drawn. */
+export const sparseUserRecord: RecordDto = {
+  id: "u_2",
+  values: {
+    id: "u_2",
+    email: "p.laurent@meridian.fr",
+    name: null,
+    status: "invited",
+    avatar_url: null,
+    organization_id: { id: null, label: null },
+    is_active: false,
+    created_at: "2026-07-11T08:03:00.000Z",
+    trial_ends_on: null,
+    login_count: 0,
+    notes: null,
+    preferences: null,
+  },
+};

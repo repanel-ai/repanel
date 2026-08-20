@@ -224,6 +224,16 @@ component composition are untouched.**
 Rhythm tokens: `--h-nav 32px`, `--h-control 32px`, `--h-row 36px`,
 `--h-head 34px`, `--h-top 48px`. 18 records visible at 1440x900.
 
+A list nested inside one record is read in passing rather than worked in, so it
+runs one step tighter: `--h-row-compact 30px`, `--h-head-compact 28px`. Nothing
+else about it changes — same columns, same type, same gutters — because a second
+table that looked like a different component would say the two are different
+kinds of thing, and they are not.
+
+A detail field pairs a `--t-small` label with a `--t-body` value on a shared
+20px line box and 8px of air, which puts an ordinary field row on the table's
+own 36px rhythm and lets a long value grow in whole lines.
+
 ---
 
 ## 7. Accessibility floor
@@ -311,6 +321,17 @@ stated here is Stage 2's to propose, not to assume.
 Questions this record has not answered. Each is additive by construction — the
 runtime's behaviour today is what happens while the answer is absent — and each
 needs its own decision entry before it is built.
+
+**The data face — a live trial, open now.** BUILD REQUIREMENT 5 asked for both
+renderings at checkpoint C; the ruling there was undecided, so the runtime
+carries a temporary dev-only toggle beside the theme toggle (`01`, set in the
+face it is asking about) that swaps `--font-data` between Geist and Geist Mono
+through the existing `.data-mono` class. It is gated to development builds and
+is never offered to an operator. Both variants are in the checkpoint shots for
+every 011 surface, JSON blocks, ids and timestamps included. The winner is
+hardcoded in `tokens.css` and the toggle, its hook and this entry are deleted
+with the decision — it is a trial, not a setting, and it is not to become
+configurable.
 
 **A money field type.** Numbers are set flush right in tabular figures, and that
 is all the runtime does with them. It does not read `total_cents` and conclude

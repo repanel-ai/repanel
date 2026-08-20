@@ -74,6 +74,9 @@
   --spacing-control: 32px;
   --spacing-row: 36px;
   --spacing-head: 34px;
+  /* A list nested inside a record is read in passing, so it is set tighter. */
+  --spacing-row-compact: 30px;
+  --spacing-head-compact: 28px;
   --spacing-top: 48px;
   --spacing-sidebar: 236px;
   /* What the sidebar narrows to when the panel needs the width (DESIGN §7). */

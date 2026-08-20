@@ -4,11 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useMatch } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { useSession } from "../session/use-session";
+import { DataFaceToggle } from "./data-face-toggle";
 import { ErrorState } from "./error-state";
-import { RecordPlaceholder } from "./record-placeholder";
+import { RecordPage } from "./record-page";
 import { Sidebar } from "./sidebar";
 import { TablePage } from "./table-page";
 import { ThemeToggle } from "./theme-toggle";
+import { useDataFace } from "./use-data-face";
 import { runtimeKeys, useDefinition } from "./use-runtime";
 import { useTheme } from "./use-theme";
 
@@ -25,6 +27,7 @@ const GROUND = "bg-linear-to-b from-sidebar-top to-sidebar-bottom";
  */
 export function RuntimeShell({ projectKey }: { projectKey: string }) {
   const { theme, toggle } = useTheme();
+  const dataFace = useDataFace();
   const definition = useDefinition(projectKey);
   const { user } = useSession();
   const client = useQueryClient();
@@ -85,6 +88,7 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
             </span>
           </p>
           <div className="flex-1" />
+          {import.meta.env.DEV && <DataFaceToggle face={dataFace.face} onToggle={dataFace.toggle} />}
           <ThemeToggle theme={theme} onToggle={toggle} />
           <Button
             variant="outline"
@@ -101,7 +105,10 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
             path="r/:resourceKey"
             element={<TablePage projectKey={projectKey} definition={admin} />}
           />
-          <Route path="r/:resourceKey/:recordId" element={<RecordPlaceholder definition={admin} />} />
+          <Route
+            path="r/:resourceKey/:recordId"
+            element={<RecordPage projectKey={projectKey} definition={admin} />}
+          />
         </Routes>
       </main>
     </div>

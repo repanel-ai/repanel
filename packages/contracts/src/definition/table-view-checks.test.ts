@@ -187,7 +187,7 @@ test("a sensitive field may not be the default sort", () => {
   assert.equal(error.expected, "a field that is not marked `sensitive`");
   assert.equal(
     error.hint,
-    "Ordering by a field exposes the order it puts the rows in, which is readable from the pages even though the values are not — change `resources[1].views.table.defaultSort.field` to a non-sensitive field such as one of: id, email, name, status, organization_id, is_active, notes, created_at.",
+    "Ordering by a field exposes the order it puts the rows in, which is readable from the pages even though the values are not — change `resources[1].views.table.defaultSort.field` to a non-sensitive field such as one of: id, email, name, status, organization_id, is_active, notes, created_at, avatar_url, trial_ends_on, login_count.",
   );
 });
 

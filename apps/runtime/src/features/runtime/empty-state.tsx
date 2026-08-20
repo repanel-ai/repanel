@@ -1,4 +1,4 @@
-import { Button } from "@repanel/ui";
+import { Button, EmptyPanel } from "@repanel/ui";
 
 export interface EmptyStateProps {
   /** Whether a search or a filter is the reason there is nothing here. */
@@ -15,18 +15,20 @@ export interface EmptyStateProps {
  */
 export function EmptyState({ isNarrowed, plural, onClear }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center gap-1.5 px-4 py-14 text-center">
-      <p className="text-body font-medium">{isNarrowed ? "No matches" : "No records yet"}</p>
-      <p className="max-w-sm text-body text-muted-foreground">
-        {isNarrowed
+    <EmptyPanel
+      title={isNarrowed ? "No matches" : "No records yet"}
+      description={
+        isNarrowed
           ? "No records match the current search and filters."
-          : `Nothing has been added to ${plural} yet.`}
-      </p>
-      {isNarrowed && (
-        <Button variant="outline" onClick={onClear} className="mt-2">
-          Clear filters
-        </Button>
-      )}
-    </div>
+          : `Nothing has been added to ${plural} yet.`
+      }
+      action={
+        isNarrowed && (
+          <Button variant="outline" onClick={onClear}>
+            Clear filters
+          </Button>
+        )
+      }
+    />
   );
 }

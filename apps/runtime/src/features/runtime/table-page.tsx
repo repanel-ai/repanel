@@ -1,7 +1,6 @@
 import type { Definition, Field, RecordId, Resource } from "@repanel/contracts";
 import { Skeleton } from "@repanel/ui";
-import type { ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { EmptyState } from "./empty-state";
 import { ErrorState } from "./error-state";
@@ -9,6 +8,7 @@ import { FilterBar } from "./filter-bar";
 import { Pagination } from "./pagination";
 import { RecordTable } from "./record-table";
 import { runtimeRoutes } from "./routes";
+import { Screen } from "./screen";
 import {
   changed,
   cleared,
@@ -45,6 +45,7 @@ function ResourceScreen({ projectKey, resource }: { projectKey: string; resource
   const view = resource.views.table;
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const state = readTableState(params, view);
   const query = toSearchParams(state, view).toString();
@@ -100,7 +101,13 @@ function ResourceScreen({ projectKey, resource }: { projectKey: string; resource
           isPending={records.isPending}
           sort={state.sort}
           onSort={(field) => apply({ sort: nextSort(state, field) })}
-          onOpen={(id: RecordId) => navigate(runtimeRoutes.record(projectKey, resource.key, id))}
+          onOpen={(id: RecordId) =>
+            // The record is told where its operator came from, so its way back
+            // is the table they were reading rather than the table's default.
+            navigate(runtimeRoutes.record(projectKey, resource.key, id), {
+              state: { from: location.search },
+            })
+          }
           empty={
             <EmptyState
               isNarrowed={narrowed}
@@ -129,12 +136,6 @@ function ResourceScreen({ projectKey, resource }: { projectKey: string; resource
         </span>
       )}
     </Screen>
-  );
-}
-
-function Screen({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-3.5 pb-3">{children}</div>
   );
 }
 

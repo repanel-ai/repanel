@@ -2,8 +2,10 @@ import type { DefinitionInput } from "../schema.js";
 
 /**
  * Reference definition for a small SaaS: organizations own users, users place
- * orders. Exercises every v0 concept — enum, relation, json and sensitive
- * fields, enum tones, both action kinds, and navigation groups.
+ * orders. Exercises every v0 concept — every field type, enum tones, hidden
+ * and sensitive fields, both relationship kinds, both action kinds, and
+ * navigation groups. `users` carries one field of each type on purpose: it is
+ * the record every renderer is reviewed against.
  */
 export const saasDefinition: DefinitionInput = {
   schemaVersion: "0.1",
@@ -82,6 +84,10 @@ export const saasDefinition: DefinitionInput = {
         { key: "is_active", label: "Active", type: "boolean" },
         { key: "notes", label: "Notes", type: "longText" },
         { key: "created_at", label: "Created", type: "dateTime" },
+        { key: "avatar_url", label: "Avatar", type: "url" },
+        { key: "trial_ends_on", label: "Trial ends", type: "date" },
+        { key: "login_count", label: "Logins", type: "number" },
+        { key: "preferences", label: "Preferences", type: "json", hidden: true },
       ],
       relationships: [
         { key: "organization", kind: "belongsTo", target: "organizations", foreignKey: "organization_id" },
@@ -101,11 +107,15 @@ export const saasDefinition: DefinitionInput = {
         },
         detail: {
           sections: [
-            { title: "Account", fields: ["email", "name", "status"] },
-            { title: "Membership", fields: ["organization_id", "is_active", "created_at"] },
-            { title: "Notes", fields: ["notes"] },
+            { title: "Account", fields: ["email", "name", "status", "avatar_url"] },
+            {
+              title: "Membership",
+              fields: ["organization_id", "is_active", "created_at", "trial_ends_on"],
+            },
+            { title: "Activity", fields: ["login_count", "notes"] },
+            { title: "Preferences", fields: ["preferences"] },
           ],
-          relatedLists: ["orders"],
+          relatedLists: ["organization", "orders"],
         },
       },
       actions: [

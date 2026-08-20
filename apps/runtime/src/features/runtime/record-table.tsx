@@ -21,7 +21,17 @@ import type { TableSort } from "./table-state";
  */
 const UNSORTABLE: ReadonlyArray<Field["type"]> = ["relation", "json"];
 
-const PENDING_ROWS = 20;
+/**
+ * How tightly the rows are set. A list nested inside one record is read in
+ * passing rather than worked in, so it runs compact.
+ */
+export type TableDensity = "default" | "compact";
+
+const HEAD_HEIGHT: Record<TableDensity, string> = { default: "h-head", compact: "h-head-compact" };
+const ROW_HEIGHT: Record<TableDensity, string> = { default: "h-row", compact: "h-row-compact" };
+
+/** As many placeholder rows as the page it is standing in for will hold. */
+const PENDING_ROWS: Record<TableDensity, number> = { default: 20, compact: 5 };
 
 /**
  * A quantity is read against the quantities above and below it, so it is set
@@ -43,9 +53,15 @@ export interface RecordTableProps {
   columns: Field[];
   records: RecordDto[];
   isPending: boolean;
-  sort: TableSort;
-  onSort: (field: string) => void;
+  /**
+   * How the rows are ordered, and how to reorder them. A list with no address
+   * of its own has nowhere to keep an ordering, so it is given neither and its
+   * headers are labels.
+   */
+  sort?: TableSort;
+  onSort?: (field: string) => void;
   onOpen: (id: RecordId) => void;
+  density?: TableDensity;
   /** Shown in place of the rows when there are none to show. */
   empty: ReactNode;
   /** The footer. It is the last thing inside the frame, so it meets the rows. */
@@ -67,6 +83,7 @@ export function RecordTable({
   sort,
   onSort,
   onOpen,
+  density = "default",
   empty,
   footer,
 }: RecordTableProps) {
@@ -75,8 +92,9 @@ export function RecordTable({
       className={cn(
         "flex min-h-0 flex-col overflow-hidden rounded-lg border border-border",
         // While the rows are on their way the frame holds the height they will
-        // need, so nothing on the screen moves when they arrive.
-        isPending ? "flex-1" : "flex-[0_1_auto]",
+        // need, so nothing on the screen moves when they arrive. A compact list
+        // draws exactly the rows it is about to have, so it needs no reserve.
+        isPending && density === "default" ? "flex-1" : "flex-[0_1_auto]",
       )}
     >
       <div className={cn("min-h-0 flex-[0_1_auto]", isPending ? "overflow-hidden" : "overflow-auto")}>
@@ -90,13 +108,17 @@ export function RecordTable({
                   sort={sort}
                   onSort={onSort}
                   alignRight={isQuantity(field, resource)}
+                  density={density}
                 />
               ))}
             </TableRow>
           </TableHeader>
 
           {isPending ? (
-            <PendingRows columns={columns.map((field) => isQuantity(field, resource))} />
+            <PendingRows
+              columns={columns.map((field) => isQuantity(field, resource))}
+              density={density}
+            />
           ) : (
             <TableBody>
               {records.map((record) => (
@@ -117,7 +139,7 @@ export function RecordTable({
                   {columns.map((field) => (
                     <TableCell
                       key={field.key}
-                      className={cn(isQuantity(field, resource) && "text-right")}
+                      className={cn(ROW_HEIGHT[density], isQuantity(field, resource) && "text-right")}
                     >
                       <RecordCell
                         projectKey={projectKey}
@@ -151,22 +173,24 @@ function ColumnHeader({
   sort,
   onSort,
   alignRight,
+  density,
 }: {
   field: Field;
-  sort: TableSort;
-  onSort: (field: string) => void;
+  sort?: TableSort;
+  onSort?: (field: string) => void;
   /** Whether the column's values sit against its right edge, so the head does too. */
   alignRight: boolean;
+  density: TableDensity;
 }) {
-  const sortable = !UNSORTABLE.includes(field.type);
-  const active = sort.field === field.key;
+  const sortable = onSort !== undefined && !UNSORTABLE.includes(field.type);
+  const active = sort?.field === field.key;
 
   return (
     <TableHead
       aria-sort={
-        sortable ? (active ? (sort.direction === "asc" ? "ascending" : "descending") : "none") : undefined
+        sortable ? (active ? (sort?.direction === "asc" ? "ascending" : "descending") : "none") : undefined
       }
-      className={cn(alignRight && "text-right")}
+      className={cn(HEAD_HEIGHT[density], alignRight && "text-right")}
     >
       {sortable ? (
         <button
@@ -182,7 +206,7 @@ function ColumnHeader({
           )}
         >
           {field.label}
-          {active && <SortArrowIcon className={cn("size-3", sort.direction === "desc" && "rotate-180")} />}
+          {active && <SortArrowIcon className={cn("size-3", sort?.direction === "desc" && "rotate-180")} />}
         </button>
       ) : (
         field.label
@@ -196,13 +220,16 @@ function ColumnHeader({
  * definition's, so they are already known and already drawn; only the values
  * are missing, and the rows say so without saying anything to a screen reader.
  */
-function PendingRows({ columns }: { columns: boolean[] }) {
+function PendingRows({ columns, density }: { columns: boolean[]; density: TableDensity }) {
   return (
     <tbody aria-hidden="true">
-      {Array.from({ length: PENDING_ROWS }, (_, row) => (
+      {Array.from({ length: PENDING_ROWS[density] }, (_, row) => (
         <tr key={row}>
           {columns.map((alignRight, cell) => (
-            <td key={cell} className="h-row border-b border-border px-2.5 align-middle">
+            <td
+              key={cell}
+              className={cn(ROW_HEIGHT[density], "border-b border-border px-2.5 align-middle")}
+            >
               <Skeleton
                 className={cn("h-3", alignRight && "ml-auto")}
                 style={{ width: widthFor(row, cell) }}

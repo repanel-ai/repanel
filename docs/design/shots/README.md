@@ -64,3 +64,72 @@ is implemented with task 011.
 Dates are the same kind of answer: one fixed shape in UTC rather than the
 reader's locale (DECISIONS #030), with a project-level display timezone as the
 additive future.
+
+---
+
+# Task 011 · detail pages
+
+The record surfaces, shot the same way: the shared fixture definition
+(`@repanel/contracts/fixtures`, validated as the API validates it) against a
+stubbed records API. `users` carries one field of every type the schema has, so
+one record exercises every renderer.
+
+| | sans | mono |
+|---|---|---|
+| A record in full — light | `record-light.png` | `record-mono-light.png` |
+| A record in full — dark | `record-dark.png` | `record-mono-dark.png` |
+| Not found — light | `record-not-found-light.png` | `record-not-found-mono-light.png` |
+| Not found — dark | `record-not-found-dark.png` | `record-not-found-mono-dark.png` |
+| Loading — light | `record-loading-light.png` | `record-loading-mono-light.png` |
+| Loading — dark | `record-loading-dark.png` | `record-loading-mono-dark.png` |
+
+1440 wide at 2×. The record shots are 1324 tall rather than 900: the panel
+scrolls its own content, so a shot of the real screen would end mid-record —
+the viewport is grown to the record's height so the whole of it is reviewable
+in one image. The other two fit in the real 900.
+
+The record shots carry every field type — text, longText, number, boolean,
+date, dateTime, email, url, enum, json, relation — plus a hidden field shown
+(`preferences`), the JSON block opened, a `belongsTo` related list and a
+`hasMany` one with paging.
+
+## The data face — the trial, both variants
+
+`--font-data` is swapped through the existing `.data-mono` class by a temporary
+dev-only toggle beside the theme toggle, labelled `01` in the face it is asking
+about. In the mono shots every machine-shaped value moves: the record id, the
+email and url, both dates and the clock, the quantity, the JSON summary and the
+pretty block, and every id, reference and timestamp in the related lists. Prose
+— the record's name, the notes, the labels, the section titles — does not.
+
+The loading and not-found shots differ between the two variants only in the
+toggle's own label: neither surface carries a machine-shaped value, which is
+itself worth seeing.
+
+The trial is open. DESIGN.md's Open items carries it; the winner is hardcoded
+and the toggle deleted in the next task.
+
+## Measured, from the rendered DOM
+
+Read out of the running app, both themes, on the record page with the JSON block
+open.
+
+```
+contrast      light  18 distinct text styles, 0 below AA   tightest 4.74
+              dark   19 distinct text styles, 0 below AA   tightest 4.94
+              (the tightest pair in both is the `positive` badge, by design —
+               the tinted tones are tuned to one another's weight, not to the
+               maximum available)
+
+badge tones   light  neutral 14.40 · positive 4.74 · attention 5.01 · critical 5.12
+              dark   neutral 12.27 · positive 4.94 · attention 4.82 · critical 4.79
+              (all four drawn and measured; the fixture reaches two of them, so
+               `attention` and `neutral` were drawn to be read)
+
+overflow      scrollWidth === clientWidth === 1440, both themes
+
+rhythm        field row 36px (20px line box + 8px air, both cells)
+              related list: head 28px, row 30px — one step under the table's
+              34/36, and nothing else about it changes
+```
+

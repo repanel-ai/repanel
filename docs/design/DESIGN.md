@@ -38,6 +38,7 @@ are declared (DECISIONS #028). Dark re-points the same names under `.dark`.
 | `--muted-foreground` | `#64666a` | `#95979b` |
 | `--accent-foreground` | `#191a1b` | `#f5f6f6` |
 | `--secondary-foreground` | `#1c1d1e` | `#f3f3f4` |
+| `--sidebar-foreground` | `#4a443b` | `#bdb7ae` |
 | `--sidebar-muted` | `#665e53` | `#8b857d` |
 | `--utility-foreground` | `var(--foreground)` | `var(--muted-foreground)` |
 
@@ -113,12 +114,32 @@ corrected here.
 | `--t-small` | `12.5px` | column headers, page meta, pagination, breadcrumb |
 | `--t-body` | `13.5px` | table cells, controls, buttons, account name |
 | `--t-title` | `20px` | the page title, and nothing else |
-| `--t-nav` | `14px` | nav labels, brand name |
-| `--t-nav-meta` | `12px` | group labels, counts, project line, account mail |
+| `--t-brand` | `14px` | the app's name in the sidebar head, and nothing else |
+| `--t-nav-meta` | `12px` | the project line, the account mail |
 
-The sidebar runs one step above the table deliberately: it is persistent chrome
-read at a glance, not dense data. Ref-1's own title-to-nav-label ratio measures
-~1.4x; this scale runs 1.43x.
+**The sidebar's ladder — corrected.** This section first ran nav labels at 14px
+on the argument that the sidebar is chrome read at a glance rather than dense
+data. Built, that was wrong in two ways at once, and both were measurable: a
+nav item and its group label came out the same colour (`--sidebar-muted` for
+both) two pixels apart in size, so the label read as another destination rather
+than as the name of a list; and at 14px/400 a list of five resource names read
+loose rather than deliberate.
+
+The ladder now has three steps and moves in two dimensions, not one:
+
+| | size / weight | colour |
+|---|---|---|
+| brand | `--t-brand` 14 / 600 | `--foreground` |
+| nav item, at rest | `--t-body` 13.5 / 500 | `--sidebar-foreground` |
+| nav item, current | `--t-body` 13.5 / 500 | `--accent-foreground` on `--sidebar-accent` |
+| group label | `--t-micro` 11.5 / 600, `+0.02em` | `--sidebar-muted` |
+
+A nav item is set at data size because five resource names are something to
+scan, not to announce — which also means the type scale is back to five sizes
+with the brand above them, rather than six. The group label is smaller *and*
+dimmer than what it names, which is the whole of what makes it read as a label.
+`--sidebar-foreground` is the token that change needed: the sidebar had one
+text colour and two jobs for it.
 
 ### Tabular numerals — measured, and required
 
@@ -214,14 +235,14 @@ component composition are untouched.**
 | Button | `h-9 px-4` -> 36 / 16 | 32 / 12 |
 | Icon button | `size-9` -> 36 | 32 |
 | Input | `h-9 px-3` -> 36 / 12 | 32 / 12 |
-| Sidebar menu item | `h-8 px-2 text-sm` -> 32 / 8 / 14 | 32 / 8 / 14 |
+| Sidebar menu item | `h-8 px-2 text-sm` -> 32 / 8 / 14 | 30 / 8 / 13.5 |
 | Sidebar width | `16rem` -> 256 | 236 |
 | Table header | `h-10 px-2` -> 40 / 8 | 34 / 10 |
 | Table cell | `p-2` -> 8, ~40 row | 36 / 10 |
 | Badge | `px-2 py-0.5 text-xs` -> 8 / 2 / 12 | 7 / 1 / 11.5 |
 | Inset panel | `m-2 rounded-xl shadow-sm` | `m-2 rounded-xl`, no shadow |
 
-Rhythm tokens: `--h-nav 32px`, `--h-control 32px`, `--h-row 36px`,
+Rhythm tokens: `--h-nav 30px`, `--h-control 32px`, `--h-row 36px`,
 `--h-head 34px`, `--h-top 48px`. 18 records visible at 1440x900.
 
 A list nested inside one record is read in passing rather than worked in, so it
@@ -251,34 +272,34 @@ measurement before it lands.
 
 ---
 
-## 8. Navigation is text-first — resolved
+## 8. Navigation is icon-and-text — the deferral, and its reversal
 
-**Ruling: navigation is text-first in v0. Icon support is a future additive
-schema decision.**
+**Ruling: a resource names its own mark. DECISIONS #031.**
 
-The sidebar carries the resource's label and nothing else. What was proposed
-here — an optional `resource.icon` drawn from a fixed vocabulary, an unknown
-name answered with a validation error listing the whole vocabulary (#020), an
-omitted one falling back to `table`, glyphs drawn in-repo (#026) — is a change
-to `packages/contracts`, which is public product contract: task 001's domain,
-needing its own decision entry, and outside task 010's binding scope. The
-proposal is recorded rather than built, and it is additive by construction: an
-optional field with a fallback breaks no definition written before it, so
-nothing here has to be right the first time.
+This section originally ruled navigation text-first for v0 and recorded the icon
+proposal rather than building it, because it is a change to
+`packages/contracts` — public product contract, task 001's domain, outside task
+010's scope. That deferral did its job: the proposal was written down complete,
+it was additive by construction, and landing it later cost a decision entry and
+thirty paths rather than a redesign.
 
-The proposed vocabulary, kept for that decision: `user users building key shield
-cart receipt credit-card package truck tag wallet file folder image book message
-mail database webhook terminal activity bell clock calendar settings chart globe
-link table`.
+It has landed. `resource.icon` is one name from a closed thirty-name
+vocabulary — `user users building key shield cart receipt credit-card package
+truck tag wallet file folder image book message mail database webhook terminal
+activity bell clock calendar settings chart globe link table` — the glyphs are
+drawn in-repo (#026) in `packages/ui/src/resource-icons.tsx`, an unknown name is
+a validation error naming all thirty (#020), and a resource that says nothing
+wears `table`. The mark sits at 16px and 70% opacity: a step behind the word,
+because the word is what is read and the glyph is how the eye finds it.
 
-Two consequences bind Stage 2:
+**The rule the deferral was built on is untouched, and is the reason the slot
+exists: the runtime never maps a resource key to a glyph.** That mapping is
+what task 010's acceptance criteria forbid ("no hardcoded resource/field
+names"), and it stays forbidden now that the field exists — a resource called
+`tbl_cust_01` is pictured by its definition or by nothing.
 
-- §6's `Nav icons` row is withdrawn with the icons; nothing else in the sizing
-  table moves. The nav item keeps its 32px height and 14px label, and the label
-  starts at the item's own padding rather than an icon's gutter.
-- The runtime still never maps a resource key to a glyph. That mapping is what
-  task 010's acceptance criteria forbid ("no hardcoded resource/field names"),
-  and it stays forbidden whether or not the field exists.
+§6's `Nav icons` row stays withdrawn: the icon takes the item's existing gutter
+rather than a column of its own, so nothing in the sizing table moves for it.
 
 ## BUILD REQUIREMENTS
 

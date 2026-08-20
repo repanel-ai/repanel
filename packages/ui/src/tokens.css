@@ -65,12 +65,18 @@
   --text-body: 13.5px; /* table cells, controls, buttons, account name       */
   --text-title: 20px; /* the page title, and nothing else                   */
 
-  /* The sidebar is chrome read at a glance, so it runs one step above data. */
-  --text-nav: 14px;
-  --text-nav-meta: 12px;
+  /*
+   * The sidebar's own two. The app's name is a title and sits above the scale;
+   * a nav item is set at data size, because a list of five resource names is
+   * something to scan rather than something to announce. Group labels take
+   * `--text-micro` — they name the list, they are not in it.
+   */
+  --text-brand: 14px;
+  --text-nav-meta: 12px; /* the project line and the account mail */
 
   /* ---- rhythm ---------------------------------------------------------- */
-  --spacing-nav: 32px;
+  /* One step under a control: the nav is a list to run an eye down. */
+  --spacing-nav: 30px;
   --spacing-control: 32px;
   --spacing-row: 36px;
   --spacing-head: 34px;
@@ -120,6 +126,12 @@
   --color-muted-foreground: #64666a;
   --color-accent-foreground: #191a1b;
   --color-secondary-foreground: #1c1d1e;
+  /*
+   * The sidebar has its own two-step text ladder, because everything in it is
+   * chrome and the panel's would flatten it: a resource name at rest, and the
+   * group label naming a list of them, which must sit behind what it names.
+   */
+  --color-sidebar-foreground: #4a443b;
   --color-sidebar-muted: #665e53;
   /* Utility chrome sits one step behind the data it frames — in dark only,
      where it would otherwise outshine it. */
@@ -172,6 +184,7 @@
   --color-muted-foreground: #95979b;
   --color-accent-foreground: #f5f6f6;
   --color-secondary-foreground: #f3f3f4;
+  --color-sidebar-foreground: #bdb7ae;
   --color-sidebar-muted: #8b857d;
   --color-utility-foreground: var(--color-muted-foreground);
 

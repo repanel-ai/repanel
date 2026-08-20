@@ -1,4 +1,5 @@
 import type { NavigationGroup, Resource, UserDto } from "@repanel/contracts";
+import { ResourceIcon } from "@repanel/ui";
 import { NavLink } from "react-router";
 import { runtimeRoutes } from "./routes";
 
@@ -13,8 +14,9 @@ export interface SidebarProps {
 
 /**
  * The admin's own navigation, built from the definition's groups and nothing
- * else. It is text-first: a resource is named, never pictured (DESIGN.md §8),
- * so a definition written today needs no vocabulary to be navigable.
+ * else — including the mark beside each resource, which the definition names
+ * out of a fixed vocabulary (DECISIONS #031). Nothing here reads a resource
+ * key and decides what it looks like.
  */
 export function Sidebar({ appName, projectKey, navigation, resources, user }: SidebarProps) {
   return (
@@ -26,7 +28,7 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
           {appName.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-nav leading-tight font-semibold tracking-[-0.01em]">
+          <div className="truncate text-brand leading-tight font-semibold tracking-[-0.01em]">
             {appName}
           </div>
           <div className="truncate text-nav-meta leading-snug text-sidebar-muted">{projectKey}</div>
@@ -38,7 +40,9 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
       <nav className="flex-1 overflow-auto pt-0.5" aria-label="Resources">
         {navigation.map((group) => (
           <div key={group.label}>
-            <div className="px-2 pt-3 pb-1.5 text-nav-meta font-medium text-sidebar-muted">
+            {/* It names the list; it is not in it, so it is smaller and sits
+                a step behind what it names. */}
+            <div className="px-2 pt-3.5 pb-1 text-micro font-semibold tracking-[0.02em] text-sidebar-muted">
               {group.label}
             </div>
             <ul className="flex list-none flex-col gap-px p-0">
@@ -48,14 +52,20 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
                     to={runtimeRoutes.resource(projectKey, key)}
                     className={({ isActive }) =>
                       [
-                        "flex h-nav items-center gap-2.5 rounded-md px-2 text-nav outline-none",
+                        "flex h-nav items-center gap-2 rounded-md px-2 text-body font-medium outline-none",
                         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
                         isActive
-                          ? "bg-sidebar-accent font-medium text-accent-foreground"
-                          : "text-sidebar-muted hover:bg-sidebar-accent hover:text-foreground",
+                          ? "bg-sidebar-accent text-accent-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
                       ].join(" ")
                     }
                   >
+                    <ResourceIcon
+                      name={resources.get(key)?.icon ?? "table"}
+                      // A step behind the name it marks: the word is what is
+                      // being read, and the glyph is how the eye finds it.
+                      className="size-4 flex-none opacity-70"
+                    />
                     <span className="truncate">{resources.get(key)?.label.plural ?? key}</span>
                   </NavLink>
                 </li>

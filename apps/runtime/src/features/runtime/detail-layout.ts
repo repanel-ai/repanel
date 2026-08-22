@@ -68,3 +68,32 @@ export function relatedListsOf(definition: Definition, resource: Resource): Rela
 export function relatedTitle({ relationship, target }: RelatedList): string {
   return relationship.kind === "belongsTo" ? target.label.singular : target.label.plural;
 }
+
+/**
+ * The columns a related list draws: the target's own, minus the one the list is
+ * narrowed by.
+ *
+ * A `hasMany` list is exactly "the target's records whose foreign key is this
+ * record", so that column holds the same value in every row — the record the
+ * operator is already reading, repeated once per line under a heading that has
+ * just said it. Nothing is learned from a column that cannot vary, and the
+ * width it takes is width the columns that do vary have to give up.
+ *
+ * A `belongsTo` list is narrowed by the target's own primary key instead, which
+ * names the row rather than pointing back at the parent, so it keeps every
+ * column. This is the runtime's own arrangement, not a schema question: the
+ * target's table view is written for the target's own screen, where that column
+ * is worth having.
+ */
+export function relatedColumns({ relationship, target }: RelatedList): Field[] {
+  const columns = target.views.table.columns
+    .map((key) => target.fields.find((field) => field.key === key))
+    .filter((field): field is Field => field !== undefined);
+
+  if (relationship.kind !== "hasMany") return columns;
+
+  const varying = columns.filter((field) => field.key !== relationship.foreignKey);
+  // A list whose every column is the one it was narrowed by has nothing else to
+  // show, and a table with no columns is not a quieter table.
+  return varying.length > 0 ? varying : columns;
+}

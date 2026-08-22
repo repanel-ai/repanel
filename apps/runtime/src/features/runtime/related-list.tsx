@@ -1,9 +1,9 @@
-import type { Field, RecordId, Relationship, Resource } from "@repanel/contracts";
+import type { RecordId, Relationship, Resource } from "@repanel/contracts";
 import { EmptyPanel, Relation, Section } from "@repanel/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ApiError } from "../../lib/api-client";
-import { relatedTitle } from "./detail-layout";
+import { relatedColumns, relatedTitle } from "./detail-layout";
 import { ErrorState } from "./error-state";
 import { Pagination } from "./pagination";
 import { RecordTable } from "./record-table";
@@ -36,7 +36,8 @@ export interface RelatedListProps {
  * The records one record is related to, drawn as the target resource's own
  * table at a smaller density. The columns, the order and the labels are the
  * target's — a relationship carries no display configuration, so there is
- * nothing here for a definition to have got wrong.
+ * nothing here for a definition to have got wrong — less the one column that
+ * only ever names the record already on screen (`relatedColumns`).
  */
 export function RelatedList({
   projectKey,
@@ -55,9 +56,7 @@ export function RelatedList({
   }).toString();
   const records = useRelatedRecords(projectKey, resource.key, recordId, relationship.key, query);
 
-  const columns = target.views.table.columns
-    .map((key) => target.fields.find((field) => field.key === key))
-    .filter((field): field is Field => field !== undefined);
+  const columns = relatedColumns({ relationship, target });
 
   const total = records.data?.total ?? 0;
   const title = relatedTitle({ relationship, target });

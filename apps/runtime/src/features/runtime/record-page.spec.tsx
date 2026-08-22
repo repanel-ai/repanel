@@ -10,6 +10,7 @@ import {
   orderRecords,
   organizationRecord,
   organizationRecords,
+  resourceIn,
   sparseUserRecord,
   userRecord,
   userRecords,
@@ -169,7 +170,6 @@ describe("the record page", () => {
       const table = orders.getByRole("table");
       expect(within(table).getAllByRole("columnheader").map((head) => head.textContent?.trim())).toEqual([
         "Reference",
-        "Customer",
         "Status",
         "Total (cents)",
         "Placed",
@@ -179,6 +179,35 @@ describe("the record page", () => {
 
       fireEvent.click(within(table).getByText("AC-10241"));
       await waitFor(() => expect(currentUrl()).toBe("/a/acme/r/orders/o_1001"));
+    });
+
+    /**
+     * `orders` is narrowed to this user by `user_id`, so that column would say
+     * the same thing in every row — the record whose page it is on.
+     */
+    it("leaves out the column that could only ever name the record being read", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      const orders = within(sectionOf(screen.getByRole("heading", { name: "Orders" })));
+      expect(within(orders.getByRole("table")).queryByRole("columnheader", { name: "Customer" })).toBeNull();
+      // Nothing was taken out of the definition to do it: `orders` still
+      // declares that column, and its own table screen still draws it.
+      expect(resourceIn("orders").views.table.columns).toContain("user_id");
+    });
+
+    /**
+     * A `belongsTo` list is narrowed by the target's own primary key, which
+     * names the row rather than pointing back here, so it keeps every column.
+     */
+    it("keeps every column of a list it did not narrow by a relation", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      const organization = within(sectionOf(screen.getByRole("heading", { name: "Organization" })));
+      expect(
+        within(organization.getByRole("table"))
+          .getAllByRole("columnheader")
+          .map((head) => head.textContent?.trim()),
+      ).toEqual(["Name", "Plan", "Billing email", "Created"]);
     });
 
     it("pages through the records the list could not fit", async () => {

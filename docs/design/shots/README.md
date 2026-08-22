@@ -52,6 +52,11 @@ dates, quantities) in Geist; `data-face-mono-*.png` sets them in Geist Mono.
 Everything else is identical — the face is the `--font-data` token and the
 variant is one line in `tokens.css`, so either answer costs the same.
 
+*Ruled after 011, on these shots and the record ones below: the sans.
+DESIGN.md §3 records why. The mono shots stay as the evidence the ruling was
+made from; `.data-mono` stays in `tokens.css` as a dormant mechanism, and the
+dev toggle that drove it is gone.*
+
 **2. Badges are uniformly quiet, and that is the rule working.** DESIGN.md §4
 says a state earns the tinted treatment only where the definition marks it as
 such, and the runtime never guesses severity from a value's spelling. v0's schema
@@ -117,8 +122,11 @@ The loading and not-found shots differ between the two variants only in the
 toggle's own label: neither surface carries a machine-shaped value, which is
 itself worth seeing.
 
-The trial is open. DESIGN.md's Open items carries it; the winner is hardcoded
-and the toggle deleted in the next task.
+The trial is closed: the sans won, `--font-data` is hardcoded to it, and the
+toggle, its hook and its storage key are deleted. DESIGN.md §3 carries the
+ruling and what closed it. The mono shots are kept as the evidence — they are
+the comparison the decision was made on, and re-taking them would need the
+mechanism back.
 
 ## Measured, from the rendered DOM
 

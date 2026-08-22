@@ -53,9 +53,13 @@
     monospace;
 
   /*
-   * The face machine-shaped values are set in — dates, ids, references. It is a
-   * token precisely so the single-face and mono-variant renderings are one line
-   * apart; `.data-mono` below is that line (DESIGN.md BUILD REQUIREMENT 5).
+   * The face machine-shaped values are set in — dates, ids, references. The
+   * trial DESIGN.md BUILD REQUIREMENT 5 asked for is closed and the answer is
+   * the sans: one family reads as one product, and the mono's advantage on an
+   * id column did not survive being paid for on every date, quantity and JSON
+   * summary beside it. It stays a token rather than a hardcoded family because
+   * the alternative is still worth having available — `.data-mono` below is
+   * the whole of it, and it is one line either way.
    */
   --font-data: var(--font-sans);
 
@@ -209,8 +213,14 @@
 
 /*
  * The mono data face, whole. Adding this class to the root swaps the face every
- * machine-shaped value is set in and changes nothing else — which is what makes
- * the choice reviewable rather than rewritable.
+ * machine-shaped value is set in and changes nothing else, which is what made
+ * the two renderings comparable at checkpoint C.
+ *
+ * Dormant, and kept: the sans won and nothing in the runtime reaches this class
+ * any more — there is no toggle and no setting, and a data face is not one
+ * (DESIGN.md §3). It stays because the question can be reopened for the cost of
+ * a class name rather than a redesign, and because `--font-mono` is spent by the
+ * JSON block regardless.
  */
 .data-mono {
   --font-data: var(--font-mono);

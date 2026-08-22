@@ -153,6 +153,44 @@ descendant inherits it (verified on date cells, nav counts, pagination, the
 record total and badges). Any component that resets `font-variant-numeric` —
 or any future face swap — reintroduces ragged columns silently.
 
+### The data face — the trial, and its ruling
+
+**Ruling: one face. Machine-shaped values are set in the sans, and `--font-data`
+is hardcoded to `--font-sans` in `tokens.css`.**
+
+BUILD REQUIREMENT 5 asked for both renderings rather than an argument, and both
+were built and shot: every 011 surface twice, ids, emails, timestamps, quantities
+and JSON blocks included (`shots/record-mono-*.png` against `shots/record-*.png`).
+The trial ran on the real screens, and it is decided by usage rather than by the
+thing it was proposed for.
+
+The proposal was right about the narrow case and wrong about the page. A mono id
+column does scan better in isolation. But `--font-data` is not an id column: it
+is every date, every quantity, every email, every reference and every JSON
+summary, which on a record page is most of what is on it — and set in a second
+family all of that reads as a block of machinery pasted into a document rather
+than as the record's own facts. Two families also cost the one thing the type
+section is built on: a five-size scale in one family is a ladder an eye can
+learn, and the same scale in two is not.
+
+Two of the trial's own findings closed it. The tabular figures above already buy
+most of what the mono was wanted for — a column of dates or amounts lines up
+exactly, and that was the actual complaint — and the surfaces the id column
+argument is strongest on (the record's key, the JSON block) are already set apart
+by size, colour and frame, so the face was carrying a distinction that was
+already made.
+
+**The mono is documented, not deleted.** `--font-data` stays a token and
+`.data-mono` stays in `tokens.css` as a dormant mechanism: adding that one class
+to the root swaps every machine-shaped value and changes nothing else, so
+reopening the question costs a class name rather than a redesign. It is not a
+setting and it is not reachable from the runtime — the temporary dev toggle, its
+hook and its storage key are gone. A data face is a decision this record makes
+once, not a preference an operator carries.
+
+`--font-mono` itself is still spent: the JSON block's pretty-printed body is
+mono because indentation is what it is for.
+
 ---
 
 ## 4. Status badge language — resolved by the tone map
@@ -374,6 +412,9 @@ Conditions carried from direction approval. Each is binding on Stage 2.
    decision. The exploration behind this is real: a monospace data voice tested
    markedly better for scanning id and email columns than a single face did.
 
+   *Met, and ruled: the sans. Both renderings were built and shot; §3 records
+   the ruling and what closed it.*
+
 Beyond these five, the direction is approved as specified above. Anything not
 stated here is Stage 2's to propose, not to assume.
 
@@ -384,17 +425,6 @@ stated here is Stage 2's to propose, not to assume.
 Questions this record has not answered. Each is additive by construction — the
 runtime's behaviour today is what happens while the answer is absent — and each
 needs its own decision entry before it is built.
-
-**The data face — a live trial, open now.** BUILD REQUIREMENT 5 asked for both
-renderings at checkpoint C; the ruling there was undecided, so the runtime
-carries a temporary dev-only toggle beside the theme toggle (`01`, set in the
-face it is asking about) that swaps `--font-data` between Geist and Geist Mono
-through the existing `.data-mono` class. It is gated to development builds and
-is never offered to an operator. Both variants are in the checkpoint shots for
-every 011 surface, JSON blocks, ids and timestamps included. The winner is
-hardcoded in `tokens.css` and the toggle, its hook and this entry are deleted
-with the decision — it is a trial, not a setting, and it is not to become
-configurable.
 
 **A money field type.** Numbers are set flush right in tabular figures, and that
 is all the runtime does with them. It does not read `total_cents` and conclude

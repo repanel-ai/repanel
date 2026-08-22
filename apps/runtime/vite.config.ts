@@ -24,5 +24,6 @@ export default defineConfig({
     environment: "jsdom",
     // Testing Library unmounts between tests by hooking the global `afterEach`.
     globals: true,
+    setupFiles: ["./vitest.setup.ts"],
   },
 });

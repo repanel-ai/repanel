@@ -315,6 +315,171 @@ describe("the record page", () => {
     expect(screen.getByRole("heading", { name: "Orders" })).toBeDefined();
   });
 
+  describe("actions", () => {
+    const dialog = () => within(screen.getByRole("dialog"));
+
+    it("offers what the definition says may be done, in the order it says it", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      const declared = resourceIn("users").actions.map((action) => action.label);
+      const offered = screen
+        .getAllByRole("button")
+        .map((button) => button.textContent ?? "")
+        .filter((label) => declared.includes(label));
+
+      expect(offered).toEqual(["Suspend", "Deactivate", "Resend invite"]);
+      expect(offered).toEqual(declared);
+    });
+
+    it("asks nothing until it is asked to", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    /**
+     * The warning is the author's, in the author's words. The runtime writes no
+     * sentence of its own about what an action does — it has never seen the
+     * customer's domain, and `confirm` is required exactly so it does not have to.
+     */
+    it("asks with the definition's own confirm text", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+
+      expect(screen.getByRole("dialog", { name: "Suspend" })).toBeDefined();
+      expect(
+        dialog().getByText("Suspend this user? They lose access immediately."),
+      ).toBeDefined();
+    });
+
+    it("runs nothing on a question that was answered no", async () => {
+      const asked = renderAdmin("/a/acme/r/users/u_1");
+      await loaded(asked);
+
+      fireEvent.click(screen.getByRole("button", { name: "Resend invite" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(asked().some((url) => url.includes("/actions/"))).toBe(false);
+    });
+
+    it("runs the action the definition named, against the record on screen", async () => {
+      const asked = renderAdmin("/a/acme/r/users/u_1");
+      await loaded(asked);
+
+      fireEvent.click(screen.getByRole("button", { name: "Resend invite" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Resend invite" }));
+
+      await waitFor(() =>
+        expect(
+          asked().some((url) => url.endsWith("/resources/users/records/u_1/actions/resend_invite")),
+        ).toBe(true),
+      );
+    });
+
+    it("says so while it is running, and takes no second answer", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1", { actionNeverFinishes: true }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+
+      await waitFor(() => expect(dialog().getByRole("status").textContent).toBe("Running…"));
+      expect(dialog().getByRole("button", { name: "Suspend" })).toHaveProperty("disabled", true);
+      expect(dialog().getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
+    });
+
+    it("says it is done, in the definition's word for it", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_1"));
+
+      fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Deactivate" }));
+
+      expect(await screen.findByText("Deactivate done")).toBeDefined();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    /**
+     * The whole point of invalidating the record: whatever the action changed
+     * is on screen by the time the notice about it is, without a reload and
+     * without the runtime guessing what changed.
+     */
+    it("reads the record again, so a state the action set is the state shown", async () => {
+      const suspended: RecordDto = {
+        ...userRecord,
+        values: { ...userRecord.values, status: "suspended" },
+      };
+      const asked = renderAdmin("/a/acme/r/users/u_1", { recordAfterAction: suspended });
+      await loaded(asked);
+      expect(screen.getByText("active").dataset.tone).toBe("positive");
+
+      fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+
+      const badge = await screen.findByText("suspended");
+      expect(badge.dataset.tone).toBe("critical");
+      expect(screen.queryByText("active")).toBeNull();
+    });
+
+    describe("when the action does not go through", () => {
+      it("says which action failed, in the words the API used", async () => {
+        await loaded(
+          renderAdmin("/a/acme/r/users/u_1", {
+            actionFails: {
+              status: 502,
+              code: "action_rejected",
+              message: "The application answered 500, so the action did not report success.",
+            },
+          }),
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Resend invite" }));
+        fireEvent.click(dialog().getByRole("button", { name: "Resend invite" }));
+
+        const notice = await screen.findByRole("alert");
+        expect(within(notice).getByText("Resend invite failed")).toBeDefined();
+        expect(
+          within(notice).getByText(
+            "The application answered 500, so the action did not report success.",
+          ),
+        ).toBeDefined();
+      });
+
+      it("leaves the record as it was, because nothing about it changed", async () => {
+        const asked = renderAdmin("/a/acme/r/users/u_1", {
+          actionFails: { status: 504, code: "action_timeout", message: "The application did not answer." },
+        });
+        await loaded(asked);
+        const reads = () => asked().filter((url) => url.endsWith("/records/u_1")).length;
+        const before = reads();
+
+        fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+        fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+
+        await screen.findByRole("alert");
+        expect(reads()).toBe(before);
+        expect(screen.getByText("active")).toBeDefined();
+      });
+
+      /** Something an operator has to read is something they get to dismiss. */
+      it("stays until it is dismissed", async () => {
+        await loaded(
+          renderAdmin("/a/acme/r/users/u_1", {
+            actionFails: { status: 502, code: "action_unreachable", message: "The application could not be reached." },
+          }),
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+        fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+        await screen.findByRole("alert");
+
+        fireEvent.click(screen.getByRole("button", { name: "Dismiss: Suspend failed" }));
+
+        await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+      });
+    });
+  });
+
   describe("the way back", () => {
     it("returns to the table the operator was reading, filters and all", async () => {
       renderAdmin("/a/acme/r/users?search=maya&filter%5Bstatus%5D=active");
@@ -378,6 +543,12 @@ interface AdminOptions {
   recordNeverArrives?: boolean;
   related?: RecordDto[];
   relatedTotal?: number;
+  /** What the record reads as once an action has run against it. */
+  recordAfterAction?: RecordDto;
+  /** How the action goes, when it is not meant to go well. */
+  actionFails?: { status: number; code: string; message: string };
+  /** Holds the action open, so the pending state can be read. */
+  actionNeverFinishes?: boolean;
 }
 
 /**
@@ -399,10 +570,25 @@ function sectionOf(heading: HTMLElement): HTMLElement {
 }
 
 function renderAdmin(path: string, options: AdminOptions = {}): () => string[] {
-  const fetch = vi.fn(async (input: unknown) => {
+  let actionsRun = 0;
+
+  const fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/auth/me")) return json(ADA);
     if (url.endsWith("/definition")) return json(adminDefinition);
+
+    if (url.includes("/actions/")) {
+      if (init?.method !== "POST") throw new Error("an action is run with POST");
+      if (options.actionNeverFinishes) return new Promise<Response>(() => {});
+      if (options.actionFails) {
+        const { status, code, message } = options.actionFails;
+        return failure(status, code, message);
+      }
+      actionsRun += 1;
+      const key = url.split("/actions/")[1] ?? "";
+      const action = resourceIn("users").actions.find((candidate) => candidate.key === key);
+      return json({ ok: true, label: action?.label ?? key });
+    }
 
     if (url.includes("/related/organization")) {
       return json(page(organizationRecords, organizationRecords.length));
@@ -416,6 +602,7 @@ function renderAdmin(path: string, options: AdminOptions = {}): () => string[] {
       if (options.recordNeverArrives) return new Promise<Response>(() => {});
       if (options.recordMissing) return failure(404, "not_found", "Record not found");
       if (options.recordFails) return failure(504, "query_timeout", options.recordFails);
+      if (actionsRun > 0 && options.recordAfterAction) return json(options.recordAfterAction);
       return json(options.record ?? userRecord);
     }
 

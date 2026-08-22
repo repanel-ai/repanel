@@ -6,6 +6,7 @@ import { ApiError } from "../../lib/api-client";
 import { DetailValue } from "./detail-value";
 import { headerStatusField, relatedListsOf, sectionFields, type RelatedList as Related } from "./detail-layout";
 import { ErrorState } from "./error-state";
+import { RecordActions } from "./record-actions";
 import { RecordNotFound } from "./record-not-found";
 import { RecordSkeleton } from "./record-skeleton";
 import { DETAILS_TAB, RecordTabs, currentTab } from "./record-tabs";
@@ -100,7 +101,7 @@ function RecordScreen({
 
       {record.data && (
         <>
-          <RecordHeader resource={resource} record={record.data} />
+          <RecordHeader projectKey={projectKey} resource={resource} record={record.data} />
 
           {tabbed && <RecordTabs lists={lists} current={tab} />}
 
@@ -151,26 +152,44 @@ function RecordScreen({
  * is in, and the key everything else addresses it with. The key is set small
  * and quiet because almost nobody needs it — and copyable because the one who
  * does is about to paste it into a ticket or a query.
+ *
+ * What can be done to the record sits opposite what it is, on the header rather
+ * than on a panel: the header identifies the record and does not move between
+ * tabs, and neither does what may be done to it (DESIGN.md §9).
  */
-function RecordHeader({ resource, record }: { resource: Resource; record: RecordDto }) {
+function RecordHeader({
+  projectKey,
+  resource,
+  record,
+}: {
+  projectKey: string;
+  resource: Resource;
+  record: RecordDto;
+}) {
   const status = headerStatusField(resource);
   const state = status ? record.values[status.key] : undefined;
 
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <div className="flex flex-wrap items-baseline gap-2.5">
-        <h1 className="text-title font-semibold tracking-[-0.02em]">{nameOf(resource, record)}</h1>
-        {status && state !== null && state !== undefined && (
-          <Badge tone={status.tones[String(state)]}>{String(state)}</Badge>
-        )}
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2.5">
+      <div className="flex min-w-0 flex-col items-start gap-1.5">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <h1 className="text-title font-semibold tracking-[-0.02em]">{nameOf(resource, record)}</h1>
+          {status && state !== null && state !== undefined && (
+            <Badge tone={status.tones[String(state)]}>{String(state)}</Badge>
+          )}
+        </div>
+        <CopyButton
+          value={String(record.id)}
+          what={`the ${resource.label.singular.toLowerCase()} id`}
+          className="max-w-full text-small"
+        >
+          <span className="truncate font-data">{String(record.id)}</span>
+        </CopyButton>
       </div>
-      <CopyButton
-        value={String(record.id)}
-        what={`the ${resource.label.singular.toLowerCase()} id`}
-        className="max-w-full text-small"
-      >
-        <span className="truncate font-data">{String(record.id)}</span>
-      </CopyButton>
+
+      {resource.actions.length > 0 && (
+        <RecordActions projectKey={projectKey} resource={resource} recordId={record.id} />
+      )}
     </div>
   );
 }

@@ -6,5 +6,6 @@ export default defineConfig({
     // Testing Library unmounts between tests by hooking the global `afterEach`;
     // without globals every spec would have to clean up after itself.
     globals: true,
+    setupFiles: ["./vitest.setup.ts"],
   },
 });

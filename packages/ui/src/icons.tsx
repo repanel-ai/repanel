@@ -102,3 +102,13 @@ export function CheckIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** A dismissal: the thing goes away, nothing else happens. */
+export function CloseIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="m6 6 12 12" />
+      <path d="m18 6-12 12" />
+    </Glyph>
+  );
+}

@@ -4,6 +4,7 @@ export { Card, type CardProps } from "./card";
 export { cn } from "./class-names";
 export { ControlShell, type ControlShellProps } from "./control-shell";
 export { CopyButton, type CopyButtonProps } from "./copy-button";
+export { Dialog, type DialogProps } from "./dialog";
 export { EmptyPanel, type EmptyPanelProps } from "./empty-panel";
 export { FieldRow, Fields, type FieldRowProps } from "./fields";
 export { FormError, type FormErrorProps } from "./form-error";
@@ -12,6 +13,7 @@ export {
   CheckIcon,
   ChevronDownIcon,
   CircleIcon,
+  CloseIcon,
   CopyIcon,
   SearchIcon,
   SortArrowIcon,
@@ -26,5 +28,6 @@ export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./res
 export { Section, type SectionProps } from "./section";
 export { Select, type SelectProps } from "./select";
 export { TabBar, tabClasses } from "./tab-bar";
+export { Toast, ToastViewport, type ToastProps, type ToastTone } from "./toast";
 export { Skeleton } from "./skeleton";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";

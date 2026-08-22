@@ -1,5 +1,5 @@
-import type { Definition, RecordDto, RecordId, RecordListDto } from "@repanel/contracts";
-import { useQuery } from "@tanstack/react-query";
+import type { ActionResultDto, Definition, RecordDto, RecordId, RecordListDto } from "@repanel/contracts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 
 /**
@@ -86,5 +86,28 @@ export function useRelatedRecords(
           query,
         ),
       ),
+  });
+}
+
+/**
+ * Running one of a record's actions. The action key is all that is sent: what
+ * the action does was decided when the definition was written, and the API
+ * reads it from there rather than from here.
+ *
+ * On success the record is put out of date, which is also what refreshes the
+ * lists hanging off it — `related` is filed under `record`, so one key covers
+ * everything the action could have changed on this screen. A status the action
+ * set is on screen by the time the notice about it is.
+ */
+export function useRunAction(projectKey: string, resourceKey: string, id: RecordId) {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: (actionKey: string) =>
+      api.post<ActionResultDto>(
+        `${recordPath(projectKey, resourceKey, id)}/actions/${encodeURIComponent(actionKey)}`,
+      ),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: runtimeKeys.record(projectKey, resourceKey, id) }),
   });
 }

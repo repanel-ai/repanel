@@ -31,6 +31,20 @@ export const api = {
     if (!response.ok) throw await errorFrom(response);
     return (await response.json()) as T;
   },
+
+  /**
+   * No body, and no parameter for one: the only thing this app posts is an
+   * action, and a v0 action carries no inputs — which record and which action
+   * are both in the address.
+   */
+  post: async <T>(path: string): Promise<T> => {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) throw await errorFrom(response);
+    return (await response.json()) as T;
+  },
 };
 
 /**

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   formatList,
+  type ActionValue,
   type Field,
   type ListRecordsQuery,
   type RecordId,
@@ -155,6 +156,43 @@ export class QueryBuilderService {
       text:
         `select ${column(ROW_ALIAS, field.key)} as ${quoteIdentifier(LOOKUP_ALIAS)} from ${from(resource)}` +
         ` where ${column(ROW_ALIAS, identity.key)} = ${parameters.bind(id)} limit 1`,
+      values: parameters.values(),
+      select: [],
+    };
+  }
+
+  /**
+   * One field of one record set to one literal — the only statement this engine
+   * writes that is not a read, and the only one a `dbUpdate` action needs.
+   *
+   * It is built here rather than beside the action because the rules of
+   * DECISIONS #024 are properties of this file: the table, the column and the
+   * key column are the definition's own and quoted, the value and the id are
+   * bound, and there is no second place a statement can be assembled. A write
+   * that went around it would be a write nothing had checked.
+   *
+   * `set` names a bare column: Postgres refuses a table-qualified target there,
+   * which is also why this is the one statement with no row alias.
+   */
+  update(resource: Resource, field: Field, value: ActionValue, id: RecordId): Query {
+    // Validation refuses a `dbUpdate` on a sensitive field; this is that rule
+    // standing where the statement is written, for a definition stored before
+    // it existed. `hidden` is deliberately not refused — hidden is a display
+    // choice and sensitive is a security one, and the two must not blur
+    // (DECISIONS #014).
+    if (field.sensitive) {
+      throw new UnservableResourceError(
+        `Resource \`${resource.key}\` cannot be written through \`${field.key}\`: the field is marked sensitive.`,
+      );
+    }
+
+    const identity = identityField(resource);
+    const parameters = new Parameters();
+
+    return {
+      text:
+        `update ${quoteIdentifier(resource.source.table)} set ${quoteIdentifier(field.key)} = ${parameters.bind(value)}` +
+        ` where ${quoteIdentifier(identity.key)} = ${parameters.bind(id)}`,
       values: parameters.values(),
       select: [],
     };

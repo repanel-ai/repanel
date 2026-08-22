@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
+import { ActionsModule } from "./actions/actions.module";
 import { AgentTokensModule } from "./agent-tokens/agent-tokens.module";
 import { AuthModule } from "./auth/auth.module";
 import { ConfigModule } from "./config/config.module";
@@ -14,6 +15,7 @@ import { RuntimeModule } from "./runtime/runtime.module";
 
 @Module({
   imports: [
+    ActionsModule,
     AgentTokensModule,
     AuthModule,
     ConfigModule,

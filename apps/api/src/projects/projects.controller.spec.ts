@@ -25,6 +25,10 @@ describe("ProjectsController", () => {
       asked.push(["requireOwned", projectId, ownerId]);
       return Promise.resolve(PROJECT);
     },
+    revealActionSecret: (projectId: string, ownerId: string) => {
+      asked.push(["revealActionSecret", projectId, ownerId]);
+      return Promise.resolve({ secret: "wJ8kQ" });
+    },
   } as unknown as ProjectsService;
   const controller = new ProjectsController(projects);
 
@@ -48,5 +52,11 @@ describe("ProjectsController", () => {
     await expect(controller.get(USER, PROJECT.id)).resolves.toEqual(PROJECT);
 
     expect(asked).toEqual([["requireOwned", PROJECT.id, "user-ada"]]);
+  });
+
+  it("asks for the signing secret as the signed-in user", async () => {
+    await expect(controller.actionSecret(USER, PROJECT.id)).resolves.toEqual({ secret: "wJ8kQ" });
+
+    expect(asked).toEqual([["revealActionSecret", PROJECT.id, "user-ada"]]);
   });
 });

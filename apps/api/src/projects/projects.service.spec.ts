@@ -1,10 +1,16 @@
 import { Test } from "@nestjs/testing";
 import type { Principal } from "../auth/principal";
+import { ConfigModule } from "../config/config.module";
+import { CryptoModule } from "../crypto/crypto.module";
+import { CryptoService } from "../crypto/crypto.service";
 import { ConflictError, NotFoundError } from "../errors/domain-errors";
 import { ProjectsRepository, type NewProjectRow, type ProjectRow } from "./projects.repository";
 import { ProjectsService } from "./projects.service";
 
-type ProjectStore = Pick<ProjectsRepository, "create" | "findById" | "findByKey" | "listByOwner">;
+type ProjectStore = Pick<
+  ProjectsRepository,
+  "create" | "findById" | "findByKey" | "listByOwner" | "claimActionSecret"
+>;
 
 /** Stands in for Postgres: same behavior, including how a taken key is refused. */
 class InMemoryProjectsRepository implements ProjectStore {
@@ -28,6 +34,7 @@ class InMemoryProjectsRepository implements ProjectStore {
       userId: project.userId,
       name: project.name,
       key: project.key,
+      actionSecret: null,
       createdAt: new Date(),
     };
     this.projects.push(created);
@@ -45,6 +52,18 @@ class InMemoryProjectsRepository implements ProjectStore {
   listByOwner(ownerId: string): Promise<ProjectRow[]> {
     return Promise.resolve(this.projects.filter((project) => project.userId === ownerId));
   }
+
+  /** The same `is null` predicate Postgres applies: the first write wins. */
+  claimActionSecret(projectId: string, encrypted: string): Promise<string | undefined> {
+    const project = this.projects.find((candidate) => candidate.id === projectId);
+    if (!project) return Promise.resolve(undefined);
+    project.actionSecret ??= encrypted;
+    this.claims += 1;
+    return Promise.resolve(project.actionSecret);
+  }
+
+  /** How many times a secret was written for, however many were stored. */
+  claims = 0;
 
   /** Stands in for the collision the suffix exists to make unlikely. */
   refuseNextKeys(count: number): void {
@@ -68,14 +87,19 @@ async function refusalFrom(call: Promise<unknown>): Promise<Error> {
 
 describe("ProjectsService", () => {
   let repository: InMemoryProjectsRepository;
+  let crypto: CryptoService;
   let service: ProjectsService;
 
   beforeEach(async () => {
     repository = new InMemoryProjectsRepository();
     const moduleRef = await Test.createTestingModule({
+      // The real CryptoService, on the suite's throwaway key: what a secret
+      // looks like in the column is half of what these cases are about.
+      imports: [ConfigModule, CryptoModule],
       providers: [ProjectsService, { provide: ProjectsRepository, useValue: repository }],
     }).compile();
 
+    crypto = moduleRef.get(CryptoService);
     service = moduleRef.get(ProjectsService);
   });
 
@@ -119,9 +143,9 @@ describe("ProjectsService", () => {
       const outage = new Error("connection lost");
       const failing = { create: () => Promise.reject(outage) } as unknown as ProjectsRepository;
 
-      await expect(new ProjectsService(failing).create(ADA, { name: "SkyScout" })).rejects.toBe(
-        outage,
-      );
+      await expect(
+        new ProjectsService(failing, crypto).create(ADA, { name: "SkyScout" }),
+      ).rejects.toBe(outage);
     });
   });
 
@@ -196,6 +220,81 @@ describe("ProjectsService", () => {
       // A key is guessable in a way an id is not, so telling the two apart here
       // would be the more useful oracle of the two.
       expect(nothingAtAll.message).toBe(somebodyElses.message);
+    });
+  });
+
+  describe("actionSecret", () => {
+    it("mints a secret the first time one is needed, and stores it encrypted", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      const secret = await service.actionSecret(project.id);
+
+      expect(secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      const stored = repository.projects[0]?.actionSecret;
+      expect(stored).toBeDefined();
+      expect(stored).not.toContain(secret);
+      expect(crypto.decrypt(stored as string)).toBe(secret);
+    });
+
+    it("answers with the same secret every time after that", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      const first = await service.actionSecret(project.id);
+      const again = await service.actionSecret(project.id);
+
+      expect(again).toBe(first);
+      // A signature nothing can verify is worse than no signature: the second
+      // call must read what is stored rather than write over it.
+      expect(repository.claims).toBe(1);
+    });
+
+    it("gives two projects two different secrets", async () => {
+      const skyscout = await service.create(ADA, { name: "SkyScout" });
+      const compiler = await service.create(GRACE, { name: "Compiler" });
+
+      expect(await service.actionSecret(skyscout.id)).not.toBe(
+        await service.actionSecret(compiler.id),
+      );
+    });
+
+    it("has no secret for a project that is not there", async () => {
+      const refusal = await refusalFrom(service.actionSecret("project-404"));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    /**
+     * Two first uses racing — an action signing while the owner reads the key
+     * out of the console — must end up signing and verifying with one value.
+     */
+    it("hands both sides of a race the secret that landed", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      const [signing, revealed] = await Promise.all([
+        service.actionSecret(project.id),
+        service.revealActionSecret(project.id, ADA),
+      ]);
+
+      expect(revealed.secret).toBe(signing);
+    });
+  });
+
+  describe("revealActionSecret", () => {
+    it("answers the owner with the plaintext their application needs", async () => {
+      const project = await service.create(ADA, { name: "SkyScout" });
+
+      const revealed = await service.revealActionSecret(project.id, ADA);
+
+      expect(revealed).toEqual({ secret: await service.actionSecret(project.id) });
+    });
+
+    it("does not answer anybody else, and does not mint one for them", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+
+      const refusal = await refusalFrom(service.revealActionSecret(project.id, ADA));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(repository.projects[0]?.actionSecret).toBeNull();
     });
   });
 

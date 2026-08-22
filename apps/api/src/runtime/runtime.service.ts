@@ -45,7 +45,7 @@ const DATA_EXCEPTION = "22";
 const NO_DEFINITION = "This project has no valid definition yet";
 
 /** A project, its definition, and the resource a route named in it. */
-interface ResourceContext {
+export interface ResourceContext {
   projectId: string;
   definition: Definition;
   resources: ReadonlyMap<string, Resource>;
@@ -227,7 +227,15 @@ export class RuntimeService {
     };
   }
 
-  private async resourceContext(
+  /**
+   * The project, its definition and one resource out of it, with ownership
+   * already established. Public because acting on a record starts exactly where
+   * reading one does — the same owner check, the same revalidated definition,
+   * the same resource lookup — and the actions feature reaching for this
+   * instead of assembling its own is what keeps there being one answer to "may
+   * this caller see this resource, and what does it say".
+   */
+  async resourceContext(
     ownerId: string,
     projectKey: string,
     resourceKey: string,

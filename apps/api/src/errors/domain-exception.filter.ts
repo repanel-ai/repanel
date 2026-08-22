@@ -9,6 +9,7 @@ import {
 import type { ErrorEnvelope, ValidationError } from "@repanel/contracts";
 import type { Response } from "express";
 import {
+  ActionFailedError,
   ConflictError,
   DomainError,
   ForbiddenError,
@@ -58,6 +59,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
 }
 
 function statusOf(error: DomainError): number {
+  // A failure of the customer's application, answered as one: RePanel signed
+  // and sent the request, and what is upstream of it did not accept it.
+  if (error instanceof ActionFailedError) {
+    return error.code === "action_timeout" ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.BAD_GATEWAY;
+  }
   if (error instanceof NotFoundError) return HttpStatus.NOT_FOUND;
   if (error instanceof UnauthorizedError) return HttpStatus.UNAUTHORIZED;
   if (error instanceof ForbiddenError) return HttpStatus.FORBIDDEN;

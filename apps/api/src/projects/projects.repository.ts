@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { DbService } from "../db/db.service";
 import { projects } from "../db/schema";
 import { isUniqueViolation } from "../db/unique-violation";
@@ -44,6 +44,28 @@ export class ProjectsRepository {
       .where(eq(projects.key, key))
       .limit(1);
     return project;
+  }
+
+  /**
+   * Files a signing secret for a project that has none, and answers with the
+   * one that is now there: the caller's if it landed, the one already stored if
+   * another request got there first.
+   *
+   * The `is null` in the predicate is what makes that true under concurrency.
+   * Two first uses can race — an action running while the owner reads the
+   * secret out of the console is the ordinary case — and a plain update would
+   * let the second overwrite the first, leaving a customer application holding
+   * a key nothing signs with any more.
+   */
+  async claimActionSecret(projectId: string, encrypted: string): Promise<string | undefined> {
+    const [claimed] = await this.database.db
+      .update(projects)
+      .set({ actionSecret: encrypted })
+      .where(and(eq(projects.id, projectId), isNull(projects.actionSecret)))
+      .returning();
+    if (claimed?.actionSecret) return claimed.actionSecret;
+
+    return (await this.findById(projectId))?.actionSecret ?? undefined;
   }
 
   async listByOwner(ownerId: string): Promise<ProjectRow[]> {

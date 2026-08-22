@@ -1,4 +1,10 @@
-import type { DefinitionInput, ProjectDto } from "@repanel/contracts";
+import {
+  validateDefinition,
+  type DefinitionInput,
+  type Field,
+  type ProjectDto,
+  type Resource,
+} from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import { Client } from "pg";
 import type { ConfigService } from "../config/config.service";
@@ -73,7 +79,11 @@ create table ${SCHEMA}.users (
   organization_id uuid references ${SCHEMA}.organizations(id),
   is_active boolean not null,
   notes text,
-  created_at timestamptz not null
+  created_at timestamptz not null,
+  avatar_url text,
+  trial_ends_on date,
+  login_count integer not null,
+  preferences jsonb
 );
 
 create table ${SCHEMA}.orders (
@@ -109,10 +119,10 @@ insert into ${SCHEMA}.organizations (id, name, plan, billing_email, settings, cr
   ('${ACME}', 'Acme', 'pro', 'billing@acme.test', '{"seats":40}', '2026-01-05T09:00:00Z'),
   ('${BETA}', 'Beta', 'free', 'billing@beta.test', '{"seats":3}', '2026-02-05T09:00:00Z');
 
-insert into ${SCHEMA}.users (id, email, name, status, password_hash, organization_id, is_active, notes, created_at) values
-  ('${ADA}', 'ada@acme.test', 'Ada', 'active', 'scrypt$do-not-leak', '${ACME}', true, 'founding user', '2026-03-01T09:00:00Z'),
-  ('${BOB}', 'bob@acme.test', 'Bob', 'suspended', 'scrypt$do-not-leak', '${ACME}', false, null, '2026-02-01T09:00:00Z'),
-  ('${CY}', 'cy@beta.test', 'Cy', 'invited', 'scrypt$do-not-leak', null, true, '50% trial', '2026-01-01T09:00:00Z');
+insert into ${SCHEMA}.users (id, email, name, status, password_hash, organization_id, is_active, notes, created_at, avatar_url, trial_ends_on, login_count, preferences) values
+  ('${ADA}', 'ada@acme.test', 'Ada', 'active', 'scrypt$do-not-leak', '${ACME}', true, 'founding user', '2026-03-01T09:00:00Z', 'https://cdn.acme.test/ada.png', '2026-09-30', 1284, '{"theme":"dark"}'),
+  ('${BOB}', 'bob@acme.test', 'Bob', 'suspended', 'scrypt$do-not-leak', '${ACME}', false, null, '2026-02-01T09:00:00Z', null, null, 12, null),
+  ('${CY}', 'cy@beta.test', 'Cy', 'invited', 'scrypt$do-not-leak', null, true, '50% trial', '2026-01-01T09:00:00Z', null, null, 0, null);
 
 insert into ${SCHEMA}.orders (id, reference, user_id, status, total_cents, metadata, placed_at) values
   ('dddddddd-1111-4111-8111-dddddddddddd', 'REF-1', '${ADA}', 'paid', 1050, '{"channel":"web"}', '2026-03-02T09:00:00Z'),
@@ -124,6 +134,21 @@ insert into ${SCHEMA}."Team" (id, "displayName", "seatCount") values ('team-1', 
 insert into ${SCHEMA}."User" (id, email, "avatarUrl", "teamId", "signedUpOn", "createdAt") values
   ('user-1', 'ada@acme.test', 'https://cdn.acme.test/ada.png', 'team-1', '2026-01-01', '2026-08-19 10:00:00');
 `;
+
+/** One resource out of a fixture, as validation makes it: defaults applied. */
+function resourceIn(input: DefinitionInput, key: string): Resource {
+  const result = validateDefinition(input);
+  if (!result.valid) throw new Error(`the fixture is not valid: ${JSON.stringify(result.errors)}`);
+  const resource = result.definition.resources.find((candidate) => candidate.key === key);
+  if (!resource) throw new Error(`the fixture has no resource \`${key}\``);
+  return resource;
+}
+
+function fieldOf(resource: Resource, key: string): Field {
+  const field = resource.fields.find((candidate) => candidate.key === key);
+  if (!field) throw new Error(`\`${resource.key}\` has no field \`${key}\``);
+  return field;
+}
 
 /** The same database, seen only through the schema this spec owns. */
 function scopedTo(dsn: string, schema: string): string {
@@ -398,6 +423,86 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
       // The statement asked for ten seconds and did not get them.
       expect(Date.now() - started).toBeLessThan(9_000);
+    });
+  });
+
+  /**
+   * The one statement this engine writes that is not a read. It is proved here
+   * for the reason every read is: quoting, row counts and what the server does
+   * with a value it cannot read are the server's answers, not a stub's
+   * (DECISIONS #022). Each case seeds and drops its own row, so nothing above
+   * depends on the order these run in.
+   */
+  describe("a write", () => {
+    const SUBJECT = "eeeeeeee-4444-4444-8444-eeeeeeeeeeee";
+    const PRISMA_SUBJECT = "user-write";
+    const builder = new QueryBuilderService();
+    const USERS = resourceIn(saasDefinition, "users");
+    const PRISMA_USER = resourceIn(prismaDefinition, "User");
+
+    beforeEach(async () => {
+      await admin.query(
+        `insert into ${SCHEMA}.users (id, email, name, status, password_hash, organization_id, is_active, notes, created_at, avatar_url, trial_ends_on, login_count, preferences)
+         values ($1, 'wren@acme.test', 'Wren', 'active', 'scrypt$do-not-leak', '${ACME}', true, null, '2026-04-01T09:00:00Z', null, null, 4, null)`,
+        [SUBJECT],
+      );
+      await admin.query(
+        `insert into ${SCHEMA}."User" (id, email, "avatarUrl", "teamId", "signedUpOn", "createdAt")
+         values ($1, 'wren@acme.test', null, 'team-1', '2026-02-02', '2026-08-19 10:00:00')`,
+        [PRISMA_SUBJECT],
+      );
+    });
+
+    afterEach(async () => {
+      await admin.query(`delete from ${SCHEMA}.users where id = $1`, [SUBJECT]);
+      await admin.query(`delete from ${SCHEMA}."User" where id = $1`, [PRISMA_SUBJECT]);
+    });
+
+    async function run(query: { text: string; values: unknown[] }): Promise<number | null> {
+      const pool = await pools.poolFor(PROJECT.id);
+      const result = await pool.query({ text: query.text, values: query.values });
+      return result.rowCount;
+    }
+
+    it("sets the one column it named, on the one row it named", async () => {
+      const affected = await run(builder.update(USERS, fieldOf(USERS, "status"), "suspended", SUBJECT));
+
+      expect(affected).toBe(1);
+      const record = await runtime.getRecord(OWNER, PROJECT.key, "users", SUBJECT);
+      expect(record.values.status).toBe("suspended");
+      // Everything else on the row is where it was.
+      expect(record.values.email).toBe("wren@acme.test");
+      expect(record.values.login_count).toBe(4);
+      // And so is everything else on the table.
+      expect((await runtime.getRecord(OWNER, PROJECT.key, "users", ADA)).values.status).toBe("active");
+    });
+
+    it("writes a boolean literal as a boolean the column accepts", async () => {
+      const affected = await run(builder.update(USERS, fieldOf(USERS, "is_active"), false, SUBJECT));
+
+      expect(affected).toBe(1);
+      expect((await runtime.getRecord(OWNER, PROJECT.key, "users", SUBJECT)).values.is_active).toBe(false);
+    });
+
+    it("affects nothing when the id names no row", async () => {
+      const affected = await run(
+        builder.update(USERS, fieldOf(USERS, "status"), "suspended", "99999999-9999-4999-8999-999999999999"),
+      );
+
+      expect(affected).toBe(0);
+    });
+
+    /** Postgres folds an unquoted identifier, so a Prisma-shaped write only lands quoted. */
+    it("writes through a mixed-case table and column", async () => {
+      draft = prismaDefinition;
+
+      const affected = await run(
+        builder.update(PRISMA_USER, fieldOf(PRISMA_USER, "avatarUrl"), "https://cdn.acme.test/new.png", PRISMA_SUBJECT),
+      );
+
+      expect(affected).toBe(1);
+      const record = await runtime.getRecord(OWNER, PROJECT.key, "User", PRISMA_SUBJECT);
+      expect(record.values.avatarUrl).toBe("https://cdn.acme.test/new.png");
     });
   });
 

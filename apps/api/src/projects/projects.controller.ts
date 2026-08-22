@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from "@nestjs/common";
-import { createProjectRequestSchema, type ProjectDto, type UserDto } from "@repanel/contracts";
+import {
+  createProjectRequestSchema,
+  type ActionSecretDto,
+  type ProjectDto,
+  type UserDto,
+} from "@repanel/contracts";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionAuthGuard } from "../auth/session-auth.guard";
 import { zodDto } from "../validation/zod-dto";
@@ -26,5 +31,14 @@ export class ProjectsController {
   @Get(":id")
   get(@CurrentUser() user: UserDto, @Param("id", ParseUUIDPipe) id: string): Promise<ProjectDto> {
     return this.projects.requireOwned(id, user.id);
+  }
+
+  /** The one route that answers with a signing secret, and only to its owner. */
+  @Get(":id/action-secret")
+  actionSecret(
+    @CurrentUser() user: UserDto,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<ActionSecretDto> {
+    return this.projects.revealActionSecret(id, user.id);
   }
 }

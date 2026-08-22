@@ -465,4 +465,84 @@ describe("QueryBuilderService", () => {
       expect(refusal).toBeInstanceOf(UnservableResourceError);
     });
   });
+
+  describe("update", () => {
+    it("sets one column of one record, with both values bound", () => {
+      const query = builder.update(USERS, fieldOf(USERS, "status"), "suspended", "user-1");
+
+      expect(query.text).toBe('update "users" set "status" = $1 where "id" = $2');
+      expect(query.values).toEqual(["suspended", "user-1"]);
+    });
+
+    it("writes a boolean and a null as the literals they are", () => {
+      expect(builder.update(USERS, fieldOf(USERS, "is_active"), false, "user-1").values).toEqual([
+        false,
+        "user-1",
+      ]);
+      expect(builder.update(USERS, fieldOf(USERS, "notes"), null, "user-1").values).toEqual([
+        null,
+        "user-1",
+      ]);
+    });
+
+    /**
+     * Postgres folds an unquoted identifier to lower case, so a Prisma-shaped
+     * schema is only writable if the write quotes what it names — the same rule
+     * every read here follows (DECISIONS #022).
+     */
+    it("quotes the identifiers, so a mixed-case schema is writable", () => {
+      const prisma = definitionFrom(prismaDefinition);
+      const user = resourceOf(prisma, "User");
+
+      const query = builder.update(user, fieldOf(user, "avatarUrl"), "https://x.test/a.png", "u1");
+
+      expect(query.text).toBe('update "User" set "avatarUrl" = $1 where "id" = $2');
+    });
+
+    /**
+     * Validation refuses a `dbUpdate` on a sensitive field; this is the same
+     * rule standing where the statement is written. `hidden` is deliberately
+     * not refused — hidden is a display choice, sensitive is a security one,
+     * and the two must not blur (DECISIONS #014).
+     */
+    it("refuses to write a sensitive column", () => {
+      const refusal = refusalFrom(() =>
+        builder.update(USERS, fieldOf(USERS, "password_hash"), "x", "user-1"),
+      );
+
+      expect(refusal).toBeInstanceOf(UnservableResourceError);
+      expect(refusal.message).toContain("password_hash");
+    });
+
+    it("still writes a hidden column, because hidden is only about display", () => {
+      const query = builder.update(USERS, fieldOf(USERS, "preferences"), null, "user-1");
+
+      expect(query.text).toBe('update "users" set "preferences" = $1 where "id" = $2');
+    });
+
+    it("refuses to address a record whose key the resource has made a secret of", () => {
+      const secretKey = definitionFrom(saasDefinition, (draft) => {
+        const orders = draftResource(draft, "orders");
+        orders.primaryKey = "reference";
+        orders.fields = orders.fields.map((field) =>
+          field.key === "reference" ? { ...field, hidden: false } : field,
+        );
+      });
+      const orders = resourceOf(secretKey, "orders");
+      // The definition is valid; the field is made sensitive after validation,
+      // which is the shape a definition stored before the rule existed has.
+      const withSecretKey: Resource = {
+        ...orders,
+        fields: orders.fields.map((field) =>
+          field.key === "reference" ? { ...field, sensitive: true } : field,
+        ),
+      };
+
+      const refusal = refusalFrom(() =>
+        builder.update(withSecretKey, fieldOf(withSecretKey, "status"), "refunded", "AC-1"),
+      );
+
+      expect(refusal).toBeInstanceOf(UnservableResourceError);
+    });
+  });
 });

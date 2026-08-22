@@ -15,5 +15,6 @@ export * from "./definition/views.js";
 export * from "./errors/envelope.js";
 export * from "./projects/project.js";
 export * from "./projects/requests.js";
+export * from "./runtime/actions.js";
 export * from "./runtime/records.js";
 export * from "./runtime/requests.js";

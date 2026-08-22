@@ -34,3 +34,10 @@ export const actionSchema = z.discriminatedUnion("kind", [
 export type Action = z.infer<typeof actionSchema>;
 export type ActionKind = Action["kind"];
 export type HttpMethod = (typeof HTTP_METHODS)[number];
+
+/** One arm of the union each, named so a caller can say which it is holding. */
+export type DbUpdateAction = Extract<Action, { kind: "dbUpdate" }>;
+export type HttpCallAction = Extract<Action, { kind: "httpCall" }>;
+
+/** What a `dbUpdate` writes: one literal, never an expression. */
+export type ActionValue = DbUpdateAction["value"];

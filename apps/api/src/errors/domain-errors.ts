@@ -58,6 +58,36 @@ export class UnservableResourceError extends DomainError {
   readonly code = "unservable_resource";
 }
 
+/**
+ * Why a call to a customer's application did not succeed, in categories rather
+ * than in the application's own words.
+ *
+ * The categories are the public part. A customer's response body is never
+ * forwarded — it is their data, on its way into an operator's browser, and
+ * RePanel has no idea what is in it — so what a caller gets is which of four
+ * things happened and nothing else. `action_failed` is the honest fourth: it
+ * says the call did not succeed and does not pretend to know why.
+ */
+export type ActionFailureCode =
+  | "action_rejected"
+  | "action_unreachable"
+  | "action_timeout"
+  | "action_failed";
+
+/**
+ * The customer's application did not accept the action. It is their failure and
+ * it reads as one — the filter answers with a gateway status, because RePanel
+ * did its part and the thing on the other end did not.
+ */
+export class ActionFailedError extends DomainError {
+  constructor(
+    readonly code: ActionFailureCode,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 /** Input that parsed but did not hold up. Details use the contracts error shape. */
 export class ValidationFailedError extends DomainError {
   readonly code = "validation_failed";

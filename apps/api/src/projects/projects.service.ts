@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import type { CreateProjectRequest, ProjectDto } from "@repanel/contracts";
+import type { ActionSecretDto, CreateProjectRequest, ProjectDto } from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
+import { CryptoService } from "../crypto/crypto.service";
 import { ConflictError, NotFoundError } from "../errors/domain-errors";
+import { createActionSecret } from "./action-secret";
 import { createProjectKey } from "./project-key";
 import { toProjectDto } from "./projects.mapper";
 import { ProjectsRepository } from "./projects.repository";
@@ -14,7 +16,10 @@ const KEY_ATTEMPTS = 3;
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly repository: ProjectsRepository) {}
+  constructor(
+    private readonly repository: ProjectsRepository,
+    private readonly crypto: CryptoService,
+  ) {}
 
   async create(ownerId: string, { name }: CreateProjectRequest): Promise<ProjectDto> {
     for (let attempt = 0; attempt < KEY_ATTEMPTS; attempt += 1) {
@@ -54,6 +59,40 @@ export class ProjectsService {
     const project = await this.repository.findByKey(key);
     if (!project || project.userId !== ownerId) throw new NotFoundError("Project not found");
     return toProjectDto(project);
+  }
+
+  /**
+   * The key this project's outbound action requests are signed with, minted the
+   * first time anything needs one. Nothing here decides who may ask: a caller
+   * has been authorized long before it gets this far, the same way the customer
+   * pool works.
+   *
+   * Minting lazily rather than at creation keeps a project that never calls out
+   * from holding a secret at all — an unused key is a liability with no
+   * corresponding use.
+   */
+  async actionSecret(projectId: string): Promise<string> {
+    const project = await this.repository.findById(projectId);
+    if (!project) throw new NotFoundError("Project not found");
+    if (project.actionSecret) return this.crypto.decrypt(project.actionSecret);
+
+    const stored = await this.repository.claimActionSecret(
+      projectId,
+      this.crypto.encrypt(createActionSecret()),
+    );
+    if (!stored) throw new NotFoundError("Project not found");
+    return this.crypto.decrypt(stored);
+  }
+
+  /**
+   * The same secret, for the owner who has to put it into the other side. This
+   * is the only response that ever carries it in the clear: the column holds
+   * ciphertext, and a customer application cannot verify a signature it does
+   * not have the key for (DECISIONS #013).
+   */
+  async revealActionSecret(projectId: string, ownerId: string): Promise<ActionSecretDto> {
+    await this.requireOwned(projectId, ownerId);
+    return { secret: await this.actionSecret(projectId) };
   }
 
   /**

@@ -44,6 +44,11 @@ test("validation applies the v0 defaults", () => {
   assert.ok(orders);
   assert.equal(orders.readOnly, true, "resources are read-only unless stated");
   assert.deepEqual(orders.views.detail.relatedLists, [], "an omitted related list becomes empty");
+  assert.equal(
+    orders.views.detail.relatedLayout,
+    "inline",
+    "related records are read alongside the record unless the definition says otherwise",
+  );
 
   const id = orders.fields.find((field) => field.key === "id");
   assert.ok(id);
@@ -93,6 +98,22 @@ test("an unknown value for a discriminator points at the discriminator itself", 
   assert.equal(error.path, "resources[1].fields[1].type");
   assert.equal(error.message, "`emailAddress` is not a valid value for `type`.");
   assert.match(error.hint, /to one of: text, longText, number, boolean, date, dateTime, email, url, json, enum, relation\.$/);
+});
+
+test("a layout the runtime cannot draw is refused with the ones it can", () => {
+  const input = draft();
+  const users = (input.resources as Record<string, unknown>[])[1] as Record<string, unknown>;
+  const views = users.views as { detail: Record<string, unknown> };
+  views.detail.relatedLayout = "sidebar";
+
+  const error = onlyErrorOf(input);
+  assert.equal(error.path, "resources[1].views.detail.relatedLayout");
+  assert.equal(error.message, "`sidebar` is not a valid value for `relatedLayout`.");
+  assert.equal(error.expected, "one of: inline, tabs");
+  assert.equal(
+    error.hint,
+    "Change `resources[1].views.detail.relatedLayout` to one of: inline, tabs.",
+  );
 });
 
 test("an unknown schema version is rejected with the version this package speaks", () => {

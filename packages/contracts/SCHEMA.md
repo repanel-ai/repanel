@@ -311,6 +311,7 @@ then checks what a schema cannot express:
 - a `belongsTo` foreign key exists on the declaring resource, a `hasMany`
   foreign key on the target;
 - searchable fields are text-typed and filter kinds match field types;
+- a detail view asking for the `tabs` layout names at least one related list;
 - sensitive fields never appear as table columns, search fields, filters or
   the default sort, never inside an `httpCall` URL template, and are never a
   resource's primary key, its label field, or a relationship's foreign key;

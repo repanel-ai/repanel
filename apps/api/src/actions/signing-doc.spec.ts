@@ -117,7 +117,7 @@ describe("the verification snippet in docs/SIGNING.md", () => {
     ["the url", { url: "http://127.0.0.1:9/repanel/users/u_2/resend-invite" }],
     ["the timestamp", { timestamp: String(Math.floor(Date.now() / 1000) + 1) }],
     ["the signature", { signature: `v1=${"0".repeat(64)}` }],
-  ])("refuses a request whose %s was changed in flight", (_part, difference) => {
+  ])("refuses a request with %s changed in flight", (_part, difference) => {
     expect(verifyRepanelRequest({ ...sent, ...difference, secret: SECRET })).toBe(false);
   });
 

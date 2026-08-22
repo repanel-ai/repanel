@@ -381,6 +381,94 @@ The header — the record's name, its state, its key, and the way back — sits
 above the bar and does not move between tabs. It identifies the record, and the
 record is the same record on every panel.
 
+## 10. Asking, and answering — the confirmation and the notice
+
+An action is the one thing in this admin that changes a customer's data, and
+v0's schema says exactly two things about one: what it is called, and what to
+say before running it. The design adds nothing to either.
+
+### The action row
+
+Actions sit on the record's header, opposite the name — the header identifies
+the record and does not move between tabs (§9), and neither does what may be
+done to it. They are `outline` buttons at the control size, all of them, in the
+order the definition lists them.
+
+**No action is drawn as the important one.** Nothing in the schema marks an
+action primary or destructive, and reading that out of a label is the same
+guess §4 refuses to make about a value's spelling — `Suspend` is routine in one
+product and the end of somebody's month in another. A row of equals is the
+honest drawing, and the `primary` fill is spent inside the dialog instead,
+where there is exactly one thing to go ahead with.
+
+| | value |
+|---|---|
+| button | `--h-control` 32px, `--t-body` 13.5 / 500, `outline` |
+| gap | 8px |
+
+### The dialog
+
+The browser's own `<dialog>`, opened modally. The top layer, the backdrop, the
+focus trap, the escape key and making the rest of the page inert are all things
+the platform does correctly, and none of them is written here — measured on the
+built page, `:modal` is true, so the record behind really is inert. What is
+written here is what it looks like.
+
+| | value |
+|---|---|
+| surface | `--card` — the step above the panel |
+| width | 416px (`min(26rem, 100vw - 2rem)`) |
+| radius | `--radius-xl` 10.08px, matching the panel's own |
+| title | `--t-body` 13.5 / 500, `--foreground` |
+| body | `--t-body` 13.5, `--muted-foreground` — the definition's `confirm`, verbatim |
+| backdrop | `#000` at 45% |
+| answers | `Cancel` (`outline`), then the action's own label (`primary`) |
+
+The confirm button wears the action's label rather than a generic `Confirm`, so
+the button that was pressed and the button that goes ahead say the same word.
+The heading does too: the whole dialog is one sentence with the author's
+warning in the middle of it.
+
+`--card` is the surface because it is already the ladder's step above the panel
+— in dark it measures 0.0063 of relative luminance above it. In light both are
+`#ffffff` and the backdrop is what makes the step, which is what a scrim is
+for; the hairline is `--border` in both.
+
+Two refusals, both deliberate. A click on the backdrop dismisses nothing: a
+stray click is not an answer to a question about somebody's data. And once the
+request is out, escape stops cancelling and both buttons disable, because there
+is nothing left to cancel — the dialog says `Running…` in `--t-small`
+`--muted-foreground` and waits.
+
+### The notice
+
+A toast, bottom right, in §4's own two tones — a state that went well and one
+that did not are the same kind of object as the badges, told apart the same way.
+
+| tone | fill / hairline / title | used for |
+|---|---|---|
+| `positive` | `--positive-soft` / `--positive-line` / `--positive-text` | it ran |
+| `critical` | `--destructive-soft` / `--destructive-line` / `--destructive-text` | it did not |
+
+Measured on their own tints: title 4.74 / 4.94 positive and 5.12 / 4.79
+critical (light / dark), and the description 16.56 / 12.78 — the same numbers
+§4 records, because they are the same tokens. Hairlines measure 1.30–1.65
+against the fill, inside the band `--border` occupies.
+
+**A success clears itself after five seconds; a failure does not.** A success
+is a receipt for something the operator can already see — the badge behind it
+has changed — so it may go. A failure carries the only account of what
+happened that will ever reach that browser, and something a person has to read
+is something they get to dismiss. A success is a `status`; a failure is an
+`alert`, which is read out the moment it arrives.
+
+The failure's second line is the API's own message and nothing else. The
+runtime writes no sentence about what went wrong upstream of it: it does not
+know, and the four categories it is told are exactly what a customer's
+application is willing to say through it.
+
+---
+
 ## BUILD REQUIREMENTS
 
 Conditions carried from direction approval. Each is binding on Stage 2.

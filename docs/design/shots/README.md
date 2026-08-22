@@ -170,3 +170,87 @@ The shots were re-taken after the navigation landed its marks and its corrected
 type ladder (DECISIONS #031, DESIGN §3/§8), so what they show is the sidebar as
 it now is.
 
+---
+
+# Task 012 · actions
+
+The same record, with what may be done to it. Shot the same way: the shared
+fixture definition (`@repanel/contracts/fixtures`, validated as the API
+validates it) against a stubbed API. `users` declares all three of v0's action
+shapes — two `dbUpdate`s and one `httpCall` — so one record covers the lot.
+
+| | light | dark |
+|---|---|---|
+| The record, with its actions | `actions-light.png` | `actions-dark.png` |
+| The question, in the definition's words | `action-confirm-light.png` | `action-confirm-dark.png` |
+| It ran | `action-success-light.png` | `action-success-dark.png` |
+| It did not | `action-failure-light.png` | `action-failure-dark.png` |
+
+1440×900 at 2×. The project key picks the scenario, as it does above: the
+sidebar reads `acme-broken` on the failure shot, where the stubbed application
+answers 500.
+
+`action-success-*` is the invalidation, visible: the operator confirmed
+`Suspend`, the record was read again, and the header badge is already
+`suspended` in the `critical` tone the fixture's `tones` map gives that value —
+the notice and the new state arrive together. `action-failure-*` is its
+opposite: the badge still reads `active`, because nothing about the record
+changed, and the toast carries the API's sanitized category message with no
+word of the customer's own response body in it.
+
+## Measured, from the rendered DOM
+
+Read out of the running app, both themes, with the dialog open and each notice
+on screen.
+
+```
+dialog        :modal true — the browser's own top layer, backdrop, focus trap
+              and escape; the record behind it is inert, and none of that is
+              written in this repo
+              surface --card 416px wide, radius 10.08px (--radius-xl)
+              step above the panel   dark +0.0063 relative luminance
+                                     light 0.0000 — both #ffffff, and the
+                                     backdrop (#000 at 45%) is the step
+              title 19.71 / 14.54 · body 5.75 / 5.38          (light / dark)
+
+toast tones   positive  title 4.74 / 4.94   hairline 1.30 / 1.65
+              critical  title 5.12 / 4.79   description 16.56 / 12.78
+                        hairline 1.40 / 1.39
+              (the same tokens §4 measures, so the same numbers; hairlines sit
+               in the band --border occupies at 1.31 / 1.42)
+
+roles         success `status`, failure `alert` — one waits for a gap, the
+              other is read out on arrival
+
+controls      action buttons 32px / 13.5px / 500, `outline`, 8px apart — the
+              control size, and no action drawn louder than its peers
+
+overflow      scrollWidth === clientWidth === 1440, both themes
+```
+
+## The signing document, checked rather than written down
+
+`docs/SIGNING.md` carries the scheme and a Node verification snippet.
+`apps/api/src/actions/signing-doc.spec.ts` reads that snippet out of the
+document, runs it, and points it at a request the real signer produced and a
+real HTTP server received:
+
+```
+PASS src/actions/signing-doc.spec.ts
+  the verification snippet in docs/SIGNING.md
+    ✓ verifies a request RePanel actually signed and sent
+    ✓ verifies a request under any method the schema allows
+    ✓ refuses the same request under a different secret
+    ✓ refuses a request with the method changed in flight
+    ✓ refuses a request with the url changed in flight
+    ✓ refuses a request with the timestamp changed in flight
+    ✓ refuses a request with the signature changed in flight
+    ✓ refuses a signature from a version it does not know
+    ✓ refuses a timestamp that is missing
+    ✓ refuses a timestamp that is not a number
+    ✓ refuses a perfectly good signature that is too old to still be meant
+    ✓ refuses a timestamp from further ahead than a clock can drift
+    ✓ allows the five minutes the document says it allows
+
+Tests: 13 passed, 13 total
+```

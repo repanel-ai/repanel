@@ -14,12 +14,20 @@ export const runtimeKeys = {
   project: (projectKey: string) => [...runtimeKeys.all, projectKey] as const,
   definition: (projectKey: string) => [...runtimeKeys.project(projectKey), "definition"] as const,
   /**
+   * Every page of one resource's list, whatever was asked for it. It is the
+   * prefix the questions below are built from, so putting a resource's table
+   * out of date is one key rather than one key per search, filter and page an
+   * operator has been through.
+   */
+  resourceRecords: (projectKey: string, resourceKey: string) =>
+    [...runtimeKeys.project(projectKey), "records", resourceKey] as const,
+  /**
    * `query` is the serialized table state — the same string the address bar
    * carries and the request is made of, so two questions share a cache entry
    * exactly when they are the same question.
    */
   records: (projectKey: string, resourceKey: string, query: string) =>
-    [...runtimeKeys.project(projectKey), "records", resourceKey, query] as const,
+    [...runtimeKeys.resourceRecords(projectKey, resourceKey), query] as const,
   record: (projectKey: string, resourceKey: string, id: RecordId) =>
     [...runtimeKeys.project(projectKey), "record", resourceKey, String(id)] as const,
   /**
@@ -94,10 +102,10 @@ export function useRelatedRecords(
  * the action does was decided when the definition was written, and the API
  * reads it from there rather than from here.
  *
- * On success the record is put out of date, which is also what refreshes the
- * lists hanging off it — `related` is filed under `record`, so one key covers
- * everything the action could have changed on this screen. A status the action
- * set is on screen by the time the notice about it is.
+ * On success two things are put out of date, because an action can be read in
+ * two places. A status the action set is on screen by the time the notice about
+ * it is, and the table the operator came from shows the new one when they go
+ * back rather than the one they acted on.
  */
 export function useRunAction(projectKey: string, resourceKey: string, id: RecordId) {
   const client = useQueryClient();
@@ -108,6 +116,16 @@ export function useRunAction(projectKey: string, resourceKey: string, id: Record
         `${recordPath(projectKey, resourceKey, id)}/actions/${encodeURIComponent(actionKey)}`,
       ),
     onSuccess: () =>
-      client.invalidateQueries({ queryKey: runtimeKeys.record(projectKey, resourceKey, id) }),
+      Promise.all([
+        // The record, and with it every list hanging off it — `related` is
+        // filed under `record`, so one key covers this whole screen.
+        client.invalidateQueries({ queryKey: runtimeKeys.record(projectKey, resourceKey, id) }),
+        // And every page of the resource's own table, which draws the same
+        // fields an action has just changed. None of it is mounted, so nothing
+        // is refetched now: it is marked stale, and read again when it is next
+        // looked at. That the table would refetch on mount anyway is a property
+        // of a default, and this is a fact about what the action changed.
+        client.invalidateQueries({ queryKey: runtimeKeys.resourceRecords(projectKey, resourceKey) }),
+      ]),
   });
 }

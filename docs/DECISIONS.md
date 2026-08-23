@@ -258,3 +258,22 @@ only input would be a count, and choosing a screen from a count is guessing
 about someone else's domain — the same mistake #029 refuses for badge severity.
 The vocabulary is closed and grows additively; `inline` is what every
 definition written before this one already meant.
+
+033 · 2026-08 · A definition is authored as many files and submitted as one:
+`repanel/app.json` (schemaVersion, app, navigation) plus
+`repanel/resources/<key>.json`, one resource per file, filename equal to the
+resource key. The single-file `repanel/definition.json` of #022 remains valid
+as the degenerate case — three resources do not need a directory — and is
+still what the repo convention means for a small app; this amends #022's
+filename, not its ruling that the server is execution truth and the file is
+reviewable source. Submission is unchanged and is not negotiable:
+`submit_definition` replaces the whole draft, so the agent composes the files
+into one object (resources sorted by filename, stably, because validation
+error paths are indices into that array) before calling it. A CLI does the
+assembly at MVP; until then the agent does, and writes the files regardless
+because the files are what the customer reviews. Standardized in
+docs/AUTHORING.md, which task 013 makes the guide every customer's agent
+reads. Why: one file per resource is how a definition stays reviewable once it
+is real — a resource is the unit a human changes, diffs and blames, and a
+thousand-line JSON blob makes every change look like the same change. The
+split costs nothing at the wire, because the wire never sees it.

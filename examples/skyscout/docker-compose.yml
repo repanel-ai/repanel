@@ -1,0 +1,17 @@
+# SkyScout's own database. It is a customer's database, not RePanel's, so it
+# runs on its own port: both can be up at once, which is the whole point —
+# RePanel connects to this one from outside.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: skyscout
+      POSTGRES_PASSWORD: skyscout
+      POSTGRES_DB: skyscout
+    ports:
+      - "5433:5432"
+    volumes:
+      - skyscout-postgres:/var/lib/postgresql/data
+
+volumes:
+  skyscout-postgres:

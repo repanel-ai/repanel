@@ -42,6 +42,20 @@ export class ConnectionsService {
     return toConnectionDto(saved, dsn);
   }
 
+  /**
+   * What this project's connection reaches, or null while it reaches nothing.
+   * The DSN is decrypted only to be taken apart: what leaves is the host and
+   * the database name, which is what a human needs to recognize it by.
+   */
+  async get(ownerId: string, projectId: string): Promise<ConnectionDto | null> {
+    await this.projects.requireOwned(projectId, ownerId);
+
+    const connection = await this.repository.findByProjectId(projectId);
+    if (!connection) return null;
+
+    return toConnectionDto(connection, this.crypto.decrypt(connection.encryptedDsn));
+  }
+
   /** Whether the stored connection actually works, answered in categories. */
   async test(ownerId: string, projectId: string): Promise<ConnectionTestDto> {
     await this.projects.requireOwned(projectId, ownerId);

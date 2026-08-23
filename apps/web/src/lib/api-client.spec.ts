@@ -35,6 +35,13 @@ describe("api client", () => {
     await expect(api.post("/auth/logout")).resolves.toBeUndefined();
   });
 
+  it("resolves with nothing when the API answers with an empty body", async () => {
+    // How a route that answers "or null" arrives: Nest sends no body at all.
+    stubFetch(new Response("", { status: 200 }));
+
+    await expect(api.get("/projects/p_1/connection")).resolves.toBeUndefined();
+  });
+
   it("normalizes the API's error body", async () => {
     stubFetch(
       json(401, { error: { code: "unauthorized", message: "Email or password is incorrect" } }),

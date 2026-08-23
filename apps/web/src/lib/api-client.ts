@@ -20,17 +20,33 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What to put in front of a human when a request failed. The API's own words
+ * whenever it had any — it writes them for the person reading them — and one
+ * sentence of ours when the request never arrived to be answered.
+ */
+export function messageOf(error: Error | null | undefined): string | null {
+  if (!error) return null;
+  return error instanceof ApiError ? error.message : "Could not reach RePanel. Try again.";
+}
+
 export const api = {
   get: <T>(path: string): Promise<T> => request<T>(path, { method: "GET" }),
 
-  post: <T>(path: string, body?: unknown): Promise<T> =>
-    request<T>(path, {
-      method: "POST",
-      ...(body === undefined
-        ? {}
-        : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
-    }),
+  post: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, sending("POST", body)),
+
+  put: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, sending("PUT", body)),
 };
+
+/** A request with a body, or without one — a POST need not carry anything. */
+function sending(method: string, body: unknown): RequestInit {
+  if (body === undefined) return { method };
+  return {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, { ...init, credentials: "include" });
@@ -38,9 +54,14 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return (await bodyOf(response)) as T;
 }
 
-/** 204 is how the API says "done"; asking it for JSON throws. */
+/**
+ * An empty body is how the API says there is nothing: `204` for "done", and a
+ * bodiless `200` for a route that answers with null. Asking either for JSON
+ * throws, so the text is read first and only parsed when there is some.
+ */
 async function bodyOf(response: Response): Promise<unknown> {
-  return response.status === 204 ? undefined : await response.json();
+  const body = await response.text();
+  return body === "" ? undefined : (JSON.parse(body) as unknown);
 }
 
 /**

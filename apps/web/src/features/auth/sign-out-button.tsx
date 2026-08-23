@@ -9,7 +9,12 @@ export function SignOutButton() {
   const { logout } = useAuth();
 
   return (
-    <Button onClick={() => logout.mutate()} disabled={logout.isPending}>
+    <Button
+      variant="ghost"
+      onClick={() => logout.mutate()}
+      disabled={logout.isPending}
+      className="text-sidebar-foreground hover:bg-sidebar-accent"
+    >
       Sign out
     </Button>
   );

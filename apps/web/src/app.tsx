@@ -1,7 +1,23 @@
 import { Route, Routes } from "react-router";
+import { ConsoleShell } from "./console-shell";
 import { LoginPage } from "./features/auth/login-page";
 import { RequireAuth } from "./features/auth/require-auth";
-import { SignOutButton } from "./features/auth/sign-out-button";
+import { ProjectPage } from "./features/projects/project-page";
+import { ProjectsPage } from "./features/projects/projects-page";
+
+/**
+ * Where the API answers from outside the browser. The console itself talks to
+ * `/api` through the dev proxy and never uses this — it is what an agent's MCP
+ * client has to dial, so it goes into the setup snippet rather than a request.
+ */
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+
+/**
+ * Where the rendered admin is served. Dev runs the two apps on two origins
+ * (DECISIONS #025), so "Open admin" is an absolute link built from here rather
+ * than a route this app knows how to render.
+ */
+const RUNTIME_URL = import.meta.env.VITE_RUNTIME_URL ?? "http://localhost:5174";
 
 export function App() {
   return (
@@ -11,7 +27,9 @@ export function App() {
         path="/"
         element={
           <RequireAuth>
-            <Placeholder>Projects</Placeholder>
+            <ConsoleShell>
+              <ProjectsPage />
+            </ConsoleShell>
           </RequireAuth>
         }
       />
@@ -19,20 +37,12 @@ export function App() {
         path="/p/:id"
         element={
           <RequireAuth>
-            <Placeholder>Project</Placeholder>
+            <ConsoleShell>
+              <ProjectPage apiUrl={API_URL} runtimeUrl={RUNTIME_URL} />
+            </ConsoleShell>
           </RequireAuth>
         }
       />
     </Routes>
-  );
-}
-
-/** Stands in until the real console screens arrive in task 014. */
-function Placeholder({ children }: { children: string }) {
-  return (
-    <main className="flex min-h-screen flex-col items-start gap-4 p-6">
-      <p>{children} — built in task 014.</p>
-      <SignOutButton />
-    </main>
   );
 }

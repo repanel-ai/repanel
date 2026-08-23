@@ -1,4 +1,4 @@
-import type { ValidationError } from "@repanel/contracts";
+import type { DefinitionStatusDto, ValidationError } from "@repanel/contracts";
 import type { DefinitionRow } from "./definitions.repository";
 
 /** What validation concluded about a stored draft, and when it concluded it. */
@@ -31,4 +31,17 @@ export function toStoredValidation(definition: DefinitionRow): StoredValidation 
     errors: definition.errors ?? null,
     updatedAt: definition.updatedAt.toISOString(),
   };
+}
+
+/**
+ * The verdict as the console reads it. The three cases carry three different
+ * things because a human has three different questions: nothing yet, what is
+ * wrong, or when it last changed.
+ */
+export function toDefinitionStatus(stored: StoredValidation | null): DefinitionStatusDto {
+  if (!stored) return { status: "none" };
+  if (stored.valid) return { status: "valid", updatedAt: stored.updatedAt };
+
+  const errors = stored.errors ?? [];
+  return { status: "invalid", errorCount: errors.length, errors };
 }

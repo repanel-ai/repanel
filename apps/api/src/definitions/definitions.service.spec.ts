@@ -263,4 +263,37 @@ describe("DefinitionsService", () => {
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
   });
+
+  describe("status", () => {
+    it("says a project nobody has submitted to has no definition", async () => {
+      await expect(service.status("user-ada", CREWBASE)).resolves.toEqual({ status: "none" });
+    });
+
+    it("says when a valid definition was submitted", async () => {
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
+
+      await expect(service.status("user-ada", CREWBASE)).resolves.toEqual({
+        status: "valid",
+        updatedAt: expect.any(String),
+      });
+    });
+
+    it("hands an invalid definition's problems to the human who has to read them", async () => {
+      const reported = errorsOf(await service.submitDraft(ADA, CREWBASE, BROKEN));
+
+      await expect(service.status("user-ada", CREWBASE)).resolves.toEqual({
+        status: "invalid",
+        errorCount: reported.length,
+        errors: reported,
+      });
+    });
+
+    it("refuses a project the caller does not own", async () => {
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
+
+      const refusal = await refusalFrom(service.status("user-grace", CREWBASE));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+  });
 });

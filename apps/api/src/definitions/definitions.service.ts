@@ -1,10 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { validateDefinition, type ValidationResult } from "@repanel/contracts";
+import {
+  validateDefinition,
+  type DefinitionStatusDto,
+  type ValidationResult,
+} from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
 import { ProjectsService } from "../projects/projects.service";
 import { requirePayloadWithinLimit } from "./definition-size";
 import {
   toDefinitionDraft,
+  toDefinitionStatus,
   toStoredValidation,
   type DefinitionDraft,
   type StoredValidation,
@@ -53,6 +58,16 @@ export class DefinitionsService {
 
     const definition = await this.repository.findByProjectId(projectId);
     return definition ? toDefinitionDraft(definition) : null;
+  }
+
+  /**
+   * The same verdict, shaped for the console. The owner is named rather than a
+   * principal because only a human ever asks this: an agent has richer tools.
+   */
+  async status(ownerId: string, projectId: string): Promise<DefinitionStatusDto> {
+    const stored = await this.getValidationResult({ kind: "user", userId: ownerId }, projectId);
+
+    return toDefinitionStatus(stored);
   }
 
   /** What the last submission concluded, without validating anything again. */

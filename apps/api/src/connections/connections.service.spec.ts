@@ -176,6 +176,29 @@ describe("ConnectionsService", () => {
     });
   });
 
+  describe("get", () => {
+    it("answers with nothing while the project points at no database", async () => {
+      await expect(connections.get(ADA, CREWBASE)).resolves.toBeNull();
+    });
+
+    it("describes the database the project points at, without the credential", async () => {
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+
+      const connection = await connections.get(ADA, CREWBASE);
+
+      expect(connection).toEqual({ kind: "postgres", host: "db.example.com", database: "crewbase" });
+      expect(JSON.stringify(connection)).not.toContain("hunter2");
+    });
+
+    it("refuses a project the caller does not own", async () => {
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+
+      const refusal = await refusalFrom(connections.get(GRACE, CREWBASE));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+  });
+
   describe("test", () => {
     beforeEach(async () => {
       await connections.set(ADA, CREWBASE, { dsn: DSN });

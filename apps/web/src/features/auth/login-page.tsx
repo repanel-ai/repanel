@@ -1,7 +1,7 @@
 import { Button, Card, FormError, Input, Label } from "@repanel/ui";
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
-import { ApiError } from "../../lib/api-client";
+import { messageOf } from "../../lib/api-client";
 import { useAuth } from "./use-auth";
 
 export function LoginPage() {
@@ -42,7 +42,7 @@ export function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
             />
           </div>
-          <FormError message={messageFor(login.error)} />
+          <FormError message={messageOf(login.error)} />
           <Button type="submit" disabled={login.isPending}>
             {login.isPending ? "Signing in…" : "Sign in"}
           </Button>
@@ -50,10 +50,4 @@ export function LoginPage() {
       </Card>
     </main>
   );
-}
-
-/** The API's own words when it has any; ours when the request never got there. */
-function messageFor(error: Error | null): string | null {
-  if (error === null) return null;
-  return error instanceof ApiError ? error.message : "Could not reach RePanel. Try again.";
 }

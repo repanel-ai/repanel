@@ -1,5 +1,5 @@
 import type { ValidationError } from "@repanel/contracts";
-import { toDefinitionDraft, toStoredValidation } from "./definitions.mapper";
+import { toDefinitionDraft, toDefinitionStatus, toStoredValidation } from "./definitions.mapper";
 import type { DefinitionRow } from "./definitions.repository";
 
 const MISSING_NAVIGATION: ValidationError = {
@@ -68,6 +68,37 @@ describe("toStoredValidation", () => {
       valid: true,
       errors: null,
       updatedAt: "2026-08-19T09:30:00.000Z",
+    });
+  });
+});
+
+describe("toDefinitionStatus", () => {
+  it("says nothing has been submitted when nothing has", () => {
+    expect(toDefinitionStatus(null)).toEqual({ status: "none" });
+  });
+
+  it("hands an invalid draft's problems on in full, and counts them", () => {
+    expect(toDefinitionStatus(toStoredValidation(ROW))).toEqual({
+      status: "invalid",
+      errorCount: 1,
+      errors: [MISSING_NAVIGATION],
+    });
+  });
+
+  it("says when a valid draft was submitted, and nothing else", () => {
+    expect(toDefinitionStatus(toStoredValidation(VALID_ROW))).toEqual({
+      status: "valid",
+      updatedAt: "2026-08-19T09:30:00.000Z",
+    });
+  });
+
+  it("counts an invalid draft with no error list as no problems rather than crashing", () => {
+    // A row can only reach this shape by hand, and a status card is not the
+    // place to find out: it renders whatever it is given.
+    expect(toDefinitionStatus({ valid: false, errors: null, updatedAt: "x" })).toEqual({
+      status: "invalid",
+      errorCount: 0,
+      errors: [],
     });
   });
 });

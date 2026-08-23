@@ -20,6 +20,10 @@ describe("ConnectionsController", () => {
       asked.push(["set", ownerId, projectId, request]);
       return Promise.resolve(CONNECTION);
     },
+    get: (ownerId: string, projectId: string) => {
+      asked.push(["get", ownerId, projectId]);
+      return Promise.resolve(CONNECTION);
+    },
     test: (ownerId: string, projectId: string) => {
       asked.push(["test", ownerId, projectId]);
       return Promise.resolve(FAILED);
@@ -29,6 +33,12 @@ describe("ConnectionsController", () => {
 
   beforeEach(() => {
     asked.length = 0;
+  });
+
+  it("reads the connection of the signed-in user's project", async () => {
+    await expect(controller.get(USER, PROJECT_ID)).resolves.toEqual(CONNECTION);
+
+    expect(asked).toEqual([["get", "user-ada", PROJECT_ID]]);
   });
 
   it("sets the connection of the signed-in user's project", async () => {

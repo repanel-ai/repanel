@@ -23,5 +23,9 @@ export default defineConfig({
     environment: "jsdom",
     // Testing Library unmounts between tests by hooking the global `afterEach`.
     globals: true,
+    // The `<dialog>` shim jsdom is missing. It is read from the package whose
+    // component needs it rather than copied here, the same way index.css reads
+    // that package's sources for Tailwind to scan.
+    setupFiles: ["../../packages/ui/vitest.setup.ts"],
   },
 });

@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseUUIDPipe, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UseGuards } from "@nestjs/common";
 import {
   setConnectionRequestSchema,
   type ConnectionDto,
@@ -17,6 +17,15 @@ class SetConnectionDto extends zodDto(setConnectionRequestSchema) {}
 @UseGuards(SessionAuthGuard)
 export class ConnectionsController {
   constructor(private readonly connections: ConnectionsService) {}
+
+  /** Nothing in the body when there is no connection: that is the "or null". */
+  @Get()
+  get(
+    @CurrentUser() user: UserDto,
+    @Param("projectId", ParseUUIDPipe) projectId: string,
+  ): Promise<ConnectionDto | null> {
+    return this.connections.get(user.id, projectId);
+  }
 
   @Put()
   set(

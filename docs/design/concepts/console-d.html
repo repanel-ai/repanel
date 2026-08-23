@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console D — Stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONSOLE D — STOCK. The control, not a candidate dressed as one.
+
+   What the console looks like if RePanel installs shadcn/ui and ships the
+   defaults: the stock neutral palette, the stock radius, the stock component
+   sizes, the stock `sidebar-inset` shell. Same page, same content, same
+   screenshots, so the comparison against B and C is a comparison and not a
+   memory. Geist, because that is shadcn's own default face too.
+
+   EVERY NUMBER HERE IS SHADCN'S, CONVERTED NOT COPIED. The theme ships in
+   oklch(); these hexes are that arithmetic done exactly, and they land on
+   Tailwind's `neutral` scale, which is what shadcn's default theme is:
+
+     oklch(0.145 0 0) #0a0a0a   oklch(0.205 0 0) #171717
+     oklch(0.269 0 0) #262626   oklch(0.556 0 0) #737373
+     oklch(0.708 0 0) #a1a1a1   oklch(0.922 0 0) #e5e5e5
+     oklch(0.97  0 0) #f5f5f5   oklch(0.985 0 0) #fafafa
+     destructive oklch(0.577 0.245 27.325) #e7000b / dark #ff6467
+
+   WHAT IT COSTS TO SHIP THIS, STATED UP FRONT. Four things, all visible in the
+   shots rather than argued here:
+
+   1. THERE IS NO ACCENT. shadcn's `--primary` is near-black (#171717) in light
+      and near-white (#e5e5e5) in dark. It is a *weight*, not a colour. The four
+      places 014b's brief spends an accent — the project's mark, the current
+      page, the current step, the primary action — all come out grey or black,
+      so nothing on the screen carries identity and the current step is told
+      apart from its neighbours only by a filled circle. That is a defensible
+      look (it is roughly Vercel's), but it is a decision to have no brand
+      colour, not a decision deferred.
+
+   2. THERE IS NO SUCCESS TONE, AND NO ATTENTION TONE. Stock ships exactly one
+      state colour: `destructive`. DESIGN.md §4's four-tone badge language —
+      neutral / positive / attention / critical, contrast-matched so no state
+      shouts louder than its peers — does not exist here. So `Answered`,
+      `Waiting` and `Never used` render as the same grey `secondary` badge, and
+      the one fact the connection card exists to report (the database answered)
+      is no longer legible at a glance. This is the single biggest loss and it
+      is the easiest to miss in a screenshot, because grey badges look tidy.
+
+   3. DARK PUTS THE PANEL *UNDER* THE SIDEBAR. `--sidebar` is #171717 and
+      `--background` is #0a0a0a, so shadcn's own inset variant renders the
+      content panel darker than the chrome around it — it reads as recessed
+      rather than raised, and light and dark then disagree about which surface
+      is on top. DESIGN.md §2 names this and corrects it; the correction is
+      absent here by construction. Look at the two dark shots side by side.
+
+   4. IT MOVES SHARED PRIMITIVES, SO IT IS NOT A THEME-LAYER PROPOSAL.
+      B and C change colour and nothing else, because DESIGN.md §1 rules the
+      type scale, the radii and the control rhythm shared across every RePanel
+      surface. Stock changes all three:
+
+        radius        0.45rem -> 0.625rem      (7.2px -> 10px, ramp differs too)
+        control       32px    -> 36px          (shadcn h-9)
+        nav item      30px    -> 32px          (shadcn h-8)
+        sidebar       236px   -> 256px         (shadcn 16rem)
+        body / label  13.5px  -> 14px          (shadcn text-sm)
+        badge         11.5px  -> 12px          (shadcn text-xs)
+        page title    20px    -> 24px          (shadcn text-2xl)
+        figures       tabular everywhere -> proportional except where asked
+
+      Adopting this for the console means the console and the admin are two
+      products that share a font. Adopting it for both means re-deciding task
+      010, and re-shooting every runtime screenshot in `shots/`.
+
+   NOTHING HERE IS A CRITICISM OF SHADCN. The defaults are good defaults and
+   this repo is built on its component anatomy (DECISIONS #026 — owned, not
+   installed). The point of the control is to show what the *approved* work in
+   DESIGN.md is actually buying, by rendering the thing it was measured against.
+
+   Append `?theme=dark` for the dark theme.
+   =========================================================================== */
+
+:root {
+  /* ---- shadcn defaults, light -------------------------------------------- */
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #e7000b;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a1a1a1;
+
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+
+  /* Tailwind v4's own, which is what shadcn's Card and SidebarInset spend. */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / .05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1);
+
+  /* shadcn's own type steps, as spent below. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-2xl: 24px;
+}
+
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --primary: #e5e5e5;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a1a1a1;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #ff6467;
+  /* Translucent, as shadcn ships them: oklch(1 0 0 / 10%) and / 15%. */
+  --border: rgb(255 255 255 / .1);
+  --input: rgb(255 255 255 / .15);
+  --ring: #737373;
+
+  /* #171717 against a #0a0a0a panel — the inversion the header names. */
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #1447e6;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: rgb(255 255 255 / .1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--sidebar);
+  color: var(--foreground);
+  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* Not set globally: shadcn asks for tabular figures per element, with a
+     `tabular-nums` class, and the default face's figures are proportional. */
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: none; }
+svg { display: block; }
+
+:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* ---- the shell: shadcn's `sidebar-inset` variant, flat --------------------- */
+.shell { display: flex; height: 100vh; overflow: hidden; background: var(--sidebar); }
+
+/* ---- the sidebar ---------------------------------------------------------- */
+.sidebar {
+  width: 256px; /* shadcn 16rem */
+  flex: none;
+  display: flex; flex-direction: column;
+  padding: 8px;
+  color: var(--sidebar-foreground);
+}
+
+/* SidebarMenuButton size="lg": h-12, the header slot every shadcn app puts a
+   team/project switcher in. */
+.switcher {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: 48px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer; text-align: left;
+}
+.switcher:hover { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+.switcher .mark {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; flex: none;
+  border-radius: var(--radius-md);
+  background: var(--sidebar-primary); color: var(--sidebar-primary-foreground);
+  font-size: var(--text-xs); font-weight: 600;
+}
+.switcher .names { min-width: 0; flex: 1; }
+.switcher .name {
+  font-size: var(--text-sm); font-weight: 500; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .key {
+  font-size: var(--text-xs); line-height: 1.3; color: var(--muted-foreground);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .chev { flex: none; opacity: .6; }
+
+.rule { height: 1px; margin: 8px 0; background: var(--sidebar-border); }
+
+/* SidebarGroupLabel: text-xs, muted, h-8. */
+.group-label {
+  display: flex; align-items: center;
+  height: 32px; padding: 0 8px;
+  font-size: var(--text-xs); font-weight: 500;
+  color: color-mix(in srgb, var(--sidebar-foreground) 70%, transparent);
+}
+
+.nav { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+/* SidebarMenuButton, default size: h-8, px-2, text-sm. */
+.nav a {
+  display: flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  overflow: hidden;
+}
+.nav a svg { flex: none; width: 16px; height: 16px; }
+.nav a:hover { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+.nav a[aria-current] {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+  font-weight: 500;
+}
+.nav a[aria-disabled] { opacity: .5; cursor: default; pointer-events: none; }
+.nav a[aria-disabled] .later {
+  margin-left: auto; font-size: var(--text-xs); color: var(--muted-foreground);
+}
+
+.account {
+  display: flex; align-items: center; gap: 8px;
+  height: 48px; padding: 0 8px; border-radius: var(--radius-md);
+}
+.account .avatar {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; flex: none;
+  border-radius: 999px;
+  background: var(--muted); color: var(--muted-foreground);
+  font-size: var(--text-xs); font-weight: 500;
+}
+.account .who { min-width: 0; }
+.account .who b { display: block; font-size: var(--text-sm); font-weight: 500; line-height: 1.25; }
+.account .who span {
+  display: block; font-size: var(--text-xs); line-height: 1.3; color: var(--muted-foreground);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- SidebarInset, variant="inset": m-2 ml-0 rounded-xl shadow-sm --------- */
+.panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  margin: 8px 8px 8px 0;
+  border-radius: var(--radius-xl);
+  background: var(--background);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Their site-header: h-12, a bottom border. */
+.topbar {
+  display: flex; align-items: center; gap: 8px;
+  height: 48px; flex: none;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.crumb { font-size: var(--text-sm); color: var(--muted-foreground); }
+.crumb a:hover { color: var(--foreground); }
+.crumb .sep { opacity: .5; padding: 0 4px; }
+.crumb b { font-weight: 500; color: var(--foreground); }
+.topbar .spacer { flex: 1; }
+
+/* ---- controls: shadcn Button, default size h-9 px-4 ----------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 16px; flex: none;
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: var(--text-sm); font-weight: 500; white-space: nowrap; cursor: pointer;
+  transition: background-color .12s ease, color .12s ease;
+}
+.btn-primary { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-xs); }
+.btn-primary:hover { background: color-mix(in srgb, var(--primary) 90%, transparent); }
+.btn-outline { border-color: var(--input); background: var(--background); box-shadow: var(--shadow-xs); }
+.btn-outline:hover { background: var(--accent); color: var(--accent-foreground); }
+.btn-ghost { }
+.btn-ghost:hover { background: var(--accent); color: var(--accent-foreground); }
+.btn-icon { width: 36px; padding: 0; }
+
+/* ---- the screen ----------------------------------------------------------- */
+.screen { flex: 1; min-height: 0; overflow-y: auto; padding: 24px; }
+
+.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.page-head h1 {
+  margin: 0;
+  font-size: var(--text-2xl); /* shadcn text-2xl */
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ---- shadcn Card: rounded-xl border py-6 gap-6 shadow-sm ------------------ */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card); color: var(--card-foreground);
+  box-shadow: var(--shadow-sm);
+}
+/* CardDescription */
+.card .label { font-size: var(--text-sm); color: var(--muted-foreground); }
+/* CardTitle */
+.card .value {
+  font-size: var(--text-lg); font-weight: 600; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card .value.quiet { font-weight: 400; color: var(--muted-foreground); }
+.card .foot { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--muted-foreground); }
+
+/* ---- shadcn Badge: px-2 py-0.5 text-xs rounded-md ------------------------- */
+/* Four variants ship, and none of them means "this went well". Every status on
+   this page is therefore the same grey. */
+.badge {
+  display: inline-flex; align-items: center; width: fit-content;
+  padding: 2px 8px;
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  background: var(--secondary); color: var(--secondary-foreground);
+  font-size: var(--text-xs); line-height: 1.4; font-weight: 500; white-space: nowrap;
+}
+
+/* ---- the checklist: a Card with divided rows ----------------------------- */
+.section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.section-head h2 { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.section-head .meta { font-size: var(--text-sm); color: var(--muted-foreground); }
+
+.checklist {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+}
+.step:first-child { border-top: none; }
+/* No accent exists, so the only thing left to mark the current step with is a
+   fill of `--muted` — the same grey as every hover in the app. */
+.step.current { background: var(--muted); }
+
+.step .mark {
+  display: grid; place-items: center;
+  width: 22px; height: 22px; flex: none; margin-top: 1px;
+  border-radius: 999px;
+  font-size: var(--text-xs); font-weight: 500;
+}
+.step.done .mark { background: var(--secondary); color: var(--secondary-foreground); }
+.step.current .mark { background: var(--primary); color: var(--primary-foreground); }
+.step.todo .mark { border: 1px solid var(--border); color: var(--muted-foreground); }
+
+.step .body { flex: 1; min-width: 0; }
+.step .title { font-size: var(--text-sm); font-weight: 500; }
+.step.todo .title { color: var(--muted-foreground); }
+.step .note { margin: 4px 0 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+.step .act { flex: none; align-self: center; }
+
+.command { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.snippet {
+  flex: 1; min-width: 0;
+  display: flex;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--background);
+}
+.snippet pre {
+  flex: 1; min-width: 0; margin: 0;
+  padding: 7px 12px;
+  overflow-x: auto;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-sm); line-height: 20px;
+  color: var(--foreground);
+}
+
+.after { margin: 16px 2px 0; font-size: var(--text-sm); color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <button class="switcher" type="button">
+      <span class="mark">C</span>
+      <span class="names">
+        <span class="name">Crewbase</span>
+        <span class="key">crewbase-a3k9x2</span>
+      </span>
+      <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <div class="rule"></div>
+
+    <div class="group-label">Project</div>
+    <nav class="nav" aria-label="Project">
+      <a href="#" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-7 4.5 14 2.5-7h4.5"/></svg>
+        Overview
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/></svg>
+        Connection
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3.75"/><path d="m10.7 10.7 8.3 8.3"/><path d="m15.5 15.5 2-2"/><path d="m17.5 17.5 2-2"/></svg>
+        Agent access
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+        Definition
+      </a>
+      <a href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3"/><path d="m18.7 5.3-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"/></svg>
+        Settings
+        <span class="later">Soon</span>
+      </a>
+    </nav>
+
+    <div class="rule"></div>
+
+    <div class="account">
+      <span class="avatar">AL</span>
+      <span class="who">
+        <b>Ada Lovelace</b>
+        <span>ada@example.com</span>
+      </span>
+    </div>
+  </aside>
+
+  <main class="panel">
+    <div class="topbar">
+      <p class="crumb"><a href="#">Projects</a><span class="sep">/</span><b>Crewbase</b></p>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-icon" type="button" aria-label="Switch to the dark theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+
+    <div class="screen">
+      <div class="page-head"><h1>Overview</h1></div>
+
+      <div class="cards">
+        <div class="card">
+          <span class="label">Connection</span>
+          <span class="value">db.crewbase.internal/crewbase</span>
+          <span class="foot"><span class="badge">Answered</span> tested 4 minutes ago</span>
+        </div>
+        <div class="card">
+          <span class="label">Definition</span>
+          <span class="value quiet">Nothing submitted yet</span>
+          <span class="foot"><span class="badge">Waiting</span> your agent writes this</span>
+        </div>
+        <div class="card">
+          <span class="label">Agent tokens</span>
+          <span class="value">1 active</span>
+          <span class="foot"><span class="badge">Never used</span> Claude Code on my laptop</span>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2>Set up this admin</h2>
+        <span class="meta">2 of 4 done</span>
+      </div>
+
+      <div class="checklist">
+        <div class="step done">
+          <span class="mark" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+          </span>
+          <span class="body">
+            <span class="title">Connect your database</span>
+            <p class="note">Stored encrypted. It is never shown again and never sent to an agent.</p>
+          </span>
+          <span class="act"><a class="btn btn-ghost" href="#">Change</a></span>
+        </div>
+
+        <div class="step done">
+          <span class="mark" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+          </span>
+          <span class="body">
+            <span class="title">Mint an agent token</span>
+            <p class="note">Shown once, at the moment it was minted. Mint another if it was lost.</p>
+          </span>
+          <span class="act"><a class="btn btn-ghost" href="#">Mint another</a></span>
+        </div>
+
+        <div class="step current">
+          <span class="mark" aria-hidden="true">3</span>
+          <span class="body">
+            <span class="title">Connect your agent</span>
+            <p class="note">Run this where your agent runs. Every client configured by file is on the Agent access page.</p>
+            <div class="command">
+              <div class="snippet">
+                <pre>claude mcp add --transport http repanel http://localhost:3001/mcp --header "Authorization: Bearer &lt;token&gt;"</pre>
+              </div>
+              <button class="btn btn-primary" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15"/></svg>
+                Copy command
+              </button>
+            </div>
+          </span>
+        </div>
+
+        <div class="step todo">
+          <span class="mark" aria-hidden="true">4</span>
+          <span class="body">
+            <span class="title">Ask it to create your admin</span>
+            <p class="note">&ldquo;Read my database and build me an admin.&rdquo; It writes the definition and submits it — this page changes on its own when it lands.</p>
+          </span>
+        </div>
+      </div>
+
+      <p class="after">Nothing here needs a browser refresh: the console asks again every ten seconds while you are looking at it.</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+
+</body>
+</html>

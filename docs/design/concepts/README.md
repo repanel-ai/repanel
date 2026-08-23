@@ -299,3 +299,59 @@ professional, and passes every contrast pair. If that reasoning lands, the
 selection to make is *B's structure with C's accent*, which costs a palette
 swap and nothing else.
 
+## The control — `console-d.html`, stock shadcn
+
+Not a candidate. The same page rendered on shadcn's defaults — the stock neutral
+palette (converted from its `oklch()` exactly; it lands on Tailwind's `neutral`
+scale), the stock radius, the stock component sizes, the stock `sidebar-inset`
+shell, Geist. Shots: `shots/console-d-{light,dark}.png`.
+
+It exists so the comparison against B and C is a comparison rather than a
+memory, and it earns its place: it is a good-looking screen, and four specific
+things it cannot do are the things the approved work is buying.
+
+**1. There is no accent.** `--primary` is `#171717` in light and `#e5e5e5` in
+dark — a weight, not a colour. All four places 014b spends an accent come out
+grey or black. That is a real look (roughly Vercel's), but it is a decision to
+have no brand colour rather than a decision deferred. It also breaks between
+themes: `--sidebar-primary`, which the project's mark wears, is near-black in
+light and `#1447e6` blue in dark, so the mark changes colour and nothing else
+on either screen agrees with it.
+
+**2. There is no success tone and no attention tone.** Stock ships exactly one
+state colour, `destructive`. So `Answered`, `Waiting` and `Never used` are the
+same grey badge, and the one fact the connection card exists to report — the
+database answered — stops being legible at a glance. This is the biggest loss
+and the easiest to miss, because grey badges look tidy.
+
+**3. Dark puts the panel under the chrome.** `--sidebar` `#171717` against
+`--background` `#0a0a0a`: shadcn's own inset variant renders the content panel
+*darker* than the chrome around it, so it reads recessed, and light and dark
+disagree about which surface is on top. DESIGN.md §2 names this exact inversion
+and corrects it; the correction is absent here by construction.
+
+**4. It fails the contrast floor, in its own default pairing.**
+
+```
+console-d  light  21 text styles, 2 BELOW AA   tightest 4.35
+           dark   22 text styles, 0 below AA   tightest 5.86
+```
+
+Both light failures are `--muted-foreground` `#737373` on `--muted` `#f5f5f5`
+— 4.35:1, a pairing shadcn itself uses constantly (any muted surface with
+secondary text on it: here the avatar's initials, and every line of body copy
+inside the current step). Task 010's own notes recorded the same defect in the
+preset it started from. B and C measure 0 below AA in both themes.
+
+**And it moves shared primitives, so it is not a theme-layer proposal.** B and C
+change colour and nothing else, because DESIGN.md §1 rules the type scale, the
+radii and the control rhythm shared across every RePanel surface. Stock changes
+all of them: radius `0.45rem → 0.625rem`, control `32 → 36`, nav item `30 → 32`,
+sidebar `236 → 256`, body `13.5 → 14`, badge `11.5 → 12`, page title `20 → 24`,
+and tabular figures stop being global. Visible in the shots: the setup command
+no longer fits its box in either theme.
+
+None of this is a criticism of shadcn — the defaults are good defaults, and this
+repo is built on its component anatomy (DECISIONS #026, owned not installed).
+The palette is the part that was never meant to survive contact with a product.
+

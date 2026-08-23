@@ -202,9 +202,15 @@
    * floats in are the same gradient, falling slightly top to bottom across the
    * whole screen. They were two tones once, and the seam that left down the
    * panel's margin read as a mistake rather than as a step.
+   *
+   * It is cool, and it used to be warm. The warmth was there to keep the chrome
+   * from reading as more table; built and shot beside a cool one, what actually
+   * carries that distinction is the lightness step and the hairline, and the
+   * hue was only making the chrome the loudest thing on a quiet screen
+   * (DECISIONS #037, DESIGN.md §1). Both layers now share one temperature.
    */
-  --paint-sidebar-top: #e7e3de;
-  --paint-sidebar-bottom: #dfdbd6;
+  --paint-sidebar-top: #e2e4e6;
+  --paint-sidebar-bottom: #dadcde;
   /* The ground, which is the chrome — never a colour of its own. */
   --paint-page: var(--paint-sidebar-top);
   --paint-background: #ffffff;
@@ -212,7 +218,7 @@
   --paint-muted: #f2f3f3; /* the row under the cursor */
   --paint-accent: #eff0f1;
   --paint-secondary: #ecedee;
-  --paint-sidebar-accent: #f7f4f0;
+  --paint-sidebar-accent: #f3f4f7;
 
   --paint-foreground: #0a0b0b;
   --paint-card-foreground: #0a0b0b;
@@ -224,8 +230,8 @@
    * chrome and the panel's would flatten it: a resource name at rest, and the
    * group label naming a list of them, which must sit behind what it names.
    */
-  --paint-sidebar-foreground: #4a443b;
-  --paint-sidebar-muted: #665e53;
+  --paint-sidebar-foreground: #434548;
+  --paint-sidebar-muted: #5e5f63;
   /* Utility chrome sits one step behind the data it frames — in dark only,
      where it would otherwise outshine it. */
   --paint-utility-foreground: var(--paint-foreground);
@@ -254,28 +260,28 @@
   --paint-border: #e0e1e3;
   --paint-input: #dbdcde;
   --paint-ring: #a4a5a8;
-  --paint-sidebar-border: #d5d0ca;
+  --paint-sidebar-border: #cfd1d4;
 }
 
 /* Dark re-points the same names, so every utility built from the contract
    follows without a `dark:` class anywhere in a component. */
 .theme-runtime.dark {
-  --paint-sidebar-top: #080605;
-  --paint-sidebar-bottom: #040302;
+  --paint-sidebar-top: #060608;
+  --paint-sidebar-bottom: #030304;
   --paint-background: #1a1a1b;
   --paint-card: #222324;
   --paint-muted: #2b2b2d;
   --paint-accent: #2b2b2d;
   --paint-secondary: #2d2e2f;
-  --paint-sidebar-accent: #191714;
+  --paint-sidebar-accent: #161719;
 
   --paint-foreground: #f5f6f6;
   --paint-card-foreground: #f5f6f6;
   --paint-muted-foreground: #95979b;
   --paint-accent-foreground: #f5f6f6;
   --paint-secondary-foreground: #f3f3f4;
-  --paint-sidebar-foreground: #bdb7ae;
-  --paint-sidebar-muted: #8b857d;
+  --paint-sidebar-foreground: #b6b8bc;
+  --paint-sidebar-muted: #84868a;
   --paint-utility-foreground: var(--paint-muted-foreground);
 
   --paint-primary: #973c00;
@@ -294,30 +300,25 @@
   --paint-border: #353537;
   --paint-input: #3b3c3d;
   --paint-ring: #7f8083;
-  --paint-sidebar-border: #2a2622;
+  --paint-sidebar-border: #262729;
 }
 
 /*
- * The console — RePanel's own control plane, and the runtime's palette almost
- * to the digit (task 014b, concept F).
+ * The console — RePanel's own control plane, and the runtime's palette to the
+ * digit.
  *
- * ONE THING DIFFERS, AND IT IS THE CHROME'S HUE. DESIGN.md §1 runs the chrome
- * warm on purpose — hue 78, so a screen whose content is five hundred records
- * reads as chrome-vs-content rather than as two shades of one grey. The console
- * has no such field: it is four cards and a list on a panel that is mostly
- * white space, and there the warmth stops being a distinction and becomes the
- * page's dominant colour. So the chrome moves onto the data surface's own hue
- * family at half its chroma — 74 -> 265, .008 -> .004 — with every lightness
- * held to within 0.002 of the runtime's, so §2's ladder is the same ladder and
- * its measurements are still true. It is a whisper of cool grey, not a blue
- * sidebar.
+ * It was the console that proposed the cool chrome, and for a while it was the
+ * only layer carrying it: §1 ran the chrome warm so a field of five hundred
+ * records would not read as more chrome, and a console — three cards and a list
+ * on mostly white space — has no such field to be told apart from. Shot side by
+ * side on the runtime's own table, the warmth turned out not to be what carried
+ * that distinction; the lightness step and the hairline were (DECISIONS #037).
+ * So the runtime took this chrome rather than the console keeping it alone, and
+ * the two layers are now the same values.
  *
- * The sidebar's two text tokens move with it at their own lightness, because a
- * warm text ladder on a cool ground reads as brown rather than as quiet.
- *
- * Every other value below is the runtime's, unchanged — including `--primary`,
- * which is better off here: on a cream chrome it was one warm thing among warm
- * things, and on a cool one it is the only warm thing on the screen.
+ * They stay two layers regardless. The mechanism is not here so that these two
+ * can differ — it is here so that a customer's can (DECISIONS #035), and a
+ * contract with one implementation is not a contract.
  */
 .theme-console {
   --paint-sidebar-top: #e2e4e6; /* runtime #e7e3de */

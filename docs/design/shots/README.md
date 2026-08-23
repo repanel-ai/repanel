@@ -8,6 +8,15 @@ the same inputs the specs use, so what a shot shows is what a test asserts.
 picks the scenario, which is why the sidebar reads `acme-slow` on the loading
 shot and `acme-broken` on the error one.
 
+**Re-shot for the cool chrome.** `table-light.png` and `table-dark.png` are the
+canonical pair §2's ladder is read from, and they were taken again after
+DECISIONS #037 unified the chrome. The rest of this section predates that change
+and differs from the app only in the chrome's hue — six tokens, no lightness
+moved by more than 0.002 — so what they record about type, rhythm, states and
+layout still holds. They are kept rather than re-taken because they are the
+evidence particular rulings were made from, and re-taking them would quietly
+restate history.
+
 | | light | dark |
 |---|---|---|
 | Shell + table with data | `table-light.png` | `table-dark.png` |

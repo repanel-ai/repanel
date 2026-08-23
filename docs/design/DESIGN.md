@@ -43,15 +43,15 @@ because no component knows which layer it is standing on.
 
 | token | light | dark |
 |---|---|---|
-| `--sidebar-top` | `#e7e3de` | `#080605` |
-| `--sidebar-bottom` | `#dfdbd6` | `#040302` |
+| `--sidebar-top` | `#e2e4e6` | `#060608` |
+| `--sidebar-bottom` | `#dadcde` | `#030304` |
 | `--page` (the ground) | = `--sidebar-top` | = `--sidebar-top` |
 | `--background` (panel) | `#ffffff` | `#1a1a1b` |
 | `--card` | `#ffffff` | `#222324` |
 | `--muted` (row hover) | `#f2f3f3` | `#2b2b2d` |
 | `--accent` | `#eff0f1` | `#2b2b2d` |
 | `--secondary` | `#ecedee` | `#2d2e2f` |
-| `--sidebar-accent` (active nav) | `#f7f4f0` | `#191714` |
+| `--sidebar-accent` (active nav) | `#f3f4f7` | `#161719` |
 
 ### Text
 
@@ -61,8 +61,8 @@ because no component knows which layer it is standing on.
 | `--muted-foreground` | `#64666a` | `#95979b` |
 | `--accent-foreground` | `#191a1b` | `#f5f6f6` |
 | `--secondary-foreground` | `#1c1d1e` | `#f3f3f4` |
-| `--sidebar-foreground` | `#4a443b` | `#bdb7ae` |
-| `--sidebar-muted` | `#665e53` | `#8b857d` |
+| `--sidebar-foreground` | `#434548` | `#b6b8bc` |
+| `--sidebar-muted` | `#5e5f63` | `#84868a` |
 | `--utility-foreground` | `var(--foreground)` | `var(--muted-foreground)` |
 
 ### Accent, state, edges
@@ -84,13 +84,29 @@ because no component knows which layer it is standing on.
 | `--border` | `#e0e1e3` | `#353537` |
 | `--input` | `#dbdcde` | `#3b3c3d` |
 | `--ring` | `#a4a5a8` | `#7f8083` |
-| `--sidebar-border` | `#d5d0ca` | `#2a2622` |
+| `--sidebar-border` | `#cfd1d4` | `#262729` |
 
-**Two colour families, on purpose.** The chrome (sidebar, page) is warm — hue 78,
-following ref-1, which runs a warm sidebar against a neutral white panel so the
-screen reads as chrome-vs-content rather than two shades of one grey. The data
-surface is near-achromatic with a whisper of cool — hue 265 at 30% of the
-preset's chroma. Lightness values throughout are the preset's own.
+**One colour family, and the correction that got there.** This section ran two
+for most of the design's life: a warm chrome at hue 78, following ref-1, against
+a data surface that was near-achromatic with a whisper of cool at hue 265. The
+argument was that a warm sidebar against a neutral panel reads as
+chrome-vs-content rather than as two shades of one grey.
+
+**Half of that was right and the wrong half was doing the work.** The
+distinction is real and worth keeping; the hue was not what carried it. Task
+014b's console proposed a chrome on the data surface's own hue family at half
+its chroma, and the two were then rendered on the runtime's own table page and
+compared — same page, same layout, six tokens apart. What tells the chrome from
+the content in both is **the lightness step and the hairline**: .7737 against
+1.0000 in light, .0019 against .0104 in dark, with `--sidebar-border` between
+them. The warmth was not adding the distinction, it was adding a temperature —
+and on a screen this quiet it was the loudest thing on it. DECISIONS #037.
+
+So the chrome is cool, at hue 265 and chroma .004, and every neutral in this
+record is now one family. Lightness values throughout are unchanged, which is
+what let the correction be made without re-deciding §2. `--primary` `#bb4d00` is
+untouched and is the better for it: it is now the only warm object anywhere in
+RePanel, which is what an accent is for.
 
 `--radius: 0.45rem` (the preset's), with the preset's ramp: `sm .6x`, `md .8x`,
 `lg 1x`, `xl 1.4x`.
@@ -125,7 +141,7 @@ way, and the panel shadow was dropped for muddying the edge once the step was re
 
 | # | surface | dark | light |
 |---|---|---|---|
-| 1 | the chrome: sidebar **and** the ground the panel floats in | `#080605 → #040302` | `#e7e3de → #dfdbd6` |
+| 1 | the chrome: sidebar **and** the ground the panel floats in | `#060608 → #030304` | `#e2e4e6 → #dadcde` |
 | 2 | raised content panel | `#1a1a1b` | `#ffffff` |
 | 3 | row under the cursor | `#2b2b2d` | `#f2f3f3` |
 
@@ -135,8 +151,8 @@ is the *lightest* surface (`#ffffff`) and the row hover is a **darkening**
 
 **The chrome is one surface, not two.** This started as four steps, with the
 page a separate flat tone between the sidebar and the panel. Built, that step
-read as a seam down the panel's margin rather than as depth — two warm greys a
-hair apart look like a mistake, not a ladder. So the gradient moved from the
+read as a seam down the panel's margin rather than as depth — two greys a hair
+apart look like a mistake, not a ladder. So the gradient moved from the
 aside to the shell: it now falls across the whole screen, and the sidebar and
 the panel's margin are literally the same paint. `--page` is a reference to
 `--sidebar-top` rather than a value, so the two cannot drift apart again.
@@ -351,6 +367,16 @@ and table row; it is never removed, only restyled.
 This floor is a gate, not an aspiration: any token change re-runs the
 measurement before it lands.
 
+**Re-run for the cool chrome (DECISIONS #037).** Six tokens moved, so the gate
+was measured again on the running app rather than reasoned about: the table page
+in both themes at 1440 and at 768 gives **20 text styles light and 22 dark, zero
+below AA**, tightest 4.74 light and 4.79 dark — both the `positive`/`critical`
+badges, at the numbers §4 records for them, which is what tells you the chrome
+change reached nothing it should not have. No horizontal overflow at either
+width. The two sidebar text tokens were re-derived at their own lightness for
+the same reason the surfaces were: `--sidebar-foreground` measures 7.44:1 on the
+new chrome and `--sidebar-muted` 4.88:1.
+
 ---
 
 ## 8. Navigation is icon-and-text — the deferral, and its reversal
@@ -526,18 +552,24 @@ bottom.
 Selected from concept F (`concepts/console-f.html`), shot in
 `shots/console-014b/`.
 
-### The one deviation — the chrome's hue
+### The chrome this surface proposed, and both layers now share
 
-§1 runs the chrome warm on purpose: hue 78, so a screen whose content is a dense
-field of five hundred records reads as chrome-vs-content rather than as two
-shades of one grey. **That argument is about the field.** A console screen is
-three cards and a list on a panel that is mostly white space, and there the
-warmth stops being a distinction and becomes the page's dominant colour.
+For one commit the console was the only layer running a cool chrome, and this
+section recorded it as a deviation. It is not one any more: §1 took it, and the
+two layers hold the same values to the digit. What is worth keeping is *why the
+console found it* — the reasoning is about which surface a rule was written for,
+and that question will come up again.
 
-So `.theme-console` moves the chrome onto the data surface's own hue family at
-half its chroma — hue 74 → 265, chroma .008 → .004 — and nothing else.
+§1's chrome ran warm so a screen whose content is a dense field of five hundred
+records would read as chrome-vs-content rather than as two shades of one grey.
+**That argument is about the field.** A console screen is three cards and a list
+on a panel that is mostly white space, so there was nothing for the chrome to be
+told apart from, and the warmth stopped being a distinction and became the
+page's dominant colour — which is exactly what got the first console concept
+rejected. The proposal moved the chrome onto the data surface's own hue family
+at half its chroma (hue 74 → 265, chroma .008 → .004) and changed nothing else:
 
-| token | `.theme-runtime` | `.theme-console` | luminance |
+| token | was | is | luminance |
 |---|---|---|---|
 | `--sidebar-top` | `#e7e3de` | `#e2e4e6` | .7720 → .7737 |
 | `--sidebar-bottom` | `#dfdbd6` | `#dadcde` | .7121 → .7137 |
@@ -552,16 +584,18 @@ half its chroma — hue 74 → 265, chroma .008 → .004 — and nothing else.
 | `--sidebar-foreground` (dark) | `#bdb7ae` | `#b6b8bc` | .4774 → .4786 |
 | `--sidebar-muted` (dark) | `#8b857d` | `#84868a` | .2374 → .2379 |
 
-**Every lightness holds to within 0.002, so §2's ladder is the same ladder and
-its measurements are still true.** Only hue and chroma moved. The two text
+**Every lightness holds to within 0.002, which is the whole reason this could be
+taken back to the runtime at all** — §2's ladder is the same ladder and its
+measurements never needed re-deriving. Only hue and chroma moved. The two text
 tokens move with the surface they are read on, because a warm text ladder over a
 cool ground reads as brown rather than as quiet.
 
-`--primary` `#bb4d00` is untouched, and is better off: on a warm chrome it was
-one warm thing among warm things, and on a cool one it is the only warm thing on
-the screen, which is what an accent is for. It is spent where §1 and §10 already
-spend it — the project's mark, and the one control where there is exactly one
-thing to go ahead with — and nowhere else.
+Then the same six tokens were rendered on the runtime's own table page, warm and
+cool, and the cool one did not lose the chrome-vs-content distinction the warmth
+was supposed to be carrying — the lightness step and the hairline were carrying
+it all along. §1 records the correction; DECISIONS #037 records the decision.
+`shots/console-014b/runtime-chrome-{warm,cool}-{light,dark}.png` is what it was
+made from.
 
 ### Three structural additions, because a console is a different app
 
@@ -666,18 +700,3 @@ wrong price in front of an operator who is about to act on it — the one mistak
 an admin may not make. The answer is a schema addition that says the unit out
 loud (a `money` field type, or a currency slot on `number`), which is task 001's
 domain and a change to a public contract.
-
-**Chrome unification.** §11 gives the console a cool chrome and leaves the
-runtime warm, which means RePanel now paints two chromes. That is defensible —
-the argument for warmth is about a dense data field, and only one of the two
-surfaces has one — but it is also the first place the two apps look like two
-products, and the reason §1 gave for the warmth ("chrome-vs-content") is a
-reason the runtime still has.
-
-The question is whether `.theme-runtime` should take the same cool chrome, which
-would leave `--primary` as the only warm thing anywhere in RePanel. It is a
-change to four tokens and two text tokens on one layer, and to every runtime
-screenshot in `shots/`. It is deliberately not decided here: it is a decision to
-make from pixels rather than from an argument, and
-`shots/console-014b/runtime-chrome-{warm,cool}-{light,dark}.png` is the runtime's
-own table page rendered both ways for exactly that. Neither variant is committed.

@@ -1,41 +1,38 @@
-import { Card, EmptyPanel, FormError, Section, Skeleton, buttonClasses } from "@repanel/ui";
+import { Card, EmptyPanel, FormError, Skeleton, buttonClasses } from "@repanel/ui";
+import { useParams } from "react-router";
+import { PageHead } from "../../page-head";
 import { messageOf } from "../../lib/api-client";
 import { formatMoment } from "../../lib/format-date";
+import { useProject } from "../projects/use-projects";
 import { DefinitionErrors } from "./definition-errors";
 import { useDefinitionStatus } from "./use-definition-status";
-
-export interface DefinitionSectionProps {
-  projectId: string;
-  /** What the runtime routes by; the admin's address is built from it. */
-  projectKey: string;
-  /** Where the rendered admin is served — a different origin in dev (#025). */
-  runtimeUrl: string;
-}
 
 /**
  * How the project's definition stands, and what to do about it. The three
  * states are three different screens because they are three different moments:
  * before the loop has run, while it is being repaired, and after it works.
  */
-export function DefinitionSection({ projectId, projectKey, runtimeUrl }: DefinitionSectionProps) {
-  const status = useDefinitionStatus(projectId);
+export function DefinitionPage({ runtimeUrl }: { runtimeUrl: string }) {
+  const { id = "" } = useParams();
+  const project = useProject(id);
+  const status = useDefinitionStatus(id);
 
   return (
-    <Section title="Definition">
-      <Card className="flex flex-col gap-4">
+    <>
+      <PageHead title="Definition" meta="what your agent submitted, and what RePanel renders from it" />
+
+      <Card className="flex flex-col gap-4 p-5">
         {status.isPending && <Skeleton className="h-16 w-full" />}
 
-        {status.isError && (
-          <FormError message={messageOf(status.error)} />
-        )}
+        {status.isError && <FormError message={messageOf(status.error)} />}
 
         {status.data?.status === "none" && (
           <EmptyPanel
             className="py-6"
             title="No definition yet"
             description={
-              "Connect your agent with the setup above, then ask it to create your admin. " +
-              "It reads your database, writes the definition, and submits it — this card " +
+              "Connect your agent on the Agent access page, then ask it to create your admin. " +
+              "It reads your database, writes the definition, and submits it — this page " +
               "changes on its own when it lands."
             }
           />
@@ -54,18 +51,17 @@ export function DefinitionSection({ projectId, projectKey, runtimeUrl }: Definit
           </>
         )}
 
-        {status.data?.status === "valid" && (
+        {status.data?.status === "valid" && project.data && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-body text-muted-foreground">
               Submitted {formatMoment(status.data.updatedAt)}
             </p>
-            <a className={buttonClasses()} href={`${runtimeUrl}/a/${projectKey}`}>
+            <a className={buttonClasses()} href={`${runtimeUrl}/a/${project.data.key}`}>
               Open admin
             </a>
           </div>
         )}
       </Card>
-    </Section>
+    </>
   );
 }
-

@@ -1,7 +1,5 @@
+import { mcpCommand, TOKEN_PLACEHOLDER } from "./setup-command";
 import { Snippet } from "./snippet";
-
-/** What a token looks like in the snippets before there is a real one to show. */
-const PLACEHOLDER = "<token>";
 
 export interface McpSetupProps {
   /** Where the API answers from outside the browser — the address an agent dials. */
@@ -19,7 +17,7 @@ export interface McpSetupProps {
  * is the one moment they are useful complete. Once it is dismissed they go back
  * to naming the placeholder — there is no copy of the token left to write in.
  */
-export function McpSetup({ apiUrl, token = PLACEHOLDER }: McpSetupProps) {
+export function McpSetup({ apiUrl, token = TOKEN_PLACEHOLDER }: McpSetupProps) {
   const url = `${apiUrl}/mcp`;
 
   return (
@@ -27,10 +25,7 @@ export function McpSetup({ apiUrl, token = PLACEHOLDER }: McpSetupProps) {
       <p className="text-body text-muted-foreground">
         Point your agent at this project. In Claude Code:
       </p>
-      <Snippet
-        what="the setup command"
-        value={`claude mcp add --transport http repanel ${url} --header "Authorization: Bearer ${token}"`}
-      />
+      <Snippet what="the setup command" value={mcpCommand(apiUrl, token)} />
       <p className="text-body text-muted-foreground">Or, for a client configured by file:</p>
       <Snippet what="the setup configuration" value={configFor(url, token)} />
     </div>

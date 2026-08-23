@@ -115,6 +115,12 @@
   --spacing-sidebar: 236px;
   /* What the sidebar narrows to when the panel needs the width (DESIGN §7). */
   --spacing-sidebar-narrow: 180px;
+  /*
+   * What a console screen's content caps at, however wide the window gets. The
+   * runtime never spends it — a table wants every pixel — but it is rhythm
+   * rather than colour, so it belongs here rather than in a layer.
+   */
+  --spacing-measure: 1100px;
 
   /*
    * The one breakpoint the runtime has. Below it the sidebar gives its width to
@@ -292,31 +298,45 @@
 }
 
 /*
- * The console — RePanel's own control plane.
+ * The console — RePanel's own control plane, and the runtime's palette almost
+ * to the digit (task 014b, concept F).
  *
- * It starts on the runtime's palette, value for value, because that is what it
- * has been drawn against since task 014 and this commit is the mechanism rather
- * than a redesign. The console's own values are task 014b's to propose; when
- * they land, the numbers in these two blocks are the only thing that moves.
+ * ONE THING DIFFERS, AND IT IS THE CHROME'S HUE. DESIGN.md §1 runs the chrome
+ * warm on purpose — hue 78, so a screen whose content is five hundred records
+ * reads as chrome-vs-content rather than as two shades of one grey. The console
+ * has no such field: it is four cards and a list on a panel that is mostly
+ * white space, and there the warmth stops being a distinction and becomes the
+ * page's dominant colour. So the chrome moves onto the data surface's own hue
+ * family at half its chroma — 74 -> 265, .008 -> .004 — with every lightness
+ * held to within 0.002 of the runtime's, so §2's ladder is the same ladder and
+ * its measurements are still true. It is a whisper of cool grey, not a blue
+ * sidebar.
+ *
+ * The sidebar's two text tokens move with it at their own lightness, because a
+ * warm text ladder on a cool ground reads as brown rather than as quiet.
+ *
+ * Every other value below is the runtime's, unchanged — including `--primary`,
+ * which is better off here: on a cream chrome it was one warm thing among warm
+ * things, and on a cool one it is the only warm thing on the screen.
  */
 .theme-console {
-  --paint-sidebar-top: #e7e3de;
-  --paint-sidebar-bottom: #dfdbd6;
+  --paint-sidebar-top: #e2e4e6; /* runtime #e7e3de */
+  --paint-sidebar-bottom: #dadcde; /* runtime #dfdbd6 */
   --paint-page: var(--paint-sidebar-top);
   --paint-background: #ffffff;
   --paint-card: #ffffff;
   --paint-muted: #f2f3f3;
   --paint-accent: #eff0f1;
   --paint-secondary: #ecedee;
-  --paint-sidebar-accent: #f7f4f0;
+  --paint-sidebar-accent: #f3f4f7; /* runtime #f7f4f0 */
 
   --paint-foreground: #0a0b0b;
   --paint-card-foreground: #0a0b0b;
   --paint-muted-foreground: #64666a;
   --paint-accent-foreground: #191a1b;
   --paint-secondary-foreground: #1c1d1e;
-  --paint-sidebar-foreground: #4a443b;
-  --paint-sidebar-muted: #665e53;
+  --paint-sidebar-foreground: #434548; /* runtime #4a443b */
+  --paint-sidebar-muted: #5e5f63; /* runtime #665e53 */
   --paint-utility-foreground: var(--paint-foreground);
 
   --paint-primary: #bb4d00;
@@ -335,26 +355,26 @@
   --paint-border: #e0e1e3;
   --paint-input: #dbdcde;
   --paint-ring: #a4a5a8;
-  --paint-sidebar-border: #d5d0ca;
+  --paint-sidebar-border: #cfd1d4; /* runtime #d5d0ca */
 }
 
 .theme-console.dark {
-  --paint-sidebar-top: #080605;
-  --paint-sidebar-bottom: #040302;
+  --paint-sidebar-top: #060608; /* runtime #080605 */
+  --paint-sidebar-bottom: #030304; /* runtime #040302 */
   --paint-background: #1a1a1b;
   --paint-card: #222324;
   --paint-muted: #2b2b2d;
   --paint-accent: #2b2b2d;
   --paint-secondary: #2d2e2f;
-  --paint-sidebar-accent: #191714;
+  --paint-sidebar-accent: #161719; /* runtime #191714 */
 
   --paint-foreground: #f5f6f6;
   --paint-card-foreground: #f5f6f6;
   --paint-muted-foreground: #95979b;
   --paint-accent-foreground: #f5f6f6;
   --paint-secondary-foreground: #f3f3f4;
-  --paint-sidebar-foreground: #bdb7ae;
-  --paint-sidebar-muted: #8b857d;
+  --paint-sidebar-foreground: #b6b8bc; /* runtime #bdb7ae */
+  --paint-sidebar-muted: #84868a; /* runtime #8b857d */
   --paint-utility-foreground: var(--paint-muted-foreground);
 
   --paint-primary: #973c00;
@@ -373,7 +393,7 @@
   --paint-border: #353537;
   --paint-input: #3b3c3d;
   --paint-ring: #7f8083;
-  --paint-sidebar-border: #2a2622;
+  --paint-sidebar-border: #262729; /* runtime #2a2622 */
 }
 
 /*

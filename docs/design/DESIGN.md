@@ -28,9 +28,9 @@ Landing in `packages/ui/src/tokens.css` — the one place tokens are declared
    per app, each answering *the whole* of the contract in both themes.
 
 The tables below are the contract, and the values are `.theme-runtime`'s. The
-console starts on the same numbers, value for value, because that is what it has
-been drawn against since task 014; its own values are 014b's to propose, and
-when they land the numbers in its layer are the only thing that moves.
+console's layer answers the same contract and spends the same values, with one
+exception it makes on purpose — §11 records it, and it is four chrome tokens and
+the two sidebar text tokens that go with them.
 
 **A component may reference the contract's names and nothing else.** Nothing
 outside `tokens.css` reads a `--paint-` variable, and a layer a component could
@@ -512,6 +512,106 @@ application is willing to say through it.
 
 ---
 
+## 11. The console — the same product, on its own layer
+
+Task 014b. `apps/web` is RePanel's control plane and `apps/runtime` is what it
+sets up, and for a customer's developer they are one thing seen twice. So the
+console is drawn from this record and not from a second one: §1's palette, §2's
+ladder **and its no-drop-shadows rule**, §3's type, §4's badge language, §6's
+rhythm to the pixel, and the sidebar anatomy `features/runtime/sidebar.tsx`
+already has — an h-11 head block, a rule, grouped nav with micro group labels
+and 16px marks at 70% opacity, a rule, an h-11 account block pinned to the
+bottom.
+
+Selected from concept F (`concepts/console-f.html`), shot in
+`shots/console-014b/`.
+
+### The one deviation — the chrome's hue
+
+§1 runs the chrome warm on purpose: hue 78, so a screen whose content is a dense
+field of five hundred records reads as chrome-vs-content rather than as two
+shades of one grey. **That argument is about the field.** A console screen is
+three cards and a list on a panel that is mostly white space, and there the
+warmth stops being a distinction and becomes the page's dominant colour.
+
+So `.theme-console` moves the chrome onto the data surface's own hue family at
+half its chroma — hue 74 → 265, chroma .008 → .004 — and nothing else.
+
+| token | `.theme-runtime` | `.theme-console` | luminance |
+|---|---|---|---|
+| `--sidebar-top` | `#e7e3de` | `#e2e4e6` | .7720 → .7737 |
+| `--sidebar-bottom` | `#dfdbd6` | `#dadcde` | .7121 → .7137 |
+| `--sidebar-accent` | `#f7f4f0` | `#f3f4f7` | .9077 → .9047 |
+| `--sidebar-border` | `#d5d0ca` | `#cfd1d4` | .6352 → .6362 |
+| `--sidebar-foreground` | `#4a443b` | `#434548` | .0591 → .0592 |
+| `--sidebar-muted` | `#665e53` | `#5e5f63` | .1145 → .1146 |
+| `--sidebar-top` (dark) | `#080605` | `#060608` | .0019 → .0019 |
+| `--sidebar-bottom` (dark) | `#040302` | `#030304` | .0010 → .0009 |
+| `--sidebar-accent` (dark) | `#191714` | `#161719` | .0087 → .0085 |
+| `--sidebar-border` (dark) | `#2a2622` | `#262729` | .0199 → .0202 |
+| `--sidebar-foreground` (dark) | `#bdb7ae` | `#b6b8bc` | .4774 → .4786 |
+| `--sidebar-muted` (dark) | `#8b857d` | `#84868a` | .2374 → .2379 |
+
+**Every lightness holds to within 0.002, so §2's ladder is the same ladder and
+its measurements are still true.** Only hue and chroma moved. The two text
+tokens move with the surface they are read on, because a warm text ladder over a
+cool ground reads as brown rather than as quiet.
+
+`--primary` `#bb4d00` is untouched, and is better off: on a warm chrome it was
+one warm thing among warm things, and on a cool one it is the only warm thing on
+the screen, which is what an accent is for. It is spent where §1 and §10 already
+spend it — the project's mark, and the one control where there is exactly one
+thing to go ahead with — and nowhere else.
+
+### Three structural additions, because a console is a different app
+
+**A project switcher** in the head block the runtime gives the app's name. A
+console is always inside one project out of several, so that slot is the way
+back to the list that chooses between them, rather than a label.
+
+**Two nav groups instead of the definition's.** `Project` names the four pages —
+Overview, Connection, Agent access, Definition — and `Account` names the pair
+that is about the person rather than the project. That is the runtime's own
+multi-group nav, filled from a fixed list instead of a definition. `Settings` is
+drawn and switched off: project rename and delete are task 014's binding
+out-of-scope, and a nav that hides what does not exist yet teaches the wrong
+shape of the product, where one that shows it off says "later", which is true.
+
+**A measure.** Console content caps at `--spacing-measure` 1100px and is centred
+in the panel; the panel itself keeps filling the window, because it is the app's
+frame. The runtime never spends this — a table wants every pixel — and a console
+does: left against the sidebar, a 2560px window gives one enormous margin
+instead of two even ones.
+
+### Which page you are on lives in the address
+
+`/p/:id/overview | connection | agents | definition`, and `/p/:id` redirects to
+the first. Same rule §9 keeps for a record's tabs and BUILD REQUIREMENT 1 keeps
+for a table's filters: a screen that can be linked to, gone back from and
+reloaded into. Task 014's single scrolling column could do none of those, and a
+person in a console is *somewhere*.
+
+Overview is the only page that is new, and it holds nothing the other three do
+not already fetch: the connection, the token list and the definition status.
+The setup checklist is **derived on every render** from those three answers
+rather than stored, so it cannot drift from them, and it asks the API nothing of
+its own.
+
+### Measured, from the rendered DOM
+
+```
+contrast   light  21 distinct text styles, 0 below AA   tightest 4.74
+           dark   23 distinct text styles, 0 below AA   tightest 4.94
+           (the tightest pair in both is the `positive` badge, at exactly the
+            numbers §4 records for it — which is the check that the palette
+            really is the runtime's, untouched)
+
+overflow   no horizontal scroll at 768, 1440 or 2560, both themes
+numerals   tabular-nums at the root; faces self-hosted Geist + Geist Mono
+```
+
+---
+
 ## BUILD REQUIREMENTS
 
 Conditions carried from direction approval. Each is binding on Stage 2.
@@ -566,3 +666,18 @@ wrong price in front of an operator who is about to act on it — the one mistak
 an admin may not make. The answer is a schema addition that says the unit out
 loud (a `money` field type, or a currency slot on `number`), which is task 001's
 domain and a change to a public contract.
+
+**Chrome unification.** §11 gives the console a cool chrome and leaves the
+runtime warm, which means RePanel now paints two chromes. That is defensible —
+the argument for warmth is about a dense data field, and only one of the two
+surfaces has one — but it is also the first place the two apps look like two
+products, and the reason §1 gave for the warmth ("chrome-vs-content") is a
+reason the runtime still has.
+
+The question is whether `.theme-runtime` should take the same cool chrome, which
+would leave `--primary` as the only warm thing anywhere in RePanel. It is a
+change to four tokens and two text tokens on one layer, and to every runtime
+screenshot in `shots/`. It is deliberately not decided here: it is a decision to
+make from pixels rather than from an argument, and
+`shots/console-014b/runtime-chrome-{warm,cool}-{light,dark}.png` is the runtime's
+own table page rendered both ways for exactly that. Neither variant is committed.

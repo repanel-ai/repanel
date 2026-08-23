@@ -2,30 +2,29 @@ import type { ReactNode } from "react";
 import { SignOutButton } from "./features/auth/sign-out-button";
 import { useAuth } from "./features/auth/use-auth";
 import { ThemeToggle } from "./features/theme/theme-toggle";
+import { Screen } from "./screen";
 
 /**
- * The console's one surface. It is the runtime's own chrome — the same gradient,
- * the same tokens — with no panel inset and no sidebar: there is one screen at a
- * time here, and the width a control plane needs is the width of a form.
- *
- * Everything inside is set at the runtime's sizes and spaced further apart. A
- * console is visited to change one thing and left again; the density that makes
- * a table of five hundred records scannable would only crowd it (DESIGN.md §6).
+ * Everything above a project: the list, and the way out. It is the project
+ * shell with the sidebar taken away, because there is no project to navigate —
+ * the same ground, the same inset panel, the same topbar, the same measure.
  */
 export function ConsoleShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-sidebar-top to-sidebar-bottom">
-      <header className="mx-auto flex h-top w-full max-w-4xl items-center gap-3 px-5">
-        <span className="text-brand font-medium text-sidebar-foreground">RePanel</span>
-        <div className="flex-1" />
-        {user && <span className="text-nav-meta text-sidebar-muted">{user.email}</span>}
-        <ThemeToggle />
-        <SignOutButton />
-      </header>
+    <div className="flex h-screen overflow-hidden bg-linear-to-b from-sidebar-top to-sidebar-bottom">
+      <main className="m-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-sidebar-border bg-background">
+        <div className="flex h-top flex-none items-center gap-2.5 border-b border-border px-4">
+          <span className="text-brand font-semibold tracking-[-0.01em]">RePanel</span>
+          <div className="flex-1" />
+          {user && <span className="truncate text-nav-meta text-muted-foreground">{user.email}</span>}
+          <ThemeToggle />
+          <SignOutButton />
+        </div>
 
-      <main className="mx-auto w-full max-w-4xl px-5 pt-4 pb-20">{children}</main>
+        <Screen>{children}</Screen>
+      </main>
     </div>
   );
 }

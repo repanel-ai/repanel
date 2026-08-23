@@ -1,6 +1,6 @@
 import type { ProjectDto, UserDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app";
@@ -30,13 +30,32 @@ describe("App", () => {
     expect(await screen.findByText("crewbase-a3k9x2")).toBeDefined();
   });
 
-  it("opens one project on its own page", async () => {
+  it("opens a project on where it stands, and names its four pages", async () => {
     renderAt(`/p/${CREWBASE.id}`, ADA);
 
-    expect(await screen.findByRole("heading", { name: "Crewbase" })).toBeDefined();
-    expect(await screen.findByText("Connection")).toBeDefined();
-    expect(await screen.findByText("Agent access")).toBeDefined();
-    expect(await screen.findByText("Definition")).toBeDefined();
+    // `/p/:id` is not a page: it is the way in, and where a project stands is
+    // the only screen that says what is left to do.
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeDefined();
+
+    const nav = screen.getByRole("navigation", { name: "Project" });
+    for (const page of ["Overview", "Connection", "Agent access", "Definition"]) {
+      expect(within(nav).getByText(page)).toBeDefined();
+    }
+    // Which project, said once, where the runtime says which app.
+    expect(screen.getAllByText("crewbase-a3k9x2").length).toBeGreaterThan(0);
+  });
+
+  it("gives each of the four pages its own address", async () => {
+    for (const [path, heading] of [
+      ["connection", "Connection"],
+      ["agents", "Agent access"],
+      ["definition", "Definition"],
+    ]) {
+      const view = renderAt(`/p/${CREWBASE.id}/${path}`, ADA);
+
+      expect(await screen.findByRole("heading", { name: heading })).toBeDefined();
+      view.unmount();
+    }
   });
 });
 
@@ -63,7 +82,7 @@ function renderAt(path: string, user: UserDto | null) {
   );
 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <App />

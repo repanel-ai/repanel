@@ -2,7 +2,8 @@ import type { ConnectionDto, ConnectionTestDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConnectionSection } from "./connection-section";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { ConnectionPage } from "./connection-page";
 
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
@@ -11,7 +12,7 @@ const CONNECTED: ConnectionDto = { kind: "postgres", host: "db.example.com", dat
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("ConnectionSection", () => {
+describe("ConnectionPage", () => {
   it("says a project is pointed at nothing while it is", async () => {
     show(null);
 
@@ -91,7 +92,11 @@ function show(connection: ConnectionDto | null, verdict?: ConnectionTestDto) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <ConnectionSection projectId={PROJECT_ID} />
+      <MemoryRouter initialEntries={[`/p/${PROJECT_ID}/connection`]}>
+        <Routes>
+          <Route path="/p/:id/connection" element={<ConnectionPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return Object.assign(fetched, { unmount: view.unmount });

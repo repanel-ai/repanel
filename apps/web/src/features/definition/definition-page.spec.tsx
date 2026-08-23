@@ -2,7 +2,8 @@ import type { DefinitionStatusDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DefinitionSection } from "./definition-section";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { DefinitionPage } from "./definition-page";
 
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const RUNTIME_URL = "https://admin.repanel.test";
@@ -16,7 +17,7 @@ const MISSING_NAVIGATION = {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("DefinitionSection", () => {
+describe("DefinitionPage", () => {
   it("sells the loop when nothing has been submitted", async () => {
     show({ status: "none" });
 
@@ -51,16 +52,37 @@ describe("DefinitionSection", () => {
 });
 
 function show(status: DefinitionStatusDto) {
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(status), { status: 200 })));
+  // The page reads the project for the key its admin is addressed by, and the
+  // status for everything else.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string) =>
+      input.endsWith("/definition/status")
+        ? json(status)
+        : json({
+            id: PROJECT_ID,
+            name: "Crewbase",
+            key: "crewbase-a3k9x2",
+            createdAt: "2026-08-18T12:00:00.000Z",
+          }),
+    ),
+  );
 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <DefinitionSection
-        projectId={PROJECT_ID}
-        projectKey="crewbase-a3k9x2"
-        runtimeUrl={RUNTIME_URL}
-      />
+      <MemoryRouter initialEntries={[`/p/${PROJECT_ID}/definition`]}>
+        <Routes>
+          <Route
+            path="/p/:id/definition"
+            element={<DefinitionPage runtimeUrl={RUNTIME_URL} />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+function json(body: unknown): Response {
+  return new Response(JSON.stringify(body), { status: 200 });
 }

@@ -1,6 +1,8 @@
 import type { ConnectionFailureReason } from "@repanel/contracts";
-import { Button, Card, FormError, Input, Label, Section, Skeleton, cn } from "@repanel/ui";
+import { Button, Card, FormError, Input, Label, Skeleton, cn } from "@repanel/ui";
 import { type FormEvent, useState } from "react";
+import { useParams } from "react-router";
+import { PageHead } from "../../page-head";
 import { messageOf } from "../../lib/api-client";
 import { useConnection, useSaveConnection, useTestConnection } from "./use-connection";
 
@@ -23,10 +25,11 @@ const FAILURES: Record<ConnectionFailureReason, string> = {
  * out of the API afterwards is the host and the database name, which is all
  * anyone needs to recognize what they connected.
  */
-export function ConnectionSection({ projectId }: { projectId: string }) {
-  const connection = useConnection(projectId);
-  const save = useSaveConnection(projectId);
-  const test = useTestConnection(projectId);
+export function ConnectionPage() {
+  const { id = "" } = useParams();
+  const connection = useConnection(id);
+  const save = useSaveConnection(id);
+  const test = useTestConnection(id);
   const [dsn, setDsn] = useState("");
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -45,8 +48,10 @@ export function ConnectionSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Section title="Connection">
-      <Card className="flex flex-col gap-4">
+    <>
+      <PageHead title="Connection" meta="the database this admin reads" />
+
+      <Card className="flex flex-col gap-4 p-5">
         {connection.isPending ? (
           <Skeleton className="h-5 w-64" />
         ) : (
@@ -82,8 +87,8 @@ export function ConnectionSection({ projectId }: { projectId: string }) {
             </Button>
           </div>
           <p className="text-small text-muted-foreground">
-            Stored encrypted. It is never shown again, never sent to an agent, and never
-            leaves RePanel.
+            Stored encrypted. It is never shown again, never sent to an agent, and never leaves
+            RePanel.
           </p>
           <FormError message={messageOf(save.error)} />
         </form>
@@ -108,6 +113,6 @@ export function ConnectionSection({ projectId }: { projectId: string }) {
           </div>
         )}
       </Card>
-    </Section>
+    </>
   );
 }

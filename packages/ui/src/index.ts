@@ -16,6 +16,7 @@ export {
   CloseIcon,
   CopyIcon,
   SearchIcon,
+  SignOutIcon,
   SortArrowIcon,
   ThemeIcon,
 } from "./icons";

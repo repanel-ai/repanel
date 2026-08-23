@@ -103,6 +103,17 @@ export function CheckIcon(props: IconProps) {
   );
 }
 
+/** Leaving: a door held open, and an arrow going through it. */
+export function SignOutIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M14 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H14" />
+      <path d="M18.5 12H10" />
+      <path d="m15.5 9 3 3-3 3" />
+    </Glyph>
+  );
+}
+
 /** A dismissal: the thing goes away, nothing else happens. */
 export function CloseIcon(props: IconProps) {
   return (

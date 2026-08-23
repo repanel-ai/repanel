@@ -2,7 +2,8 @@ import type { AgentTokenDto, MintedAgentTokenDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AgentAccessSection } from "./agent-access-section";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { AgentAccessPage } from "./agent-access-page";
 
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const API_URL = "https://api.repanel.test";
@@ -19,7 +20,7 @@ const MINTED: MintedAgentTokenDto = { ...LISTED, token: TOKEN };
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("AgentAccessSection", () => {
+describe("AgentAccessPage", () => {
   it("lists what has been minted, without the tokens themselves", async () => {
     show();
 
@@ -101,7 +102,11 @@ function show() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <AgentAccessSection projectId={PROJECT_ID} apiUrl={API_URL} />
+      <MemoryRouter initialEntries={[`/p/${PROJECT_ID}/agents`]}>
+        <Routes>
+          <Route path="/p/:id/agents" element={<AgentAccessPage apiUrl={API_URL} />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return fetched;

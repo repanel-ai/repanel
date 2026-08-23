@@ -1,11 +1,22 @@
 import { Button } from "@repanel/ui";
+import type { ReactNode } from "react";
 import { useAuth } from "./use-auth";
+
+export interface SignOutButtonProps {
+  /** How this surface dresses it: the console has two, drawn differently. */
+  className?: string;
+  children?: ReactNode;
+}
 
 /**
  * Ends the session. No redirect of its own: the session goes stale, RequireAuth
  * sees no user, and /login is where that already leads.
+ *
+ * It takes its clothes from the caller because the console shows it twice — as
+ * a control in the project list's header, and as a row in a project's sidebar
+ * nav — and those are two drawings of one action, not two actions.
  */
-export function SignOutButton() {
+export function SignOutButton({ className, children }: SignOutButtonProps) {
   const { logout } = useAuth();
 
   return (
@@ -13,9 +24,9 @@ export function SignOutButton() {
       variant="ghost"
       onClick={() => logout.mutate()}
       disabled={logout.isPending}
-      className="text-sidebar-foreground hover:bg-sidebar-accent"
+      className={className}
     >
-      Sign out
+      {children ?? "Sign out"}
     </Button>
   );
 }

@@ -254,3 +254,65 @@ PASS src/actions/signing-doc.spec.ts
 
 Tests: 13 passed, 13 total
 ```
+
+---
+
+# Task 014b · the console, on its own layer
+
+`console-014b/` — the rebuilt console (`apps/web`), rendered against a stubbed
+control-plane API: the same shapes the specs answer with, so what a shot shows
+is what a test asserts. 1440×900 at 2×, light and dark.
+
+| | light | dark |
+|---|---|---|
+| Project list | `projects-light.png` | `projects-dark.png` |
+| Overview, mid-setup | `overview-light.png` | `overview-dark.png` |
+| Connection | `connection-light.png` | `connection-dark.png` |
+| Agent access | `agents-light.png` | `agents-dark.png` |
+| Definition — nothing submitted | `definition-light.png` | `definition-dark.png` |
+
+## The checklist, in three states
+
+The project key picks the moment, the way it picks the scenario in the runtime's
+shots. Every state is derived on the client from the three answers the page
+already has — no endpoint on Overview is new.
+
+| | light | dark |
+|---|---|---|
+| Nothing done yet — step 1 current | `checklist-fresh-light.png` | `checklist-fresh-dark.png` |
+| Two done, the agent step current with its command | `overview-light.png` | `overview-dark.png` |
+| All four done | `checklist-done-light.png` | `checklist-done-dark.png` |
+
+Only the step you are on offers one way forward, and only one: the agent step
+carries the command, so it does not also carry the link the others do.
+
+## The chrome-unification variant — a decision to make from pixels
+
+DESIGN.md §11 gives the console a cool chrome and leaves the runtime warm, which
+means RePanel paints two. Whether the runtime should take the console's is left
+open there, and this is the evidence:
+
+| | light | dark |
+|---|---|---|
+| The runtime as it ships — warm chrome | `runtime-chrome-warm-light.png` | `runtime-chrome-warm-dark.png` |
+| The same page, console chrome | `runtime-chrome-cool-light.png` | `runtime-chrome-cool-dark.png` |
+
+**The variant is not committed.** The four chrome tokens and the two sidebar
+text tokens are injected into the page at render time; `.theme-runtime` in
+`packages/ui/src/tokens.css` is untouched, and the two shots differ by nothing
+else.
+
+## Measured, from the rendered DOM
+
+```
+contrast   light  21 distinct text styles, 0 below AA   tightest 4.74
+           dark   23 distinct text styles, 0 below AA   tightest 4.94
+           (the tightest pair in both is the `positive` badge, at exactly the
+            numbers DESIGN §4 records — the check that the console's palette
+            really is the runtime's)
+
+overflow   no horizontal scroll at 768, 1440 or 2560, both themes
+numerals   tabular-nums at the root
+faces      self-hosted @fontsource-variable/geist and geist-mono; zero external
+           requests. The Stage 1 mockups link Google Fonts and the app never does.
+```

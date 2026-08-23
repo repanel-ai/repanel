@@ -14,11 +14,20 @@ export const agentAccessKeys = {
   actionSecret: (projectId: string) => [...agentAccessKeys.all, projectId, "action-secret"] as const,
 };
 
+/**
+ * How often the console asks again. A token's last-used stamp is written by an
+ * agent in another window, exactly as a definition is, so the only way a human
+ * watches an agent arrive is if the page keeps asking — and a query only polls
+ * while it is mounted, which is "while someone is looking at it".
+ */
+const POLL_MS = 10_000;
+
 /** What has been minted. The tokens themselves are not in here, and cannot be. */
 export function useAgentTokens(projectId: string) {
   return useQuery({
     queryKey: agentAccessKeys.tokens(projectId),
     queryFn: () => api.get<AgentTokenDto[]>(`/projects/${projectId}/agent-tokens`),
+    refetchInterval: POLL_MS,
   });
 }
 

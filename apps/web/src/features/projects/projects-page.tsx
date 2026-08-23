@@ -1,5 +1,6 @@
 import { Button, EmptyPanel, FormError, Skeleton } from "@repanel/ui";
 import { useState } from "react";
+import { PageHead } from "../../page-head";
 import { messageOf } from "../../lib/api-client";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { ProjectCard } from "./project-card";
@@ -11,17 +12,20 @@ export function ProjectsPage() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3">
-        <h1 className="text-title font-medium">Projects</h1>
+    <>
+      <div className="flex flex-wrap items-baseline gap-3">
+        <PageHead
+          title="Projects"
+          meta={projects.data ? countOf(projects.data.length) : undefined}
+        />
         <div className="flex-1" />
         <Button onClick={() => setCreating(true)}>New project</Button>
       </div>
 
       {projects.isPending && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-[102px]" />
+          <Skeleton className="h-[102px]" />
         </div>
       )}
 
@@ -38,7 +42,7 @@ export function ProjectsPage() {
       )}
 
       {projects.data && projects.data.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {projects.data.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
@@ -46,6 +50,10 @@ export function ProjectsPage() {
       )}
 
       <CreateProjectDialog open={creating} onClose={() => setCreating(false)} />
-    </div>
+    </>
   );
+}
+
+function countOf(total: number): string {
+  return `${total} ${total === 1 ? "project" : "projects"}`;
 }

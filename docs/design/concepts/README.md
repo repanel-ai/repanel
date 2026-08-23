@@ -147,92 +147,155 @@ its own decision entry — it is not in 010's scope.
 
 # Task 014b · Stage 1 — the console
 
-`console-a.html` — the console's project shell, on the `theme-console` layer
-DECISIONS #035 created. Open it directly; append `?theme=dark` for dark. The
-shots are `shots/console-a-{light,dark}.png`, 1440×900 at 2×.
+## Round 1 — `console-a.html`, REJECTED
 
-One concept rather than three. 010's brief was "what should an admin look
-like", which is a question with several honest answers; this one is "give the
-console the runtime's skeleton, on its own layer", which has one — the runtime's
-skeleton already exists, is approved, and is what a customer's operators will
-have seen. Three variations on a shell that is not up for redesign would be
-three drawings of the same decision.
+`console-a.html` (shots `shots/console-a-{light,dark}.png`) gave the console the
+runtime's skeleton on a warm layer: cream-paper chrome, the runtime's terracotta
+`--primary`, three warm light surfaces.
 
-| | value |
-|---|---|
-| skeleton | the runtime's: sidebar on the ground, panel inset with a hairline, topbar, one screen |
-| sidebar | project switcher, five destinations (`Settings` off), account card |
-| screen | Overview — three status cards, then the four-step setup checklist, mid-setup |
-| light surfaces | **three**: chrome `#ebe7e1→#e4e0d9`, panel `#f8f6f3`, card `#ffffff` |
-| dark surfaces | chrome `#0d0b09→#080605`, panel `#191715`, card `#211e1b` |
-| type, rhythm, radii | the runtime's, unchanged — shared primitives, and a layer may not move them |
-| accent | `--primary` `#bb4d00`, spent in four places, all of them "you are here" |
+**Rejected on direction, not on refinement.** Two reasons, both fair:
 
-## The three divergences from the runtime, and why each
+1. **It lands on 010's banned-defaults list in spirit** — cream paper plus a
+   terracotta accent is a named generated-design cliché, and the list exists
+   precisely to keep this product off it.
+2. **It reads editorial where it has to read like infrastructure.** A control
+   plane is where somebody points a production database at a service. Warm
+   paper says "read me"; this screen has to say "operate me."
 
-1. **Three light surfaces, not two.** The runtime's light theme puts the panel
-   and the card at the same white, because a table needs one flat field and a
-   raised card inside it would be noise. The console is the opposite shape —
-   half a dozen distinct objects, each a different thing you do — so the panel
-   comes off white to a warm `#f8f6f3` and `--card` keeps `#ffffff`. Measured:
-   panel `.9234` relative luminance against the card's `1.0000` in light,
-   `.0087` against `.0133` in dark. Three steps, real in both themes, and no
-   drop shadow anywhere (§2 still holds).
-2. **Airier by spacing, not by size.** Every control, row and type size is the
-   runtime's. What grows is the space between things. A console with its own
-   type scale would read as a second product; a console at a table's density
-   reads as a cramped one.
-3. **The accent carries identity.** `--primary` marks the project, the current
-   page, the current step, and nothing else. The current page and the current
-   step wear the *same* mark — two pixels of the accent on the left edge —
-   because they are the same sentence.
+The reference class is the professional SaaS console: Stripe, Linear, Vercel,
+Supabase. Cool, precise, unfussy. The file is kept as the record of what was
+tried; it is not a candidate.
 
-## Measured, from the rendered DOM
+## Round 2 — two concepts, both cool, both light-first
+
+| | **B — Elevation** | **C — Instrument** |
+|---|---|---|
+| file | `console-b.html` | `console-c.html` |
+| shots | `shots/console-b-{light,dark}.png` | `shots/console-c-{light,dark}.png` |
+| thesis | the thing to do next is the thing nearest your eye | one sheet, ruled into what it reports and what it can do |
+| reference | Stripe's dashboard | Linear / Vercel / Datadog |
+| surface strategy | **three planes** — slate chrome, slate panel, white cards floating on it | **two surfaces and a well** — slate chrome, one white sheet, a recessed well |
+| grouping | by plane: things on the same plane belong together | by rule: a hairline is the whole boundary |
+| status cards | three separate cards, gapped | three **cells** of one object, sharing borders |
+| checklist | four **cards** in a stack; the current one lifted | four **rows** of one object; the current one marked in the gutter |
+| shadow | two steps — `--lift-1` every card, `--lift-2` spent once | **one step**, on the panel, and none inside it |
+| accent | signal blue `#0e5fce` (dark `#2b6cd4`) | deep teal `#0e6b75` (dark `#1a9dab`) |
+| current page | filled pill, accent glyph, no bar | no fill, accent rule on the item's edge, ink label |
+| card label | small caps, micro, muted | sentence case, `--t-small` — a column header |
+
+The two differ in surface strategy, accent family and shadow usage, not in hue.
+Swap the palettes and they would still be two different arguments about what
+makes a group a group.
+
+### On the accent, and on the banned-defaults list
+
+Both accents are deliberately **outside the indigo/violet/purple family**, which
+010's banned list names by hand. B's is a pure blue at hue 215; C's is a teal
+far enough from the `positive` green (`#137a3f`) in both hue and lightness that
+a mark is never read as a state. Neither is warm; neither is borrowed.
+
+**Whichever is selected is proposed for BOTH theme layers** — a
+brand-unification ride-along replacing `--primary` `#bb4d00` on
+`.theme-runtime` too, with its own decision entry and a re-shoot of every
+runtime screenshot. One product has one accent. Selecting a console concept
+should not accidentally select a two-accent product, so it is said here.
+
+Each concept spends its accent in exactly four places, all of them "you are
+here": the project's mark, the current page, the current step, and the one
+primary action on the screen. Nowhere else.
+
+### On shadow, which 010 banned and this task permits
+
+010's list bans "drop shadows as the elevation mechanism", and DESIGN.md §2
+rules "no drop shadows anywhere". That ruling is right **for the runtime**,
+where a shadow under a table row muddies the one flat field five hundred
+records are read on — and it is the wrong rule for a console of eight distinct
+objects, each a different thing you do.
+
+So the permission is taken at the **layer**, not in a component: `--lift-1` and
+`--lift-2` are tokens `.theme-console` carries and `.theme-runtime` resolves to
+`none`. §2 stands unamended for the surface it was written about, and no app
+writes a `box-shadow` of its own. Both concepts stay inside two steps; C uses
+one.
+
+Shadow is also a light-theme mechanism, and both files say so: a black shadow on
+a black ground is nothing, so dark restates the same steps in lightness and
+keeps the hairlines.
+
+### Measured, from the rendered DOM
 
 ```
-contrast   light  23 distinct text styles, 0 below AA   tightest 4.74
-           dark   23 distinct text styles, 0 below AA   tightest 4.54
-           (light's tightest is the `positive` badge, at the number DESIGN.md
-            §4 records for it — the console spends the runtime's tone family
-            unchanged. Dark's is the project key in the switcher.)
+                     B — Elevation            C — Instrument
+contrast   light     26 styles, 0 below AA    21 styles, 0 below AA
+                     tightest 4.65            tightest 4.74
+           dark      26 styles, 0 below AA    21 styles, 0 below AA
+                     tightest 4.80            tightest 4.81
 
-surface    light  chrome .8025 → .7482   panel .9234   card 1.0000
-ladder     dark   chrome .0034 → .0019   panel .0087   card .0133
-           (the snippet inside a card drops back to the panel's value in both,
-            which is what makes it read as recessed rather than as a second card)
+surface    light     chrome .8442 -> .7961    chrome .8190 -> .7712
+ladder               panel  .9205             sheet  1.0000
+                     card   1.0000            well   .9114
+           dark      chrome .0040 -> .0028    chrome .0043 -> .0026
+                     panel  .0070             sheet  .0068
+                     card   .0109             well   .0120
 
-overflow   scrollWidth === clientWidth at 1440 and at 768, both themes
-numerals   tabular-nums on a card value
-faces      Geist, and Geist Mono for the one command on the page
+overflow             1440 and 768, both themes, both concepts: no horizontal
+                     scroll (scrollWidth === clientWidth)
+numerals             tabular-nums;  faces Geist + Geist Mono
 ```
 
-## Self-critique, and what it changed
+Light's tightest pair is the `positive` badge in both (4.74) — the number
+DESIGN.md §4 records for it, because both concepts spend the runtime's tone
+family unchanged. The state tones are semantics, not chrome: `positive` has to
+read as "this went well" on any layer. Nothing in either **base** is warm.
 
-Run once against the first pair of shots. Four things, all of them fixed in
-the file that is now here:
+### Self-critique, once each, against "would Stripe ship this"
 
-- **Every ghost button was painting the UA's `buttonface`.** The reset said
-  `font` and `color` and not `background`, so the theme toggle and the two step
-  actions arrived as light grey chips — invisible in light and glaring in dark.
-- **The current-page rule was on the sidebar's edge, not the item's.** It was
-  drawn at `left: -8px`, which put it against the window rather than against
-  the thing it marks. It now sits on the item's own left edge, and the current
-  *step* borrowed the same mark.
-- **`Geist Mono` was never loaded**, so the one command on the page rendered in
-  a system fallback and its `--` collapsed into a dash.
-- **The cards and the checklist said the same three things twice.** The steps
-  restated the connection string and the token label the cards above already
-  carried. Cut: the cards say what *is*, the checklist says what is *left*, and
-  neither repeats the other's value.
+Three findings, two of them shared:
 
-A fifth was found by measuring rather than looking: the disabled `Settings`
-item was dimmed with `opacity: .55`, which put the only unreachable label on
-the page under the contrast floor. Opacity is gone; it wears the group label's
-colour and the word `Soon` says why.
+- **Neither screen had a primary action.** Both spent the accent on the project
+  mark, the current page and the current step — and then the one thing the page
+  is actually asking for, the setup command, was an unlabelled icon inside a
+  code box. It is now a `Copy command` button at the control size beside the
+  snippet: one primary action per screen, and the fourth place the accent is
+  spent. Stripe would not ship a setup page whose call to action is an icon.
+- **Dashed borders on the not-yet-reachable step** read as a drop zone rather
+  than as a future. B's fourth step is now a flat outlined card resting on the
+  panel with no lift; C's is a row like any other with a solid ring for its
+  number.
+- **B marked its current card twice** — `--lift-2` *and* a blue-tinted border —
+  which is the same "two languages for one idea" the rejected concept was
+  criticised for. The tint is gone; the card is simply closer, which was the
+  thesis.
+- **C hung its current-page mark in a gutter outside the sidebar's padding**,
+  which put two pixels of teal flush against the window edge, where it read as
+  a rendering artefact. It sits on the item's own left edge now.
 
-## What is deliberately not here
+### Recommendation
 
-`Open admin` — the project in these shots has no definition yet, so the button
-that opens one would be a lie or a disabled control, and neither is worth
-drawing. It belongs on this page the moment the definition validates, next to
-the definition card.
+**B — Elevation**, on the structure, with one caveat about the accent.
+
+Why B: this page's whole job is to say what to do next, and B answers it
+spatially — the current step is literally nearer, which needs no colour, no
+legend and no second look. C answers it with two pixels of teal, which is a mark
+you have to notice. B also scales to the pages that come next: Connection and
+Agent access are forms, forms want a card on a field, and B already has that
+language while C would have to invent a container for them. And the reference
+class the rejection named leads with Stripe, which is the argument B is making.
+
+Why not C, though it is the closer sibling: C's line-led sheet is genuinely
+nearer the runtime's own table language, which is a real argument for product
+coherence, and its dark theme is the stronger of the two. But C is a
+*dark-first* aesthetic being asked to run light-first, and its light theme is
+where it is least itself — a white sheet on a grey ground with hairlines is
+correct and a little inert.
+
+**The caveat, and it is a separable decision.** The surface strategy and the
+accent are independent: B's structure carries either colour unchanged. If the
+accent is going to become RePanel's brand — and per above, selecting one makes
+it exactly that, on both layers — then **C's teal is the better brand than B's
+blue.** A signal blue is the right colour for this page and the most crowded
+colour in the category; the teal is distinct, equally cool, equally
+professional, and passes every contrast pair. If that reasoning lands, the
+selection to make is *B's structure with C's accent*, which costs a palette
+swap and nothing else.
+

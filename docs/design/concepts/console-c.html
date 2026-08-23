@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en" class="theme-console">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console C — Instrument</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONSOLE C — INSTRUMENT. Task 014b, Stage 1, second round.
+
+   THESIS: a control plane is an instrument panel — one sheet, ruled into the
+   facts it reports and the things it can do. Structure comes from lines, not
+   from planes. Nothing floats, nothing is grouped by being lifted; the status
+   cards are three CELLS of one object sharing their borders, and the checklist
+   is four ROWS of another. The result reads like a readout, which is what it
+   is, and it stays legible at any density you later ask of it.
+
+   Reference class: Linear, Vercel, the Datadog side of the SaaS console
+   spectrum. Graphite-cool neutrals, one crisp white sheet, hairlines carrying
+   every boundary, colour spent almost nowhere.
+
+   THE SURFACE STRATEGY — two surfaces and a well
+     chrome  #e6eaef -> #dfe4ea   the sidebar and the panel's margin, one paint
+     sheet   #ffffff             the panel, and everything drawn on it
+     well    #f3f5f8             recessed: the command block, and row hover
+
+   The card and the panel are THE SAME WHITE on purpose. B separates objects by
+   raising them; C separates them by ruling between them, and a white card on a
+   white sheet with a hairline round it is exactly the object C wants — the
+   hairline is the whole statement.
+
+   SHADOW, AND HOW LITTLE OF IT. The layer may carry soft shadows (this is the
+   theme-layer divergence from DESIGN.md §2's "no drop shadows anywhere", which
+   is the right rule for the runtime's one flat data field and the wrong one
+   for a console of eight distinct objects). C spends exactly ONE step of it,
+   and spends it on the panel itself, so the sheet reads as a sheet lying on
+   the chrome. Inside the panel there is not a single shadow. That restraint IS
+   the concept: B's answer to "which is nearest" is elevation; C's answer is
+   that nothing is nearer, and the accent says where you are instead.
+
+   Dark drops the shadow to almost nothing and keeps the same two surfaces in
+   lightness (#101418 sheet on #0b0e11 chrome, #191d22 well) — a black shadow
+   on a black ground is nothing, and a dark theme that leans on one goes flat.
+
+   THE ACCENT — deep teal #0e6b75
+   Cool, saturated enough to be a colour rather than a dark grey, and far
+   enough from the `positive` green (#137a3f) in hue and lightness that a mark
+   is never mistaken for a state. Deliberately not the indigo/violet family,
+   which task 010's banned-defaults list names by hand as the generated-design
+   cliché. Spent in exactly four places, all of them "you are here": the
+   project's mark, the current page, the current step, and the one button that
+   moves setup forward. Nowhere else on this screen.
+
+   Dark inverts the pair rather than brightening one half of it: a teal dark
+   enough for white text disappears against #101418, so dark runs a bright
+   teal (#1a9dab) with dark ink on it (#04161a, 5.69:1). `--primary-foreground`
+   is a per-layer token precisely so this is sayable.
+
+   IF THIS CONCEPT IS SELECTED, THE ACCENT IS PROPOSED FOR BOTH THEME LAYERS —
+   a brand-unification ride-along replacing `--primary` #bb4d00 on
+   `.theme-runtime` as well. One product has one accent. That is a change to
+   every runtime screenshot in `shots/` and needs its own decision entry; it is
+   named here so selecting this concept is not accidentally selecting a
+   two-accent product.
+
+   UNCHANGED, BY RULE: the skeleton (inset sidebar shell, panel, topbar, one
+   screen), and every shared primitive — Geist, the five type sizes, the radii,
+   the control/nav/top rhythm. A theme layer may not move those (DESIGN.md §1).
+
+   Append `?theme=dark` for the dark theme.
+   =========================================================================== */
+
+:root {
+  /* ---- shared primitives: the runtime's, untouched ----------------------- */
+  --t-micro: 11.5px;
+  --t-small: 12.5px;
+  --t-body: 13.5px;
+  --t-title: 20px;
+  --t-brand: 14px;
+  --t-nav-meta: 12px;
+
+  --h-nav: 30px;
+  --h-control: 32px;
+  --h-row: 36px;
+  --h-head: 34px;
+  --h-top: 48px;
+  --w-sidebar: 236px;
+
+  --radius: 0.45rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  /* ---- theme-console/C, light: the entry theme --------------------------- */
+  /* Graphite-cool. Every neutral is slate with the blue dialled back a step
+     from B's, so the sheet reads as paper-white rather than as blue-white.
+     There is no warm hue in the base and the accent is not warm either. */
+  --sidebar-top: #e6eaef;
+  --sidebar-bottom: #dfe4ea;
+  --page: var(--sidebar-top);
+  --background: #ffffff;
+  /* The same white as the panel, deliberately: a cell is made by its rules. */
+  --card: #ffffff;
+  --muted: #f3f5f8;
+  --accent: #eef1f4;
+  --secondary: #e9edf1;
+  --sidebar-accent: #dde3ea;
+
+  --foreground: #0c1116;
+  --card-foreground: #0c1116;
+  --muted-foreground: #59646f;
+  --accent-foreground: #141a20;
+  --secondary-foreground: #1a2028;
+  --sidebar-foreground: #3f4a55;
+  --sidebar-muted: #5c6773;
+  --utility-foreground: var(--foreground);
+
+  --primary: #0e6b75;
+  --primary-foreground: #ffffff;
+
+  /* The four state tones are semantics, not chrome: `positive` has to read as
+     "this went well" on any layer, so they cross layers unchanged from
+     DESIGN.md §4. Nothing in the base is warm; a state is allowed to be. */
+  --destructive: #e7000b;
+  --destructive-soft: #fde6e7;
+  --destructive-line: #f8b8bb;
+  --destructive-text: #c2191c;
+  --positive-soft: #e4f4e9;
+  --positive-line: #b7ddc4;
+  --positive-text: #137a3f;
+  --attention-soft: #fceedb;
+  --attention-line: #f2cf9e;
+  --attention-text: #9a5500;
+
+  /* Hairlines carry every boundary on this screen, so they are a step stronger
+     than B's — a line doing structural work has to be seen doing it. */
+  --border: #dce2e8;
+  --input: #ccd5de;
+  --ring: #8c99a8;
+  --sidebar-border: #d0d8e0;
+
+  /* One step, spent on the panel and nowhere inside it. */
+  --lift-1: 0 1px 2px rgba(12, 17, 22, .05), 0 8px 24px rgba(12, 17, 22, .05);
+}
+
+html.dark {
+  --sidebar-top: #0b0e11;
+  --sidebar-bottom: #070909;
+  --background: #101418;
+  --card: #101418;
+  --muted: #191d22;
+  --accent: #171b20;
+  --secondary: #1e2329;
+  --sidebar-accent: #151a1f;
+
+  --foreground: #eef1f4;
+  --card-foreground: #eef1f4;
+  --muted-foreground: #949daa;
+  --accent-foreground: #eef1f4;
+  --secondary-foreground: #e7ebef;
+  --sidebar-foreground: #aeb8c4;
+  --sidebar-muted: #79838f;
+  --utility-foreground: var(--muted-foreground);
+
+  /* The pair inverts: bright teal, dark ink. See the header. */
+  --primary: #1a9dab;
+  --primary-foreground: #04161a;
+
+  --destructive: #ff6467;
+  --destructive-soft: #3f2627;
+  --destructive-line: #683335;
+  --destructive-text: #ff6467;
+  --positive-soft: #1c3125;
+  --positive-line: #2f5540;
+  --positive-text: #46ad72;
+  --attention-soft: #3a2a15;
+  --attention-line: #5e4526;
+  --attention-text: #c98c48;
+
+  --border: #232830;
+  --input: #2b3038;
+  --ring: #77818e;
+  --sidebar-border: #1a1f24;
+
+  --lift-1: 0 1px 2px rgba(0, 0, 0, .5);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--foreground);
+  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--t-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; }
+svg { display: block; }
+
+:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
+/* ---- the shell ------------------------------------------------------------ */
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(to bottom, var(--sidebar-top), var(--sidebar-bottom));
+}
+
+/* ---- the sidebar ---------------------------------------------------------- */
+.sidebar {
+  width: var(--w-sidebar);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 10px;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sidebar-muted);
+}
+.wordmark .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--primary); }
+
+/* Ruled, not raised: the switcher is a bordered field on the chrome. */
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 46px;
+  margin-top: 2px;
+  padding: 0 9px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .12s ease;
+}
+.switcher:hover { border-color: var(--input); }
+.switcher .mark {
+  display: grid; place-items: center;
+  width: 24px; height: 24px; flex: none;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: var(--t-micro); font-weight: 600;
+}
+.switcher .names { min-width: 0; flex: 1; }
+.switcher .name {
+  font-size: var(--t-brand); font-weight: 600; letter-spacing: -0.01em; line-height: 1.25;
+  color: var(--foreground);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .key {
+  font-size: var(--t-nav-meta); line-height: 1.3; color: var(--sidebar-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .chev { flex: none; color: var(--sidebar-muted); }
+
+.rule { height: 1px; margin: 10px 8px; background: var(--sidebar-border); }
+
+.nav { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+/* C's current page carries no fill at all. It is marked by the same two pixels
+   of accent on its own left edge that the current STEP wears, and by its label
+   coming up to full ink. A filled pill would be a plane, and this concept has
+   none. (The first draft hung that mark in a gutter outside the sidebar's
+   padding, which put it flush against the window and made it read as a
+   rendering artefact rather than as a marker.) */
+.nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: var(--h-nav);
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--t-body);
+  font-weight: 500;
+  color: var(--sidebar-foreground);
+  transition: background-color .12s ease, color .12s ease;
+}
+.nav a svg { flex: none; opacity: .7; }
+.nav a:hover { background: var(--sidebar-accent); color: var(--foreground); }
+.nav a[aria-current] { color: var(--foreground); }
+.nav a[aria-current] svg { opacity: 1; color: var(--primary); }
+.nav a[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+.nav a[aria-disabled] { color: var(--sidebar-muted); cursor: default; pointer-events: none; }
+.nav a[aria-disabled] svg { opacity: .5; }
+.nav a[aria-disabled] .later {
+  margin-left: auto; font-size: var(--t-micro); font-weight: 500; color: var(--sidebar-muted);
+}
+
+.account {
+  display: flex; align-items: center; gap: 9px;
+  height: 44px; padding: 0 8px; border-radius: var(--radius-md);
+}
+.account .avatar {
+  display: grid; place-items: center;
+  width: 26px; height: 26px; flex: none;
+  border-radius: var(--radius-lg);
+  background: var(--secondary); color: var(--secondary-foreground);
+  font-size: var(--t-micro); font-weight: 600;
+}
+.account .who { min-width: 0; }
+.account .who b { display: block; font-size: var(--t-body); font-weight: 500; line-height: 1.25; }
+.account .who span {
+  display: block; font-size: var(--t-nav-meta); line-height: 1.3; color: var(--sidebar-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- the panel: one sheet, and the only lifted thing on the screen -------- */
+.panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-xl);
+  background: var(--background);
+  box-shadow: var(--lift-1);
+}
+
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  height: var(--h-top); flex: none;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.crumb { font-size: var(--t-small); color: var(--muted-foreground); }
+.crumb a:hover { color: var(--foreground); }
+.crumb .sep { opacity: .5; padding: 0 2px; }
+.crumb b { font-weight: 500; color: var(--foreground); }
+.topbar .spacer { flex: 1; }
+
+/* ---- controls ------------------------------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--h-control); padding: 0 12px; flex: none;
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: var(--t-body); font-weight: 500; white-space: nowrap; cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); }
+.btn-outline { border-color: var(--input); background: var(--card); }
+.btn-outline:hover { background: var(--accent); }
+.btn-ghost { color: var(--utility-foreground); }
+.btn-ghost:hover { background: var(--accent); color: var(--foreground); }
+.btn-icon { width: var(--h-control); padding: 0; }
+
+/* ---- the screen ----------------------------------------------------------- */
+.screen { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 28px 34px; }
+.screen > * { max-width: 1120px; }
+
+.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.page-head h1 { margin: 0; font-size: var(--t-title); font-weight: 500; letter-spacing: -0.012em; }
+
+/* ---- the readout: one object, ruled into three cells --------------------- */
+.readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.cell {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 16px 18px 17px;
+  border-left: 1px solid var(--border);
+}
+.cell:first-child { border-left: none; }
+/* A cell's label is a column header, and is set like one: the readout is a
+   table with one row, and saying so in small caps would make it a dashboard. */
+.cell .label { font-size: var(--t-small); color: var(--muted-foreground); }
+.cell .value {
+  font-size: var(--t-body); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cell .value.quiet { font-weight: 400; color: var(--muted-foreground); }
+.cell .foot { display: flex; align-items: center; gap: 7px; font-size: var(--t-small); color: var(--muted-foreground); }
+
+.badge {
+  display: inline-flex; align-items: center; width: fit-content;
+  padding: 1px 7px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--secondary); color: var(--secondary-foreground);
+  font-size: var(--t-micro); line-height: 1.5; font-weight: 500; white-space: nowrap;
+}
+.badge.positive { background: var(--positive-soft); border-color: var(--positive-line); color: var(--positive-text); }
+.badge.attention { background: var(--attention-soft); border-color: var(--attention-line); color: var(--attention-text); }
+.badge.critical { background: var(--destructive-soft); border-color: var(--destructive-line); color: var(--destructive-text); }
+
+/* ---- the checklist: one object, ruled into four rows --------------------- */
+.section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.section-head h2 { margin: 0; font-size: var(--t-body); font-weight: 500; }
+.section-head .meta { font-size: var(--t-small); color: var(--muted-foreground); }
+
+.checklist {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.step {
+  position: relative;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 18px 17px;
+  border-top: 1px solid var(--border);
+}
+.step:first-child { border-top: none; }
+/* The same two pixels of accent, in the same gutter position, as the current
+   page in the nav. One language for "you are here", used twice. */
+.step.current::before {
+  content: "";
+  position: absolute;
+  left: 0; top: -1px; bottom: 0;
+  width: 2px;
+  background: var(--primary);
+}
+
+.step .mark {
+  display: grid; place-items: center;
+  width: 20px; height: 20px; flex: none; margin-top: 1px;
+  border-radius: 999px;
+  font-size: var(--t-micro); font-weight: 600;
+}
+.step.done .mark { background: var(--positive-soft); border: 1px solid var(--positive-line); color: var(--positive-text); }
+.step.current .mark { background: var(--primary); color: var(--primary-foreground); }
+.step.todo .mark { border: 1px solid var(--input); color: var(--muted-foreground); }
+
+.step .body { flex: 1; min-width: 0; }
+.step .title { font-size: var(--t-body); font-weight: 500; }
+.step.todo .title { color: var(--muted-foreground); }
+.step .note { margin: 3px 0 0; font-size: var(--t-small); color: var(--muted-foreground); }
+.step .act { flex: none; align-self: center; }
+.step .act .btn { color: var(--muted-foreground); }
+.step .act .btn:hover { color: var(--foreground); }
+
+/* A well, cut into the sheet: darker in light, lifted in dark — the same
+   inversion DESIGN.md §2 already makes for a row under the cursor. */
+/* The one primary action on the page, and the fourth and last place the accent
+   is spent. A labelled control rather than the icon the other snippets carry:
+   this is the thing the screen is asking for, and a screen that asks for
+   something should say so in a word. */
+.command { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.command .snippet { flex: 1; min-width: 0; margin-top: 0; }
+.snippet {
+  display: flex; align-items: stretch; min-width: 0;
+  margin-top: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.snippet pre {
+  flex: 1; min-width: 0; margin: 0;
+  /* 20px line box in a 32px box: the snippet stands exactly as tall as the
+     control beside it, which is the shared `--h-control`. */
+  padding: 5px 11px;
+  overflow-x: auto;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--t-small); line-height: 20px;
+  color: var(--foreground);
+}
+
+.after { margin: 16px 2px 0; font-size: var(--t-small); color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="wordmark"><span class="dot"></span>RePanel</div>
+
+    <button class="switcher" type="button">
+      <span class="mark">C</span>
+      <span class="names">
+        <span class="name">Crewbase</span>
+        <span class="key">crewbase-a3k9x2</span>
+      </span>
+      <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <div class="rule"></div>
+
+    <nav class="nav" aria-label="Project">
+      <a href="#" aria-current="page">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-7 4.5 14 2.5-7h4.5"/></svg>
+        Overview
+      </a>
+      <a href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/></svg>
+        Connection
+      </a>
+      <a href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3.75"/><path d="m10.7 10.7 8.3 8.3"/><path d="m15.5 15.5 2-2"/><path d="m17.5 17.5 2-2"/></svg>
+        Agent access
+      </a>
+      <a href="#">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+        Definition
+      </a>
+      <a href="#" aria-disabled="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3"/><path d="m18.7 5.3-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"/></svg>
+        Settings
+        <span class="later">Soon</span>
+      </a>
+    </nav>
+
+    <div class="rule"></div>
+
+    <div class="account">
+      <span class="avatar">AL</span>
+      <span class="who">
+        <b>Ada Lovelace</b>
+        <span>ada@example.com</span>
+      </span>
+    </div>
+  </aside>
+
+  <main class="panel">
+    <div class="topbar">
+      <p class="crumb"><a href="#">Projects</a><span class="sep">/</span><b>Crewbase</b></p>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-icon" type="button" aria-label="Switch to the dark theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+
+    <div class="screen">
+      <div class="page-head"><h1>Overview</h1></div>
+
+      <div class="readout">
+        <div class="cell">
+          <span class="label">Connection</span>
+          <span class="value">db.crewbase.internal/crewbase</span>
+          <span class="foot"><span class="badge positive">Answered</span> tested 4 minutes ago</span>
+        </div>
+        <div class="cell">
+          <span class="label">Definition</span>
+          <span class="value quiet">Nothing submitted yet</span>
+          <span class="foot"><span class="badge">Waiting</span> your agent writes this</span>
+        </div>
+        <div class="cell">
+          <span class="label">Agent tokens</span>
+          <span class="value">1 active</span>
+          <span class="foot"><span class="badge">Never used</span> Claude Code on my laptop</span>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2>Set up this admin</h2>
+        <span class="meta">2 of 4 done</span>
+      </div>
+
+      <div class="checklist">
+        <div class="step done">
+          <span class="mark" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+          </span>
+          <span class="body">
+            <span class="title">Connect your database</span>
+            <p class="note">Stored encrypted. It is never shown again and never sent to an agent.</p>
+          </span>
+          <span class="act"><a class="btn btn-ghost" href="#">Change</a></span>
+        </div>
+
+        <div class="step done">
+          <span class="mark" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+          </span>
+          <span class="body">
+            <span class="title">Mint an agent token</span>
+            <p class="note">Shown once, at the moment it was minted. Mint another if it was lost.</p>
+          </span>
+          <span class="act"><a class="btn btn-ghost" href="#">Mint another</a></span>
+        </div>
+
+        <div class="step current">
+          <span class="mark" aria-hidden="true">3</span>
+          <span class="body">
+            <span class="title">Connect your agent</span>
+            <p class="note">Run this where your agent runs. Every client configured by file is on the Agent access page.</p>
+            <div class="command">
+              <div class="snippet">
+                <pre>claude mcp add --transport http repanel http://localhost:3001/mcp --header "Authorization: Bearer &lt;token&gt;"</pre>
+              </div>
+              <button class="btn btn-primary" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15"/></svg>
+                Copy command
+              </button>
+            </div>
+          </span>
+        </div>
+
+        <div class="step todo">
+          <span class="mark" aria-hidden="true">4</span>
+          <span class="body">
+            <span class="title">Ask it to create your admin</span>
+            <p class="note">&ldquo;Read my database and build me an admin.&rdquo; It writes the definition and submits it — this page changes on its own when it lands.</p>
+          </span>
+        </div>
+      </div>
+
+      <p class="after">Nothing here needs a browser refresh: the console asks again every ten seconds while you are looking at it.</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+
+</body>
+</html>

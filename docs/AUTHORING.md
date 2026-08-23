@@ -86,18 +86,17 @@ human, in the console.
 
 This is not a formality. Anything you handle is in a transcript.
 
-When `get_project` answers `hasConnection: false`, stop and hand the job to a
-human:
+When `get_project` answers `hasConnection: false`, it also answers
+`connectionSetupUrl`: the console page for this project, on this deployment.
+Stop and hand the job to a human, with that link:
 
-> Crewbase's RePanel project has no database connection yet. Open the project in
-> the RePanel console — `https://<console-host>/p/<project-id>`, the
-> **Connection** section — and paste the connection string there. It is stored
-> encrypted and never leaves RePanel. Tell me when it is saved and I will carry
-> on.
+> Crewbase's RePanel project has no database connection yet. Open
+> <connectionSetupUrl>, the **Connection** section — and paste the connection
+> string there. It is stored encrypted and never leaves RePanel. Tell me when it
+> is saved and I will carry on.
 
-You will usually not have the project id: your token names the project, not its
-URL. Then name the project instead — "the project called *Crewbase* in the
-console" — and let them click through from the project list.
+Pass the URL through verbatim. Once a connection exists the field is `null`,
+which is how you know not to send anyone anywhere.
 
 A `repanel link` CLI arrives at MVP and does this handshake without the
 copy-paste: it opens the console, the human pastes the DSN once, and the agent

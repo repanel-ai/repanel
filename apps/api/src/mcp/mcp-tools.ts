@@ -17,6 +17,8 @@ export interface ToolDependencies {
   connections: ConnectionsService;
   definitions: DefinitionsService;
   schemaDocumentation: SchemaDocumentationService;
+  /** The console's origin, so a tool can send a human somewhere specific. */
+  consoleUrl: string;
   logger: Logger;
 }
 
@@ -55,12 +57,16 @@ export function registerTools(
 key, whether a customer database connection has been configured, and the state of its
 definition. Call this first in a session — it tells you whether you are authoring a
 definition from scratch or repairing one that already exists. Takes no arguments: the
-access token fixes which project you are working on.`,
+access token fixes which project you are working on. When \`hasConnection\` is false the
+result also carries \`connectionSetupUrl\`: send the human there to paste the connection
+string themselves. Never ask for a connection string and never handle one.`,
       inputSchema: NO_ARGUMENTS,
       outputSchema: {
         name: z.string(),
         key: z.string(),
         hasConnection: z.boolean(),
+        /** Where a human configures the connection, or null once one exists. */
+        connectionSetupUrl: z.string().nullable(),
         definitionStatus: definitionStatusSchema,
         /** ISO 8601, or null while no definition has been submitted. */
         definitionUpdatedAt: z.string().nullable(),
@@ -71,14 +77,24 @@ access token fixes which project you are working on.`,
         const project = await deps.projects.requireAccess(agent, projectId);
         const hasConnection = await deps.connections.hasConnection(agent, projectId);
         const stored = await deps.definitions.getValidationResult(agent, projectId);
+        const connectionSetupUrl = hasConnection ? null : `${deps.consoleUrl}/p/${projectId}`;
 
-        return toolResult({
+        const payload = {
           name: project.name,
           key: project.key,
           hasConnection,
+          connectionSetupUrl,
           definitionStatus: statusOf(stored),
           definitionUpdatedAt: stored?.updatedAt ?? null,
-        });
+        };
+
+        if (!connectionSetupUrl) return toolResult(payload);
+        // The instruction leads; the payload still follows in full, because the
+        // agent needs the definition status whether or not it has to go and wait.
+        return toolResult(
+          payload,
+          `${directHumanToConsole(connectionSetupUrl)}\n\n${JSON.stringify(payload, null, 2)}`,
+        );
       }),
   );
 
@@ -204,6 +220,19 @@ session, or in a new one — without resubmitting a definition you have not chan
           ? toolResult(payload, renderValidationReport(stored.errors ?? []))
           : toolResult(payload);
       }),
+  );
+}
+
+/**
+ * The one step of setup an agent must not perform for the human. A connection
+ * string is a credential and a transcript is not a vault, so the tool's whole
+ * job here is to name the place the human pastes it.
+ */
+function directHumanToConsole(url: string): string {
+  return (
+    "This project has no customer database connection yet. Do not ask for a connection " +
+    `string — send the human to ${url}, the Connection section, and carry on once they ` +
+    "confirm it is saved. You can write and validate the whole definition before then."
   );
 }
 

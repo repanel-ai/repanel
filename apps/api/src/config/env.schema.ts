@@ -24,6 +24,15 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.url(),
   /**
+   * Where the console is served from. The MCP tools hand it to an authoring
+   * agent as a deep link, so a human can go and paste the one thing an agent
+   * must never handle — the customer's connection string.
+   */
+  CONSOLE_URL: z
+    .url()
+    .default("http://localhost:5173")
+    .transform((url) => url.replace(/\/+$/, "")),
+  /**
    * Encrypts customer DSNs at rest. It is the only thing standing between a
    * leaked `connections` table and every customer database, so it belongs
    * wherever this deployment keeps secrets — never beside the database URL.

@@ -46,6 +46,9 @@ const FORTY_PROBLEMS = {
 
 const DOCUMENTATION = "# RePanel definition schema — v0\n\nEvery key, written out.";
 
+/** Where this deployment serves the console, as CONSOLE_URL would say. */
+const CONSOLE_URL = "https://console.repanel.test";
+
 const TOOL_NAMES = [
   "get_definition",
   "get_project",
@@ -169,6 +172,7 @@ describe("MCP tools", () => {
       connections,
       definitions,
       schemaDocumentation,
+      consoleUrl: CONSOLE_URL,
       logger,
     });
     const [clientEnd, serverEnd] = InMemoryTransport.createLinkedPair();
@@ -252,9 +256,22 @@ describe("MCP tools", () => {
         name: "Crewbase",
         key: "crewbase-a3k9x2",
         hasConnection: false,
+        connectionSetupUrl: `${CONSOLE_URL}/p/${CREWBASE}`,
         definitionStatus: "none",
         definitionUpdatedAt: null,
       });
+    });
+
+    it("sends the human, not the agent, to configure a missing connection", async () => {
+      const client = await connect();
+
+      const result = await call(client, "get_project");
+
+      const text = textOf(result);
+      expect(text).toContain(`${CONSOLE_URL}/p/${CREWBASE}`);
+      expect(text).toContain("Do not ask for a connection string");
+      // The payload still travels in full: the agent has work it can do meanwhile.
+      expect(text).toContain('"definitionStatus": "none"');
     });
 
     it("reports the customer database once the project has been pointed at one", async () => {
@@ -264,6 +281,16 @@ describe("MCP tools", () => {
       const result = await call(client, "get_project");
 
       expect(payloadOf(result)).toMatchObject({ hasConnection: true });
+    });
+
+    it("drops the setup link, and the instruction, once a connection exists", async () => {
+      connected.add(CREWBASE);
+      const client = await connect();
+
+      const result = await call(client, "get_project");
+
+      expect(payloadOf(result)).toMatchObject({ connectionSetupUrl: null });
+      expect(textOf(result)).not.toContain(CONSOLE_URL);
     });
 
     it("reports how the definition stands once one has been submitted", async () => {

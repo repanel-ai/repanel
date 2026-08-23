@@ -9,6 +9,7 @@ describe("validateEnv", () => {
       NODE_ENV: "development",
       PORT: 3001,
       DATABASE_URL,
+      CONSOLE_URL: "http://localhost:5173",
       APP_ENCRYPTION_KEY,
     });
   });
@@ -50,5 +51,21 @@ describe("validateEnv", () => {
     const env = validateEnv({ NODE_ENV: "test", DATABASE_URL, APP_ENCRYPTION_KEY });
 
     expect(env.APP_ENCRYPTION_KEY).toBe(APP_ENCRYPTION_KEY);
+  });
+
+  it("drops a trailing slash from the console URL, because links are built onto it", () => {
+    const env = validateEnv({
+      DATABASE_URL,
+      APP_ENCRYPTION_KEY,
+      CONSOLE_URL: "https://console.repanel.app/",
+    });
+
+    expect(env.CONSOLE_URL).toBe("https://console.repanel.app");
+  });
+
+  it("refuses a console URL that is not a URL", () => {
+    expect(() =>
+      validateEnv({ DATABASE_URL, APP_ENCRYPTION_KEY, CONSOLE_URL: "console.repanel.app" }),
+    ).toThrow(/CONSOLE_URL/);
   });
 });

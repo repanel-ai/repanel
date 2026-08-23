@@ -19,6 +19,11 @@ export class ConfigService {
     return this.env.get("DATABASE_URL", { infer: true });
   }
 
+  /** The console's origin, without a trailing slash. Links are built onto it. */
+  get consoleUrl(): string {
+    return this.env.get("CONSOLE_URL", { infer: true });
+  }
+
   /** Base64 for 32 bytes; `CryptoService` is the only thing that reads it. */
   get appEncryptionKey(): string {
     return this.env.get("APP_ENCRYPTION_KEY", { infer: true });

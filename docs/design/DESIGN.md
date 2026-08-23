@@ -394,7 +394,7 @@ It has landed. `resource.icon` is one name from a closed thirty-name
 vocabulary — `user users building key shield cart receipt credit-card package
 truck tag wallet file folder image book message mail database webhook terminal
 activity bell clock calendar settings chart globe link table` — the glyphs are
-drawn in-repo (#026) in `packages/ui/src/resource-icons.tsx`, an unknown name is
+drawn in-repo (#026) in `packages/ui/src/glyphs.tsx`, an unknown name is
 a validation error naming all thirty (#020), and a resource that says nothing
 wears `table`. The mark sits at 16px and 70% opacity: a step behind the word,
 because the word is what is read and the glyph is how the eye finds it.

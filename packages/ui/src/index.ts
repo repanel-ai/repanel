@@ -25,7 +25,7 @@ export { JsonBlock, type JsonBlockProps } from "./json-block";
 export { Label, type LabelProps } from "./label";
 export { NoValue } from "./no-value";
 export { Relation } from "./relation";
-export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./resource-icons";
+export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./glyphs";
 export { Section, type SectionProps } from "./section";
 export { Select, type SelectProps } from "./select";
 export { TabBar, tabClasses } from "./tab-bar";

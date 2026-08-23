@@ -2,13 +2,20 @@ import type { ReactNode } from "react";
 import { Glyph, type IconProps } from "./icons";
 
 /**
- * The marks a resource can be drawn with — the vocabulary `resource.icon`
- * names, drawn in-repo like everything else (DECISIONS #026, #031).
+ * The named glyph vocabulary: a closed set of marks, drawn in-repo like
+ * everything else (DECISIONS #026), each reachable by name and by nothing else.
  *
- * The runtime never chooses one. It draws the name the definition gave, and
- * `table` when the definition gave none: a customer's resource may be called
- * `tbl_cust_01`, and guessing a picture from that is the same mistake as
- * guessing a badge's severity from how a value is spelled.
+ * It is a vocabulary rather than a set of resource icons. The runtime spends it
+ * on a definition's `resource.icon` (DECISIONS #031) and the console spends it
+ * on its own navigation, and neither of those is what the list *is* — it is
+ * thirty marks with names, and a surface that needs one asks for it by name.
+ * (This file was `resource-icons.tsx` while the runtime was the only caller,
+ * which named it after its first customer rather than after itself.)
+ *
+ * **Nothing in this repo may map a key to a glyph.** A caller passes a name it
+ * was given or chose; a customer's resource may be called `tbl_cust_01`, and
+ * guessing a picture from that is the same mistake as guessing a badge's
+ * severity from how a value is spelled.
  */
 const GLYPHS: Record<string, ReactNode> = {
   user: (
@@ -208,8 +215,8 @@ export interface ResourceIconProps extends IconProps {
 }
 
 /**
- * The mark a resource wears. It draws the name it is given and the generic one
- * for anything it does not recognise — validation has already refused a name
+ * One mark, by name. It draws the name it is given and the generic `table` for
+ * anything it does not recognise — validation has already refused a name
  * outside the vocabulary, so the fallback is the defense behind that door
  * rather than a decision this makes.
  */

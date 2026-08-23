@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en" class="theme-console">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console E — Elevation, with a voice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CONSOLE E — ELEVATION, WITH A VOICE. Task 014b, Stage 1, third round.
+
+   B's direction — cool slate, three planes, one blue accent, two elevation
+   steps — carrying four lessons taken from the ShipNova reference. Three of
+   them are straightforwardly better than what B had. One thing in that
+   reference is a trap, and this file does not take it.
+
+   ---------------------------------------------------------------------------
+   1. THE FACE — Plus Jakarta Sans, and this is a PRODUCT decision, not a
+      console one.
+
+   The reference's face has more voice than Geist: rounder bowls, a taller
+   x-height, and a geometric build that makes a five-item nav read as a
+   designed object rather than as a list of words. That is a real difference
+   and it is worth having.
+
+   It is also not a thing a theme layer may do. DESIGN.md §1 rules the font
+   stacks a shared primitive and §3 rules Geist for the whole product. So this
+   file is proposing the face for BOTH surfaces, exactly as it proposes the
+   accent for both — or it is proposing nothing, because a console in one face
+   and an admin in another is two products.
+
+   IT PASSES THE ONE HARD GATE. §3's tabular-numeral requirement is not a
+   preference: Geist's default figures are proportional and every column of
+   dates, ids, counts and page ranges depends on `tabular-nums` working. Both
+   faces were measured in the browser at 40px, ten `1`s against ten `0`s:
+
+        Plus Jakarta Sans   proportional 148.4 / 292.8   tabular 240 / 240
+        Geist               proportional 139.2 / 268.8   tabular 240 / 240
+        Be Vietnam Pro      proportional 154.0 / 270.4   tabular  — none —
+
+      Plus Jakarta Sans's tabular advance is 240px, which is Geist's exactly, so
+      a swapped face changes no column's width. (Be Vietnam Pro is listed
+      because it was a candidate and it silently has no `tnum` at all — the
+      failure mode §3 warns about, and the reason this is measured rather than
+      assumed.) It self-hosts through the same mechanism the repo already uses:
+      `@fontsource-variable/plus-jakarta-sans`, one dependency swapped for
+      another, no CDN.
+
+      Geist Mono stays for the command. It is the machine face, it is excellent,
+      and nothing about it was the complaint.
+
+   ---------------------------------------------------------------------------
+   2. THE ICONS — larger, heavier, and made to carry meaning.
+
+   Ours were 16px on a 1.5 stroke, which is a footnote beside its word. Here a
+   nav mark is 18px on 1.75, and each status card gets a 30px tinted chip.
+
+   AND HERE IS WHERE THE REFERENCE IS WRONG. It tints those chips per CARD —
+   orange for one, purple for the next — which is colour used as decoration:
+   the hue tells you which card you are looking at, which you already knew from
+   the label. This file tints them per STATE instead, out of DESIGN.md §4's
+   four-tone family: the connection chip is `positive` because the database
+   answered, and it would be `critical` if it had not. Same visual richness,
+   except the colour is now the fastest-read fact on the card rather than the
+   slowest.
+
+   The accent is untouched by any of this. It stays in its four places — the
+   project's mark, the current page, the current step, the primary action — and
+   a status chip is not one of them.
+
+   ---------------------------------------------------------------------------
+   3. THE SIDEBAR — grouped, with a second group pinned under a rule.
+
+   The reference's `MAIN MENU` label, its divider, and its `Settings` / `Logout`
+   pair sitting apart from the destinations above are all doing real work: they
+   say the nav has two kinds of thing in it. B ran all five as one list with
+   `Settings` greyed at the bottom, which made "off" and "different in kind"
+   look like the same statement. Now `Settings` sits below the rule with
+   `Sign out`, which is also the first home sign-out has had in this shell —
+   it was in a header B did not draw.
+
+   ---------------------------------------------------------------------------
+   4. THE MEASURE — content stops growing before the window does.
+
+   B capped its content at 1120px and left it hard against the sidebar, which
+   is fine at 1440 and wrong at 2560: the panel keeps growing, the content does
+   not, and the result is a column of cards with an acre of empty panel to the
+   right of it. Here the content is capped at `--measure` 1100px and CENTRED in
+   the panel, so a wide window gives even margins instead of one long one. The
+   panel itself still fills the window — it is the app's frame, and a frame that
+   stopped at 1100px would put the chrome's gradient in the middle of a
+   4K display.
+
+   `shots/console-e-wide-{light,dark}.png` are shot at 2560x1440 for exactly
+   this reason. A layout is not verified at one width.
+
+   ---------------------------------------------------------------------------
+   WHAT IS DELIBERATELY NOT TAKEN FROM THE REFERENCE
+
+   Its stat cards are hero metrics: a big number, a tick-mark progress bar, and
+   a green `+12.5% from last period` delta chip. That is 010's banned-defaults
+   list item 9 verbatim, and more to the point RePanel has no such numbers —
+   there is no period, no trend, and nothing to compare. Rendering the shape
+   would mean inventing the data, which is the one thing an admin may never do.
+   The status cards here report three facts, and each of them is either true or
+   not yet true.
+
+   Its two decorative accents go the same way, for the reason in 2.
+
+   Append `?theme=dark` for the dark theme.
+   =========================================================================== */
+
+:root {
+  /* ---- shared primitives ------------------------------------------------- */
+  /* The scale, the rhythm and the radii are the runtime's, unchanged. Only the
+     family moves — and it moves for both surfaces or for neither. */
+  --t-micro: 11.5px;
+  --t-small: 12.5px;
+  --t-body: 13.5px;
+  --t-title: 20px;
+  --t-brand: 14px;
+  --t-nav-meta: 12px;
+
+  --h-nav: 30px;
+  --h-control: 32px;
+  --h-row: 36px;
+  --h-head: 34px;
+  --h-top: 48px;
+  --w-sidebar: 236px;
+
+  /* How wide the content is allowed to get, whatever the window does. */
+  --measure: 1100px;
+
+  --radius: 0.45rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  /* ---- theme-console/E, light: B's palette, unchanged -------------------- */
+  --sidebar-top: #e9edf4;
+  --sidebar-bottom: #e2e7f0;
+  --page: var(--sidebar-top);
+  --background: #f4f6fa;
+  --card: #ffffff;
+  --muted: #eef1f7;
+  --accent: #e9edf4;
+  --secondary: #e6ebf3;
+  --sidebar-accent: #e0e8f9;
+
+  --foreground: #0e1626;
+  --card-foreground: #0e1626;
+  --muted-foreground: #5b6779;
+  --accent-foreground: #162031;
+  --secondary-foreground: #1b2433;
+  --sidebar-foreground: #445064;
+  --sidebar-muted: #5f6a7e;
+  --utility-foreground: var(--foreground);
+
+  --primary: #0e5fce;
+  --primary-foreground: #ffffff;
+
+  --destructive: #e7000b;
+  --destructive-soft: #fde6e7;
+  --destructive-line: #f8b8bb;
+  --destructive-text: #c2191c;
+  --positive-soft: #e4f4e9;
+  --positive-line: #b7ddc4;
+  --positive-text: #137a3f;
+  --attention-soft: #fceedb;
+  --attention-line: #f2cf9e;
+  --attention-text: #9a5500;
+
+  --border: #e2e7ef;
+  --input: #d3dae6;
+  --ring: #93a3bd;
+  --sidebar-border: #d5dce8;
+
+  --lift-1: 0 1px 2px rgba(14, 22, 38, .06), 0 2px 6px rgba(14, 22, 38, .05);
+  --lift-2: 0 2px 4px rgba(14, 22, 38, .05), 0 10px 24px rgba(14, 22, 38, .09);
+}
+
+html.dark {
+  --sidebar-top: #0a0d13;
+  --sidebar-bottom: #070911;
+  --background: #11141b;
+  --card: #171b24;
+  --muted: #1c202a;
+  --accent: #1c202a;
+  --secondary: #212630;
+  --sidebar-accent: #141d33;
+
+  --foreground: #eef1f6;
+  --card-foreground: #eef1f6;
+  --muted-foreground: #98a3b5;
+  --accent-foreground: #eef1f6;
+  --secondary-foreground: #e9edf4;
+  --sidebar-foreground: #b2bcca;
+  --sidebar-muted: #7d8899;
+  --utility-foreground: var(--muted-foreground);
+
+  --primary: #2b6cd4;
+  --primary-foreground: #ffffff;
+
+  --destructive: #ff6467;
+  --destructive-soft: #3f2627;
+  --destructive-line: #683335;
+  --destructive-text: #ff6467;
+  --positive-soft: #1c3125;
+  --positive-line: #2f5540;
+  --positive-text: #46ad72;
+  --attention-soft: #3a2a15;
+  --attention-line: #5e4526;
+  --attention-text: #c98c48;
+
+  --border: #252a34;
+  --input: #2e3440;
+  --ring: #79839a;
+  --sidebar-border: #1d222b;
+
+  --lift-1: 0 1px 2px rgba(0, 0, 0, .45);
+  --lift-2: 0 2px 6px rgba(0, 0, 0, .5), 0 10px 26px rgba(0, 0, 0, .45);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--foreground);
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--t-body);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* Measured, not assumed: this face's figures are proportional without it. */
+  font-variant-numeric: tabular-nums;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: none; }
+svg { display: block; }
+
+:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 45%, transparent);
+}
+
+/* ---- the shell ------------------------------------------------------------ */
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(to bottom, var(--sidebar-top), var(--sidebar-bottom));
+}
+
+/* ---- the sidebar ---------------------------------------------------------- */
+.sidebar {
+  width: var(--w-sidebar);
+  flex: none;
+  display: flex; flex-direction: column;
+  padding: 8px 8px 10px;
+}
+
+.wordmark {
+  display: flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 8px;
+  font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--sidebar-muted);
+}
+.wordmark .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--primary); }
+
+.switcher {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; height: 46px;
+  margin-top: 2px; padding: 0 9px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--card); box-shadow: var(--lift-1);
+  cursor: pointer; text-align: left;
+  transition: box-shadow .14s ease;
+}
+.switcher:hover { box-shadow: var(--lift-2); }
+.switcher .mark {
+  display: grid; place-items: center;
+  width: 26px; height: 26px; flex: none;
+  border-radius: var(--radius-md);
+  background: var(--primary); color: var(--primary-foreground);
+  font-size: var(--t-micro); font-weight: 700;
+}
+.switcher .names { min-width: 0; flex: 1; }
+.switcher .name {
+  font-size: var(--t-brand); font-weight: 700; letter-spacing: -0.015em; line-height: 1.25;
+  color: var(--foreground);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .key {
+  font-size: var(--t-nav-meta); line-height: 1.3; color: var(--sidebar-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.switcher .chev { flex: none; color: var(--sidebar-muted); }
+
+.rule { height: 1px; margin: 9px 8px; background: var(--sidebar-border); }
+
+/* It names the list; it is not in it. Smaller and a step behind, as the
+   runtime's group labels are (DESIGN.md §3). */
+.group-label {
+  padding: 8px 8px 4px;
+  font-size: var(--t-micro); font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--sidebar-muted);
+}
+
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav.destinations { flex: 1; }
+.nav a {
+  display: flex; align-items: center; gap: 10px;
+  height: var(--h-nav); padding: 0 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--t-body); font-weight: 500;
+  color: var(--sidebar-foreground);
+  transition: background-color .12s ease, color .12s ease;
+}
+.nav a svg { flex: none; width: 18px; height: 18px; opacity: .8; }
+.nav a:hover { background: var(--sidebar-accent); color: var(--foreground); }
+.nav a[aria-current] { background: var(--sidebar-accent); color: var(--accent-foreground); font-weight: 600; }
+.nav a[aria-current] svg { opacity: 1; color: var(--primary); }
+.nav a[aria-disabled] { color: var(--sidebar-muted); cursor: default; pointer-events: none; }
+.nav a[aria-disabled] svg { opacity: .55; }
+.nav a[aria-disabled] .later {
+  margin-left: auto; font-size: var(--t-micro); font-weight: 600; color: var(--sidebar-muted);
+}
+
+.account {
+  display: flex; align-items: center; gap: 9px;
+  height: 44px; padding: 0 8px; border-radius: var(--radius-md);
+}
+.account .avatar {
+  display: grid; place-items: center;
+  width: 28px; height: 28px; flex: none;
+  border-radius: var(--radius-lg);
+  background: var(--secondary); color: var(--secondary-foreground);
+  font-size: var(--t-micro); font-weight: 700;
+}
+.account .who { min-width: 0; }
+.account .who b { display: block; font-size: var(--t-body); font-weight: 600; line-height: 1.25; }
+.account .who span {
+  display: block; font-size: var(--t-nav-meta); line-height: 1.3; color: var(--sidebar-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- the panel ------------------------------------------------------------ */
+.panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-xl);
+  background: var(--background);
+}
+
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  height: var(--h-top); flex: none;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.crumb { font-size: var(--t-small); color: var(--muted-foreground); }
+.crumb a:hover { color: var(--foreground); }
+.crumb .sep { opacity: .5; padding: 0 3px; }
+.crumb b { font-weight: 600; color: var(--foreground); }
+.topbar .spacer { flex: 1; }
+
+/* ---- controls ------------------------------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--h-control); padding: 0 12px; flex: none;
+  border: 1px solid transparent; border-radius: var(--radius-md);
+  font-size: var(--t-body); font-weight: 600; white-space: nowrap; cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease;
+}
+.btn-primary { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lift-1); }
+.btn-primary:hover { background: color-mix(in srgb, var(--primary) 90%, black); }
+.btn-outline { border-color: var(--input); background: var(--card); }
+.btn-outline:hover { background: var(--accent); }
+.btn-ghost { color: var(--utility-foreground); font-weight: 500; }
+.btn-ghost:hover { background: var(--accent); color: var(--foreground); }
+.btn-icon { width: var(--h-control); padding: 0; }
+
+/* ---- the screen, and the measure ------------------------------------------ */
+.screen { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 28px 34px; }
+/* The content stops growing before the window does, and is centred rather than
+   left against the sidebar — otherwise a wide display gives one huge margin
+   instead of two even ones. The panel keeps filling: it is the app's frame. */
+.measure { max-width: var(--measure); margin: 0 auto; }
+
+.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+.page-head h1 {
+  margin: 0; font-size: var(--t-title); font-weight: 700; letter-spacing: -0.02em;
+}
+
+/* ---- status cards --------------------------------------------------------- */
+.cards {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px; margin-bottom: 24px;
+}
+.card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 15px 16px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--card); box-shadow: var(--lift-1);
+}
+.card .head { display: flex; align-items: center; gap: 9px; }
+/* The chip is tinted by the card's STATE, out of §4's four-tone family — not
+   by which card it is. See the header. */
+.chip {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--secondary); color: var(--muted-foreground);
+}
+.chip svg { width: 16px; height: 16px; }
+.chip.positive { background: var(--positive-soft); border-color: var(--positive-line); color: var(--positive-text); }
+.chip.attention { background: var(--attention-soft); border-color: var(--attention-line); color: var(--attention-text); }
+.chip.critical { background: var(--destructive-soft); border-color: var(--destructive-line); color: var(--destructive-text); }
+
+.card .label {
+  font-size: var(--t-micro); font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--muted-foreground);
+}
+.card .value {
+  font-size: var(--t-body); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card .value.quiet { font-weight: 500; color: var(--muted-foreground); }
+.card .foot { display: flex; align-items: center; gap: 7px; font-size: var(--t-small); color: var(--muted-foreground); }
+
+.badge {
+  display: inline-flex; align-items: center; width: fit-content;
+  padding: 1px 7px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--secondary); color: var(--secondary-foreground);
+  font-size: var(--t-micro); line-height: 1.5; font-weight: 600; white-space: nowrap;
+}
+.badge.positive { background: var(--positive-soft); border-color: var(--positive-line); color: var(--positive-text); }
+.badge.attention { background: var(--attention-soft); border-color: var(--attention-line); color: var(--attention-text); }
+.badge.critical { background: var(--destructive-soft); border-color: var(--destructive-line); color: var(--destructive-text); }
+
+/* ---- the checklist -------------------------------------------------------- */
+.section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.section-head h2 { margin: 0; font-size: var(--t-body); font-weight: 700; }
+.section-head .meta { font-size: var(--t-small); color: var(--muted-foreground); }
+
+.checklist { display: flex; flex-direction: column; gap: 9px; }
+
+.step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px 15px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--card); box-shadow: var(--lift-1);
+}
+.step.current { box-shadow: var(--lift-2); }
+.step.todo { background: transparent; box-shadow: none; }
+
+.step .mark {
+  display: grid; place-items: center;
+  width: 20px; height: 20px; flex: none; margin-top: 1px;
+  border-radius: 999px;
+  font-size: var(--t-micro); font-weight: 700;
+}
+.step.done .mark { background: var(--positive-soft); border: 1px solid var(--positive-line); color: var(--positive-text); }
+.step.current .mark { background: var(--primary); color: var(--primary-foreground); }
+.step.todo .mark { border: 1px solid var(--input); color: var(--muted-foreground); }
+
+.step .body { flex: 1; min-width: 0; }
+.step .title { font-size: var(--t-body); font-weight: 600; }
+.step.todo .title { color: var(--muted-foreground); }
+.step .note { margin: 2px 0 0; font-size: var(--t-small); color: var(--muted-foreground); }
+.step .act { flex: none; align-self: center; }
+.step .act .btn { color: var(--muted-foreground); }
+.step .act .btn:hover { color: var(--foreground); }
+
+.command { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.snippet {
+  flex: 1; min-width: 0; display: flex;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.snippet pre {
+  flex: 1; min-width: 0; margin: 0;
+  padding: 5px 11px;
+  overflow-x: auto;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--t-small); line-height: 20px;
+  color: var(--foreground);
+}
+
+.after { margin: 15px 2px 0; font-size: var(--t-small); color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="wordmark"><span class="dot"></span>RePanel</div>
+
+    <button class="switcher" type="button">
+      <span class="mark">C</span>
+      <span class="names">
+        <span class="name">Crewbase</span>
+        <span class="key">crewbase-a3k9x2</span>
+      </span>
+      <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <div class="rule"></div>
+
+    <div class="group-label">Project</div>
+    <nav class="nav destinations" aria-label="Project">
+      <a href="#" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-7 4.5 14 2.5-7h4.5"/></svg>
+        Overview
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/></svg>
+        Connection
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="3.75"/><path d="m10.7 10.7 8.3 8.3"/><path d="m15.5 15.5 2-2"/><path d="m17.5 17.5 2-2"/></svg>
+        Agent access
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+        Definition
+      </a>
+    </nav>
+
+    <div class="rule"></div>
+
+    <nav class="nav" aria-label="Account">
+      <a href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3"/><path d="m18.7 5.3-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"/></svg>
+        Settings
+        <span class="later">Soon</span>
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H14"/><path d="M18.5 12H10"/><path d="m15.5 9 3 3-3 3"/></svg>
+        Sign out
+      </a>
+    </nav>
+
+    <div class="rule"></div>
+
+    <div class="account">
+      <span class="avatar">AL</span>
+      <span class="who">
+        <b>Ada Lovelace</b>
+        <span>ada@example.com</span>
+      </span>
+    </div>
+  </aside>
+
+  <main class="panel">
+    <div class="topbar">
+      <p class="crumb"><a href="#">Projects</a><span class="sep">/</span><b>Crewbase</b></p>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-icon" type="button" aria-label="Switch to the dark theme">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+
+    <div class="screen">
+      <div class="measure">
+        <div class="page-head"><h1>Overview</h1></div>
+
+        <div class="cards">
+          <div class="card">
+            <div class="head">
+              <span class="chip positive" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/></svg>
+              </span>
+              <span class="label">Connection</span>
+            </div>
+            <span class="value">db.crewbase.internal/crewbase</span>
+            <span class="foot"><span class="badge positive">Answered</span> tested 4 minutes ago</span>
+          </div>
+
+          <div class="card">
+            <div class="head">
+              <span class="chip" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/></svg>
+              </span>
+              <span class="label">Definition</span>
+            </div>
+            <span class="value quiet">Nothing submitted yet</span>
+            <span class="foot"><span class="badge">Waiting</span> your agent writes this</span>
+          </div>
+
+          <div class="card">
+            <div class="head">
+              <span class="chip" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3.75"/><path d="m10.7 10.7 8.3 8.3"/><path d="m15.5 15.5 2-2"/><path d="m17.5 17.5 2-2"/></svg>
+              </span>
+              <span class="label">Agent tokens</span>
+            </div>
+            <span class="value">1 active</span>
+            <span class="foot"><span class="badge">Never used</span> Claude Code on my laptop</span>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <h2>Set up this admin</h2>
+          <span class="meta">2 of 4 done</span>
+        </div>
+
+        <div class="checklist">
+          <div class="step done">
+            <span class="mark" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+            </span>
+            <span class="body">
+              <span class="title">Connect your database</span>
+              <p class="note">Stored encrypted. It is never shown again and never sent to an agent.</p>
+            </span>
+            <span class="act"><a class="btn btn-ghost" href="#">Change</a></span>
+          </div>
+
+          <div class="step done">
+            <span class="mark" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>
+            </span>
+            <span class="body">
+              <span class="title">Mint an agent token</span>
+              <p class="note">Shown once, at the moment it was minted. Mint another if it was lost.</p>
+            </span>
+            <span class="act"><a class="btn btn-ghost" href="#">Mint another</a></span>
+          </div>
+
+          <div class="step current">
+            <span class="mark" aria-hidden="true">3</span>
+            <span class="body">
+              <span class="title">Connect your agent</span>
+              <p class="note">Run this where your agent runs. Every client configured by file is on the Agent access page.</p>
+              <div class="command">
+                <div class="snippet">
+                  <pre>claude mcp add --transport http repanel http://localhost:3001/mcp --header "Authorization: Bearer &lt;token&gt;"</pre>
+                </div>
+                <button class="btn btn-primary" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15"/></svg>
+                  Copy command
+                </button>
+              </div>
+            </span>
+          </div>
+
+          <div class="step todo">
+            <span class="mark" aria-hidden="true">4</span>
+            <span class="body">
+              <span class="title">Ask it to create your admin</span>
+              <p class="note">&ldquo;Read my database and build me an admin.&rdquo; It writes the definition and submits it — this page changes on its own when it lands.</p>
+            </span>
+          </div>
+        </div>
+
+        <p class="after">Nothing here needs a browser refresh: the console asks again every ten seconds while you are looking at it.</p>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  if (new URLSearchParams(location.search).get("theme") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+</script>
+
+</body>
+</html>

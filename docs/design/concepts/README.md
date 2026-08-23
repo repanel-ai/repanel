@@ -355,3 +355,100 @@ None of this is a criticism of shadcn — the defaults are good defaults, and th
 repo is built on its component anatomy (DECISIONS #026, owned not installed).
 The palette is the part that was never meant to survive contact with a product.
 
+## Round 3 — `console-e.html`, B with a voice
+
+B's direction carrying four lessons from a reference dashboard (ShipNova).
+Three of them are straightforwardly better than what B had; the fourth is a trap
+and is not taken. Shots: `shots/console-e-{light,dark}.png` at 1440x900 and
+`shots/console-e-wide-{light,dark}.png` at **2560x1440**, because a layout is
+not verified at one width.
+
+### 1. The face — and it is a product decision, not a console one
+
+The reference's face has more voice than Geist: rounder bowls, a taller
+x-height, a geometric build that makes a five-item nav read as a designed object
+rather than a list of words. Real, and worth having.
+
+It is also not something a theme layer may do. DESIGN.md §1 rules the font
+stacks a **shared primitive** and §3 rules Geist for the whole product. So this
+proposes **Plus Jakarta Sans for both surfaces**, exactly as the accent is
+proposed for both — or it proposes nothing, because a console in one face and an
+admin in another is two products. It re-opens §3 and re-shoots every runtime
+screenshot.
+
+**It passes §3's one hard gate.** Tabular figures are not a preference there:
+the default figures of most faces are proportional, and every column of dates,
+ids, counts and page ranges depends on `tabular-nums` working. Measured in the
+browser at 40px, ten `1`s against ten `0`s:
+
+```
+Plus Jakarta Sans   proportional 148.4 / 292.8    tabular 240.0 / 240.0   ok
+Geist               proportional 139.2 / 268.8    tabular 240.0 / 240.0   ok
+Manrope             proportional 156.0 / 244.0    tabular 248.0 / 248.0   ok
+Figtree             proportional 165.3 / 256.3    tabular 249.3 / 249.3   ok
+Be Vietnam Pro      proportional 154.0 / 270.4    tabular 154.0 / 270.4   NONE
+```
+
+Geist's row reproduces §3's own recorded numbers exactly, which is how the
+harness was checked before the other rows were believed. Plus Jakarta Sans's
+tabular advance is 240px — **Geist's exactly** — so swapping the face changes no
+column's width. Be Vietnam Pro is listed because it was a candidate and silently
+has no `tnum` at all: the failure mode §3 warns about, and the reason this is
+measured rather than assumed. Manrope and Figtree also pass, so the family is a
+choice within a shortlist rather than a single option.
+
+It self-hosts through the mechanism already in use —
+`@fontsource-variable/plus-jakarta-sans`, one dependency swapped for another, no
+CDN. Geist Mono stays for the command; nothing about it was the complaint.
+
+### 2. The icons — larger, heavier, and carrying meaning
+
+Ours were 16px on a 1.5 stroke, a footnote beside its word. Here a nav mark is
+18px on 1.75, and each status card gets a 30px tinted chip.
+
+**This is where the reference is wrong, and the difference is worth stating.**
+It tints those chips per *card* — orange for one, purple for the next — which is
+colour as decoration: the hue tells you which card you are looking at, which the
+label already did. E tints them per *state*, out of DESIGN.md §4's four-tone
+family: the connection chip is `positive` because the database answered, and
+would be `critical` if it had not. Same visual richness, except the colour is
+now the fastest-read fact on the card instead of the slowest.
+
+The accent is untouched by this and stays in its four places. A status chip is
+not one of them.
+
+### 3. The sidebar — two groups, not one list
+
+The reference's `MAIN MENU` label, its divider, and its `Settings` / `Logout`
+pair sitting apart from the destinations above are doing real work: they say the
+nav holds two kinds of thing. B ran all five as one list with `Settings` greyed
+at the bottom, which made "off" and "different in kind" look like one statement.
+Now `Settings` sits below the rule with `Sign out` — which is also the first
+home sign-out has had in this shell.
+
+### 4. The measure — content stops growing before the window does
+
+B capped content at 1120px and left it hard against the sidebar: fine at 1440,
+wrong at 2560, where the panel keeps growing and the content does not, leaving
+one enormous margin on the right. E caps at `--measure` 1100px and **centres**
+it, so a wide window gives two even margins. The panel itself still fills — it
+is the app's frame, and a frame that stopped at 1100px would put the chrome's
+gradient down the middle of a 4K display. The wide shots are the proof.
+
+### Not taken from the reference
+
+Its stat cards are hero metrics: a big number, a tick-mark progress bar, a green
+`+12.5% from last period` delta chip. That is 010's banned-defaults item 9
+verbatim — and more to the point RePanel has no such numbers. There is no
+period, no trend and nothing to compare, so rendering the shape would mean
+inventing the data, which is the one thing an admin may never do.
+
+### Measured
+
+```
+console-e  light  25 text styles, 0 below AA   tightest 4.65
+           dark   25 text styles, 0 below AA   tightest 4.80
+overflow          1440, 2560 and 768, both themes: no horizontal scroll
+numerals          tabular-nums;  faces Plus Jakarta Sans + Geist Mono
+```
+

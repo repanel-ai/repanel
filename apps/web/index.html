@@ -1,9 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="theme-console">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RePanel</title>
+    <script>
+      /*
+       * The theme, before the first paint — the runtime's script, on the
+       * console's own root class. It spells the same storage key, because the
+       * choice means the same thing on both: where the two are served from one
+       * origin it carries across, and where they are not each remembers its
+       * own. Written by features/theme/use-theme.ts.
+       *
+       * Light is the entry theme (DECISIONS #035): only a stored choice of
+       * dark gets dark, and the OS preference is not that choice.
+       */
+      (function () {
+        try {
+          if (localStorage.getItem("repanel.theme") === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (error) {
+          /* A store the browser refuses is not a reason to fail to render. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

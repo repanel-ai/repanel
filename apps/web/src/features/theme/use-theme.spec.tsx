@@ -9,26 +9,6 @@ afterEach(() => {
 });
 
 describe("useTheme", () => {
-  it("puts the whole admin in dark, and takes it back out", () => {
-    const { result } = renderHook(() => useTheme());
-
-    act(() => result.current.toggle());
-    expect(document.documentElement.classList.contains("dark")).toBe(true);
-
-    act(() => result.current.toggle());
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
-  });
-
-  it("remembers the choice, because it is the operator's and not the session's", () => {
-    const first = renderHook(() => useTheme());
-    act(() => first.result.current.toggle());
-    first.unmount();
-
-    const { result } = renderHook(() => useTheme());
-
-    expect(result.current.theme).toBe("dark");
-  });
-
   it("opens light, whatever the machine prefers — light is the entry theme", () => {
     vi.stubGlobal(
       "matchMedia",
@@ -39,5 +19,23 @@ describe("useTheme", () => {
 
     expect(result.current.theme).toBe("light");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("puts the console in dark, and takes it back out", () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => result.current.toggle());
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    act(() => result.current.toggle());
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("remembers the choice under the key the pre-paint script reads", () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => result.current.toggle());
+
+    expect(window.localStorage.getItem("repanel.theme")).toBe("dark");
   });
 });

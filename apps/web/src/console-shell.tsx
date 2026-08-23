@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SignOutButton } from "./features/auth/sign-out-button";
 import { useAuth } from "./features/auth/use-auth";
+import { ThemeToggle } from "./features/theme/theme-toggle";
 
 /**
  * The console's one surface. It is the runtime's own chrome — the same gradient,
@@ -20,6 +21,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
         <span className="text-brand font-medium text-sidebar-foreground">RePanel</span>
         <div className="flex-1" />
         {user && <span className="text-nav-meta text-sidebar-muted">{user.email}</span>}
+        <ThemeToggle />
         <SignOutButton />
       </header>
 

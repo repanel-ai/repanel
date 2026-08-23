@@ -281,3 +281,48 @@ split costs nothing at the wire, because the wire never sees it.
 034 · 2026-08 · The reference app is renamed skyscout -> crewbase, to avoid
 collision with an unrelated real project of that name; its domain, tables and
 acceptance scenario are unchanged.
+
+035 · 2026-08 · Light is the entry theme on both of RePanel's surfaces, and
+`packages/ui/src/tokens.css` is restructured into named theme layers sharing one
+variable contract.
+
+**The default.** An admin and its console both open light. The OS preference no
+longer picks the first visit — only a stored choice of dark gets dark — which
+is the one line that changed in each app's pre-paint script and theme hook. Why:
+founder preference under real usage, which is the only evidence a default has.
+A person who has never expressed a preference about this product is not
+expressing one by having a dark editor open, and a default is the single design
+decision every visitor sees whether they care about it or not.
+
+**Dark's standing is unchanged, and that is deliberate.** It is the surface
+ladder DESIGN.md §2 specifies, in the values §1 records, held to the contrast
+floor §7 sets; it is named in full in every theme layer, shot on every
+checkpoint, and reached by the toggle each shell carries — the console has one
+now, which it did not before. Nothing about dark is deleted, deprecated or left
+to rot into a fallback. What changed is which theme arrives unasked-for.
+
+**The layers.** `tokens.css` is now three parts. Shared primitives (font stacks,
+type scale, rhythm, radii) are identical everywhere and no layer may move them —
+they are what makes the console and a customer's admin read as one product. The
+colour contract is declared once as `@theme` names, holding no paint: each name
+resolves one variable deeper, into a `--paint-` value. Then the layers —
+`.theme-runtime` and `.theme-console`, one root class per app — each answer the
+whole contract, in both themes. The console starts on the runtime's numbers
+value for value, because that is what it has been drawn against; task 014b gives
+it its own.
+
+Why the indirection rather than a base palette the layers override: Tailwind
+mints `bg-card` from a name in `@theme` and from nowhere else, so the contract
+has to be declared there — and declaring values there too would make it a third
+palette for the layers to drift from. Names in one place, paint in the layers,
+and no copy of a palette that nobody applies.
+
+Why layers at all, now, rather than when a customer asks: because the rule they
+rest on has to be true *before* there is a second set of values, not after. No
+component references anything but the contract's names; nothing outside
+`tokens.css` reads a `--paint-` variable. A per-customer theme is then a further
+layer of exactly this shape — the same names, its own values, applied after
+these — and it works precisely because no component knows which layer it is
+standing on. Enforced the only way a CSS rule like this can be: the contract is
+the whole of what `packages/ui` exports as tokens, and a component that reached
+around it would have to name a variable this file says is not for it.

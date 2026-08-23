@@ -21,16 +21,26 @@ hand-rolling the behaviour.
 
 ## Tokens
 
-`src/tokens.css` is the design-token home: colour, radius, and font stacks as
-CSS variables, mapped onto Tailwind utilities by the same file's `@theme`
-block. Components spend tokens (`bg-surface`, `text-muted-foreground`) and
-never mint values — there is no hex in a component file, by rule.
+`src/tokens.css` is the design-token home, in three parts (`docs/DECISIONS.md`
+#035, `docs/design/DESIGN.md` §1):
 
-Dark mode is the `dark` class on the root element; the dark palette re-points
-the same variable names, so no component carries a `dark:` class.
+1. **Shared primitives** — font stacks, the type scale, the rhythm, the radii.
+   The same on every surface RePanel draws, in every theme.
+2. **The colour contract** — every colour name a component may spend, declared
+   once as `@theme` values so Tailwind mints the utilities. It holds names, not
+   paint: each resolves one variable deeper, into a `--paint-` value.
+3. **The theme layers** — `.theme-runtime` and `.theme-console`, one root class
+   per app, each answering the whole contract in both themes.
 
-The palette is a deliberate placeholder until task 010's design gate, which
-replaces the values without touching the structure.
+Components spend the contract's names (`bg-card`, `text-muted-foreground`) and
+never mint values — there is no hex in a component file, by rule, and no
+component reads a `--paint-` variable. That is what lets a per-customer theme be
+one more layer of the same shape rather than a fork.
+
+Dark mode is the `dark` class on the root element, beside the layer's own class;
+the layer re-points the same names, so no component carries a `dark:` class.
+**Light is the entry theme** on both apps: only a stored choice of dark gets
+dark, and the OS preference does not decide it.
 
 ## Consuming it
 

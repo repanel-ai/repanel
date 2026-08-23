@@ -13,8 +13,31 @@ painted ancestor.
 
 ## 1. Tokens
 
-Landing as `@theme` values in `packages/ui/src/tokens.css` — the one place tokens
-are declared (DECISIONS #028). Dark re-points the same names under `.dark`.
+Landing in `packages/ui/src/tokens.css` — the one place tokens are declared
+(DECISIONS #028). That file is now in three parts, and the split is DECISIONS
+#035:
+
+1. **Shared primitives** — the font stacks, the type scale (§3), the rhythm (§6)
+   and the radii. Identical on every surface RePanel draws, in every theme. They
+   are what makes the console and a customer's admin read as one product, so no
+   theme layer may move them.
+2. **The colour contract** — every colour name a component may spend, declared
+   once as `@theme` values. It holds names rather than paint: each resolves one
+   variable deeper, into the `--paint-` value a theme layer sets.
+3. **The theme layers** — `.theme-runtime` and `.theme-console`, one root class
+   per app, each answering *the whole* of the contract in both themes.
+
+The tables below are the contract, and the values are `.theme-runtime`'s. The
+console starts on the same numbers, value for value, because that is what it has
+been drawn against since task 014; its own values are 014b's to propose, and
+when they land the numbers in its layer are the only thing that moves.
+
+**A component may reference the contract's names and nothing else.** Nothing
+outside `tokens.css` reads a `--paint-` variable, and a layer a component could
+reach around would not be a layer. That rule is the whole reason the layers are
+worth having: a per-customer theme is a further layer of exactly this shape —
+the same names, its own values, applied after these — and it can be, precisely
+because no component knows which layer it is standing on.
 
 ### Surfaces
 
@@ -71,6 +94,26 @@ preset's chroma. Lightness values throughout are the preset's own.
 
 `--radius: 0.45rem` (the preset's), with the preset's ramp: `sm .6x`, `md .8x`,
 `lg 1x`, `xl 1.4x`.
+
+### Light first — the entry theme, and what dark is
+
+**Ruling: light is the entry theme on both surfaces. DECISIONS #035.**
+
+An admin and its console both open light. Nothing about the machine decides it:
+the OS preference no longer picks the first visit, and only a stored choice of
+dark gets dark. A person who has never expressed a preference is not expressing
+one by having a dark editor open.
+
+Dark is not what is left over. It is the ladder §2 specifies, in the numbers the
+tables above record, and it is maintained to the same floor §7 sets — measured
+in both themes, every time a token moves. What changed is which one arrives
+unasked-for, and nothing else. Both themes are named in full in both layers;
+both are shot on every checkpoint; the toggle each shell carries is how the
+other one is reached, and it remembers.
+
+This reverses nothing about the design and deletes nothing from it. It is a
+ruling about a default, made by the founder on real usage, and it is recorded
+here because a default is the one design decision every single visitor sees.
 
 ---
 

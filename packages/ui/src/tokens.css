@@ -3,6 +3,26 @@
  * surface may use is named here and nowhere else — components spend tokens,
  * they never mint them (DECISIONS #028).
  *
+ * The file is in three parts, and the split is the whole of DECISIONS #035:
+ *
+ *   1. SHARED PRIMITIVES — the font stacks, the type scale, the rhythm and the
+ *      radii. Identical on every surface RePanel draws, in every theme. They
+ *      are what makes the console and a customer's admin read as one product,
+ *      so no theme layer may move them.
+ *
+ *   2. THE COLOUR CONTRACT — every colour name a component may spend, declared
+ *      once. It holds names rather than paint: each resolves one variable
+ *      deeper, to a `--paint-` value a theme layer sets.
+ *
+ *   3. THE THEME LAYERS — `.theme-runtime` and `.theme-console`, one root class
+ *      per app, each answering the whole of the contract in both themes. A
+ *      per-customer theme is a further layer of exactly this shape: the same
+ *      names, its own values, applied after these.
+ *
+ * A component may reference the contract's names and nothing else. Nothing
+ * outside this file reads a `--paint-` variable, and a layer a component could
+ * reach around would not be a layer.
+ *
  * The values are task 010's approved direction, transcribed from
  * `docs/design/DESIGN.md`. That record names a token `--foreground`; Tailwind 4
  * reads a namespace prefix to decide which utilities a variable generates, so
@@ -15,9 +35,9 @@
  *   --h-row            --spacing-row        h-row
  *
  * `@theme static` emits every variable whether or not a utility spends it: the
- * runtime reads a few of these through `var()` directly (the page ground, the
- * sidebar gradient), and a token that vanishes when the last utility using it
- * is deleted is not a token.
+ * apps read a few of these through `var()` directly (the page ground, the body
+ * face), and a token that vanishes when the last utility using it is deleted is
+ * not a token.
  */
 
 /*
@@ -33,10 +53,14 @@
 @import "tailwindcss";
 
 /*
- * Dark mode is a class on the root element rather than a media query: the
- * runtime lets an operator choose, and a choice the OS can override is not one.
+ * Dark mode is a class on the root element rather than a media query: both apps
+ * let a person choose, and a choice the OS can override is not one. Light is
+ * what a root with no `.dark` on it gets, which is what light-first means at
+ * the level of a stylesheet (DECISIONS #035).
  */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* ══ 1. Shared primitives, and 2. the colour contract ═══════════════════════ */
 
 @theme static {
   /* ---- type ------------------------------------------------------------ */
@@ -106,49 +130,107 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
 
-  /* ---- surfaces, deepest first ----------------------------------------- */
+  /* ---- the colour contract --------------------------------------------- */
+  /*
+   * Names, not paint. Tailwind mints `bg-card` from a name declared in `@theme`
+   * and from nowhere else, so the contract has to be written here — and writing
+   * values here too would make this a third palette for the two layers below to
+   * drift from. So every name resolves one step further, into the `--paint-`
+   * variable a theme layer sets, and this block stays what it says it is: the
+   * list of colours a RePanel surface is allowed to ask for.
+   */
+
+  /* surfaces, deepest first */
+  --color-sidebar-top: var(--paint-sidebar-top);
+  --color-sidebar-bottom: var(--paint-sidebar-bottom);
+  --color-page: var(--paint-page);
+  --color-background: var(--paint-background);
+  --color-card: var(--paint-card);
+  --color-muted: var(--paint-muted);
+  --color-accent: var(--paint-accent);
+  --color-secondary: var(--paint-secondary);
+  --color-sidebar-accent: var(--paint-sidebar-accent);
+
+  /* text */
+  --color-foreground: var(--paint-foreground);
+  --color-card-foreground: var(--paint-card-foreground);
+  --color-muted-foreground: var(--paint-muted-foreground);
+  --color-accent-foreground: var(--paint-accent-foreground);
+  --color-secondary-foreground: var(--paint-secondary-foreground);
+  --color-sidebar-foreground: var(--paint-sidebar-foreground);
+  --color-sidebar-muted: var(--paint-sidebar-muted);
+  --color-utility-foreground: var(--paint-utility-foreground);
+
+  /* accent, state, edges */
+  --color-primary: var(--paint-primary);
+  --color-primary-foreground: var(--paint-primary-foreground);
+  --color-destructive: var(--paint-destructive);
+  --color-destructive-soft: var(--paint-destructive-soft);
+  --color-destructive-line: var(--paint-destructive-line);
+  --color-destructive-text: var(--paint-destructive-text);
+  --color-positive-soft: var(--paint-positive-soft);
+  --color-positive-line: var(--paint-positive-line);
+  --color-positive-text: var(--paint-positive-text);
+  --color-attention-soft: var(--paint-attention-soft);
+  --color-attention-line: var(--paint-attention-line);
+  --color-attention-text: var(--paint-attention-text);
+  --color-border: var(--paint-border);
+  --color-input: var(--paint-input);
+  --color-ring: var(--paint-ring);
+  --color-sidebar-border: var(--paint-sidebar-border);
+}
+
+/* ══ 3. The theme layers ════════════════════════════════════════════════════ */
+
+/*
+ * The runtime — the product's face, and the palette DESIGN.md §1 records.
+ *
+ * Light is what the layer says with no `.dark` beside it, and that is the entry
+ * theme (DECISIONS #035). Dark is not a fallback or an afterthought: it is the
+ * surface ladder DESIGN.md §2 specifies, kept measured and maintained, and
+ * reached by the theme toggle every RePanel shell carries.
+ */
+.theme-runtime {
   /*
    * The chrome is one continuous surface: the sidebar and the ground the panel
    * floats in are the same gradient, falling slightly top to bottom across the
    * whole screen. They were two tones once, and the seam that left down the
    * panel's margin read as a mistake rather than as a step.
    */
-  --color-sidebar-top: #e7e3de;
-  --color-sidebar-bottom: #dfdbd6;
+  --paint-sidebar-top: #e7e3de;
+  --paint-sidebar-bottom: #dfdbd6;
   /* The ground, which is the chrome — never a colour of its own. */
-  --color-page: var(--color-sidebar-top);
-  --color-background: #ffffff;
-  --color-card: #ffffff;
-  --color-muted: #f2f3f3; /* the row under the cursor */
-  --color-accent: #eff0f1;
-  --color-secondary: #ecedee;
-  --color-sidebar-accent: #f7f4f0;
+  --paint-page: var(--paint-sidebar-top);
+  --paint-background: #ffffff;
+  --paint-card: #ffffff;
+  --paint-muted: #f2f3f3; /* the row under the cursor */
+  --paint-accent: #eff0f1;
+  --paint-secondary: #ecedee;
+  --paint-sidebar-accent: #f7f4f0;
 
-  /* ---- text ------------------------------------------------------------ */
-  --color-foreground: #0a0b0b;
-  --color-card-foreground: #0a0b0b;
-  --color-muted-foreground: #64666a;
-  --color-accent-foreground: #191a1b;
-  --color-secondary-foreground: #1c1d1e;
+  --paint-foreground: #0a0b0b;
+  --paint-card-foreground: #0a0b0b;
+  --paint-muted-foreground: #64666a;
+  --paint-accent-foreground: #191a1b;
+  --paint-secondary-foreground: #1c1d1e;
   /*
    * The sidebar has its own two-step text ladder, because everything in it is
    * chrome and the panel's would flatten it: a resource name at rest, and the
    * group label naming a list of them, which must sit behind what it names.
    */
-  --color-sidebar-foreground: #4a443b;
-  --color-sidebar-muted: #665e53;
+  --paint-sidebar-foreground: #4a443b;
+  --paint-sidebar-muted: #665e53;
   /* Utility chrome sits one step behind the data it frames — in dark only,
      where it would otherwise outshine it. */
-  --color-utility-foreground: var(--color-foreground);
+  --paint-utility-foreground: var(--paint-foreground);
 
-  /* ---- accent, state, edges -------------------------------------------- */
-  --color-primary: #bb4d00;
-  --color-primary-foreground: #fffbeb;
-  --color-destructive: #e7000b;
-  --color-destructive-soft: #fde6e7;
-  --color-destructive-line: #f8b8bb;
+  --paint-primary: #bb4d00;
+  --paint-primary-foreground: #fffbeb;
+  --paint-destructive: #e7000b;
+  --paint-destructive-soft: #fde6e7;
+  --paint-destructive-line: #f8b8bb;
   /* Not `--destructive` itself: that measures 4.01:1 on its own tint. */
-  --color-destructive-text: #c2191c;
+  --paint-destructive-text: #c2191c;
 
   /*
    * The other two severities a definition can name (DECISIONS #029), built to
@@ -157,58 +239,141 @@
    * family's rather than maximized — a positive state that reads louder than a
    * critical one would break the one rule the badge language has.
    */
-  --color-positive-soft: #e4f4e9;
-  --color-positive-line: #b7ddc4;
-  --color-positive-text: #137a3f; /* 4.74:1 on its own tint */
-  --color-attention-soft: #fceedb;
-  --color-attention-line: #f2cf9e;
-  --color-attention-text: #9a5500; /* 5.01:1 on its own tint */
-  --color-border: #e0e1e3;
-  --color-input: #dbdcde;
-  --color-ring: #a4a5a8;
-  --color-sidebar-border: #d5d0ca;
+  --paint-positive-soft: #e4f4e9;
+  --paint-positive-line: #b7ddc4;
+  --paint-positive-text: #137a3f; /* 4.74:1 on its own tint */
+  --paint-attention-soft: #fceedb;
+  --paint-attention-line: #f2cf9e;
+  --paint-attention-text: #9a5500; /* 5.01:1 on its own tint */
+  --paint-border: #e0e1e3;
+  --paint-input: #dbdcde;
+  --paint-ring: #a4a5a8;
+  --paint-sidebar-border: #d5d0ca;
+}
+
+/* Dark re-points the same names, so every utility built from the contract
+   follows without a `dark:` class anywhere in a component. */
+.theme-runtime.dark {
+  --paint-sidebar-top: #080605;
+  --paint-sidebar-bottom: #040302;
+  --paint-background: #1a1a1b;
+  --paint-card: #222324;
+  --paint-muted: #2b2b2d;
+  --paint-accent: #2b2b2d;
+  --paint-secondary: #2d2e2f;
+  --paint-sidebar-accent: #191714;
+
+  --paint-foreground: #f5f6f6;
+  --paint-card-foreground: #f5f6f6;
+  --paint-muted-foreground: #95979b;
+  --paint-accent-foreground: #f5f6f6;
+  --paint-secondary-foreground: #f3f3f4;
+  --paint-sidebar-foreground: #bdb7ae;
+  --paint-sidebar-muted: #8b857d;
+  --paint-utility-foreground: var(--paint-muted-foreground);
+
+  --paint-primary: #973c00;
+  --paint-primary-foreground: #fffbeb;
+  --paint-destructive: #ff6467;
+  --paint-destructive-soft: #3f2627;
+  --paint-destructive-line: #683335;
+  --paint-destructive-text: #ff6467;
+
+  --paint-positive-soft: #1c3125;
+  --paint-positive-line: #2f5540;
+  --paint-positive-text: #46ad72; /* 4.94:1 on its own tint */
+  --paint-attention-soft: #3a2a15;
+  --paint-attention-line: #5e4526;
+  --paint-attention-text: #c98c48; /* 4.82:1 on its own tint */
+  --paint-border: #353537;
+  --paint-input: #3b3c3d;
+  --paint-ring: #7f8083;
+  --paint-sidebar-border: #2a2622;
 }
 
 /*
- * Dark re-points the same names, so every utility built from them follows
- * without a `dark:` class anywhere in a component.
+ * The console — RePanel's own control plane.
+ *
+ * It starts on the runtime's palette, value for value, because that is what it
+ * has been drawn against since task 014 and this commit is the mechanism rather
+ * than a redesign. The console's own values are task 014b's to propose; when
+ * they land, the numbers in these two blocks are the only thing that moves.
  */
-.dark {
-  --color-sidebar-top: #080605;
-  --color-sidebar-bottom: #040302;
-  --color-background: #1a1a1b;
-  --color-card: #222324;
-  --color-muted: #2b2b2d;
-  --color-accent: #2b2b2d;
-  --color-secondary: #2d2e2f;
-  --color-sidebar-accent: #191714;
+.theme-console {
+  --paint-sidebar-top: #e7e3de;
+  --paint-sidebar-bottom: #dfdbd6;
+  --paint-page: var(--paint-sidebar-top);
+  --paint-background: #ffffff;
+  --paint-card: #ffffff;
+  --paint-muted: #f2f3f3;
+  --paint-accent: #eff0f1;
+  --paint-secondary: #ecedee;
+  --paint-sidebar-accent: #f7f4f0;
 
-  --color-foreground: #f5f6f6;
-  --color-card-foreground: #f5f6f6;
-  --color-muted-foreground: #95979b;
-  --color-accent-foreground: #f5f6f6;
-  --color-secondary-foreground: #f3f3f4;
-  --color-sidebar-foreground: #bdb7ae;
-  --color-sidebar-muted: #8b857d;
-  --color-utility-foreground: var(--color-muted-foreground);
+  --paint-foreground: #0a0b0b;
+  --paint-card-foreground: #0a0b0b;
+  --paint-muted-foreground: #64666a;
+  --paint-accent-foreground: #191a1b;
+  --paint-secondary-foreground: #1c1d1e;
+  --paint-sidebar-foreground: #4a443b;
+  --paint-sidebar-muted: #665e53;
+  --paint-utility-foreground: var(--paint-foreground);
 
-  --color-primary: #973c00;
-  --color-primary-foreground: #fffbeb;
-  --color-destructive: #ff6467;
-  --color-destructive-soft: #3f2627;
-  --color-destructive-line: #683335;
-  --color-destructive-text: #ff6467;
+  --paint-primary: #bb4d00;
+  --paint-primary-foreground: #fffbeb;
+  --paint-destructive: #e7000b;
+  --paint-destructive-soft: #fde6e7;
+  --paint-destructive-line: #f8b8bb;
+  --paint-destructive-text: #c2191c;
 
-  --color-positive-soft: #1c3125;
-  --color-positive-line: #2f5540;
-  --color-positive-text: #46ad72; /* 4.94:1 on its own tint */
-  --color-attention-soft: #3a2a15;
-  --color-attention-line: #5e4526;
-  --color-attention-text: #c98c48; /* 4.82:1 on its own tint */
-  --color-border: #353537;
-  --color-input: #3b3c3d;
-  --color-ring: #7f8083;
-  --color-sidebar-border: #2a2622;
+  --paint-positive-soft: #e4f4e9;
+  --paint-positive-line: #b7ddc4;
+  --paint-positive-text: #137a3f;
+  --paint-attention-soft: #fceedb;
+  --paint-attention-line: #f2cf9e;
+  --paint-attention-text: #9a5500;
+  --paint-border: #e0e1e3;
+  --paint-input: #dbdcde;
+  --paint-ring: #a4a5a8;
+  --paint-sidebar-border: #d5d0ca;
+}
+
+.theme-console.dark {
+  --paint-sidebar-top: #080605;
+  --paint-sidebar-bottom: #040302;
+  --paint-background: #1a1a1b;
+  --paint-card: #222324;
+  --paint-muted: #2b2b2d;
+  --paint-accent: #2b2b2d;
+  --paint-secondary: #2d2e2f;
+  --paint-sidebar-accent: #191714;
+
+  --paint-foreground: #f5f6f6;
+  --paint-card-foreground: #f5f6f6;
+  --paint-muted-foreground: #95979b;
+  --paint-accent-foreground: #f5f6f6;
+  --paint-secondary-foreground: #f3f3f4;
+  --paint-sidebar-foreground: #bdb7ae;
+  --paint-sidebar-muted: #8b857d;
+  --paint-utility-foreground: var(--paint-muted-foreground);
+
+  --paint-primary: #973c00;
+  --paint-primary-foreground: #fffbeb;
+  --paint-destructive: #ff6467;
+  --paint-destructive-soft: #3f2627;
+  --paint-destructive-line: #683335;
+  --paint-destructive-text: #ff6467;
+
+  --paint-positive-soft: #1c3125;
+  --paint-positive-line: #2f5540;
+  --paint-positive-text: #46ad72;
+  --paint-attention-soft: #3a2a15;
+  --paint-attention-line: #5e4526;
+  --paint-attention-text: #c98c48;
+  --paint-border: #353537;
+  --paint-input: #3b3c3d;
+  --paint-ring: #7f8083;
+  --paint-sidebar-border: #2a2622;
 }
 
 /*

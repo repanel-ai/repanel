@@ -6,14 +6,16 @@ export type Theme = "light" | "dark";
 const STORAGE_KEY = "repanel.theme";
 
 /**
- * Which of the two themes the admin is in. The choice is the operator's and it
- * is remembered (DECISIONS #028).
+ * Which of the two themes the console is in — the runtime's hook, on the
+ * console's own root class.
  *
- * Light is where an admin opens: it is the entry theme on both of RePanel's
- * surfaces, and the OS preference no longer decides the first visit
- * (DECISIONS #035). Dark is not what is left over — it is the surface ladder
- * DESIGN.md §2 specifies, maintained and measured — and this toggle is how an
- * operator asks for it.
+ * It is copied rather than shared: `packages/ui` is presentational and holds
+ * no logic, and a hook that writes to a browser store and moves a class on the
+ * document is not a component. Thirty lines in each app is the cheaper of the
+ * two mistakes available.
+ *
+ * Light is where the console opens, as the admin does (DECISIONS #035); dark
+ * is a designed theme reached by this toggle, not a fallback.
  */
 export function useTheme(): { theme: Theme; toggle: () => void } {
   const [theme, setTheme] = useState<Theme>(storedTheme);

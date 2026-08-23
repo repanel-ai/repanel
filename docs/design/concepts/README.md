@@ -502,3 +502,85 @@ overflow          1440, 2560 and 768, both themes: no horizontal scroll
 numerals          tabular-nums;  faces Plus Jakarta Sans + Geist Mono
 ```
 
+## `console-f.html` — the runtime, exactly
+
+The most conservative option on the table, and the alternative to D: **the
+console *is* the runtime.** DESIGN.md §1's palette, §2's ladder (and its no-drop-
+shadows rule), §3's type, §4's badge language and §6's rhythm, all verbatim; the
+sidebar is `features/runtime/sidebar.tsx`'s own anatomy — h-11 head, rule,
+grouped nav with micro group labels and 16px marks at 70% opacity, rule, h-11
+account block. One palette, one product, no second design language to maintain.
+Shots: `shots/console-f-{light,dark}.png` and `-wide-` at 2560x1440.
+
+### The one deviation — the chrome's hue
+
+§1 runs the chrome warm on purpose: hue 78, "so the screen reads as
+chrome-vs-content rather than two shades of one grey", against a data surface
+that is near-achromatic with a whisper of cool at hue 265. That argument is
+about a screen whose content is a dense field of five hundred records — the
+warmth is what stops the chrome reading as more table.
+
+The console has no such field. It is four cards and a list on a panel that is
+mostly white space, and there the warm chrome stops being a distinction and
+becomes the dominant colour of the page, which is what made the first console
+concept read as cream paper. So the chrome moves onto the data surface's own hue
+family at **half its chroma** — toned down, not recoloured.
+
+```
+token               runtime     here       lightness
+--sidebar-top       #e7e3de  -> #e2e4e6    .7720 -> .7737
+--sidebar-bottom    #dfdbd6  -> #dadcde    .7121 -> .7137
+--sidebar-accent    #f7f4f0  -> #f3f4f7    .9077 -> .9047
+--sidebar-border    #d5d0ca  -> #cfd1d4    .6352 -> .6362
+dark top / bottom   #080605  -> #060608    .0019 -> .0019
+                    #040302  -> #030304    .0010 -> .0009
+dark accent / border #191714 -> #161719    .0087 -> .0085
+                    #2a2622  -> #262729    .0199 -> .0202
+```
+
+Every lightness holds to within 0.002, so **§2's ladder is the same ladder and
+its measurements are still true**. Only hue and chroma moved: 74 → 265,
+.008 → .004. The sidebar's two text tokens move with it at their own lightness,
+because a warm text ladder on a cool ground reads as brown rather than as quiet:
+`--sidebar-foreground` `#4a443b` → `#434548` (7.44:1 on the new chrome),
+`--sidebar-muted` `#665e53` → `#5e5f63` (4.88:1); dark `#bdb7ae` → `#b6b8bc`,
+`#8b857d` → `#84868a`.
+
+**The accent is untouched, and is better off.** `--primary` `#bb4d00` is exactly
+the runtime's. On a cream chrome it was one warm thing among warm things; on a
+cool one it is the only warm thing on the screen, which is what an accent is
+for. Spent where §1 and §10 already spend it — the project's mark, and the one
+button where there is exactly one thing to go ahead with — and nowhere else.
+
+### What the console adds, because it is a different app
+
+A project switcher in the head block the runtime gives the app's name; two nav
+groups (`Project`, `Account`) instead of the definition's, which is the
+runtime's own multi-group nav with `Settings` off and `Sign out` housed; and a
+1100px measure, centred, because a table wants every pixel and a console does
+not.
+
+### Measured
+
+```
+console-f  light  21 text styles, 0 below AA   tightest 4.74
+           dark   23 text styles, 0 below AA   tightest 4.94
+```
+
+Both tightest pairs are the `positive` badge, at exactly the numbers §4 records
+for it — which is the check that the palette really is the runtime's, untouched.
+No horizontal scroll at 768, 1440 or 2560.
+
+### F against D
+
+| | **D — stock, refined** | **F — the runtime, exactly** |
+|---|---|---|
+| palette | shadcn's achromatic neutrals | DESIGN.md §1, verbatim but for the chrome's hue |
+| accent | none — `--primary` is a weight | `--primary` `#bb4d00`, the runtime's |
+| elevation | shadcn's `shadow-sm` | none — §2's hairline-and-lightness, as ruled |
+| coherence with the admin | a second, related look | the same look |
+| what it costs | five documented deviations from stock | one documented deviation from §1 |
+
+D is a console that looks like good modern SaaS. F is a console that looks like
+the product it administers. Neither is wrong; they answer different questions.
+

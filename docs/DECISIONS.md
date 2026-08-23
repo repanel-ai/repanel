@@ -326,3 +326,79 @@ these — and it works precisely because no component knows which layer it is
 standing on. Enforced the only way a CSS rule like this can be: the contract is
 the whole of what `packages/ui` exports as tokens, and a component that reached
 around it would have to name a variable this file says is not for it.
+
+036 · 2026-08 · The console's identity is the runtime's, on its own theme
+layer. Task 014b ships concept F: `apps/web` spends DESIGN.md's palette, its
+surface ladder **and its no-drop-shadows rule**, its type, its badge language
+and its rhythm to the pixel, plus the sidebar anatomy
+`features/runtime/sidebar.tsx` already has — with a cool-shifted chrome, which
+#037 then took back to the runtime. DESIGN.md §11 is the record.
+
+Three things the console has that the runtime does not, each because it is a
+different app rather than a different design: a **project switcher** where the
+runtime puts the app's name, because a console is always inside one project out
+of several; **two nav groups** — `Project` for the four pages, `Account` for the
+pair that is about the person — where the runtime's groups come from a
+definition; and a **measure**, `--spacing-measure` 1100px centred in the panel,
+because a table wants every pixel and a console does not.
+
+**A page per concern, and which one you are on lives in the address.**
+`/p/:id/overview | connection | agents | definition`, with `/p/:id` the way in.
+Task 014 stacked the same three concerns in one scrolling column, which could
+not be linked to, gone back from or reloaded into — the same three things #012's
+tab rule and BUILD REQUIREMENT 1's filter rule already insist on for a screen.
+A person in a console is somewhere, and a column has nowhere to say so.
+
+**Overview holds nothing it fetches itself.** The setup checklist — connect a
+database, mint a token, connect the agent, ask it — is derived on every render
+from the three answers the other pages already ask for, so it cannot drift from
+them. One derivation needed thinking about and is tested by name: a definition
+proves an agent reached the project, because it cannot have arrived any other
+way, so step four can never show done above step three undone.
+
+**And the banned-defaults list is a gate on every surface, not a note on one.**
+The list task 010 derived (`docs/design/concepts/README.md`) was written as "a
+proposal, not a ruling" for that task's concepts. It is a ruling now, and it
+applies at every design gate on every surface: **a concept that lands on it is
+an automatic reject, and the answer is a restart rather than a refinement.**
+014b's first console concept did — cream-paper chrome with a terracotta accent
+is the named generated-design cliché, and it read editorial where a control
+plane has to read like infrastructure — and it was restarted rather than
+adjusted. It is kept as `concepts/console-a.html`, marked rejected, because a
+list of banned defaults with no example of one being enforced teaches nothing.
+
+037 · 2026-08 · The chrome is cool, on both theme layers. §1 ran it warm at hue
+78 so that a screen whose content is a dense field of five hundred records would
+read as chrome-vs-content rather than as two shades of one grey. Half of that
+was right: the distinction is real and worth keeping. The wrong half was doing
+the work.
+
+Decided from pixels rather than from the argument. Task 014b's console proposed
+a chrome on the data surface's own hue family at half its chroma — hue 74 → 265,
+chroma .008 → .004, six tokens — and the runtime's own table page was then
+rendered both ways and compared, same page, same layout, nothing else different
+(`docs/design/shots/console-014b/runtime-chrome-{warm,cool}-{light,dark}.png`).
+The cool one does not lose the distinction. **What carries chrome-vs-content is
+the lightness step and the hairline** — .7737 against 1.0000 in light, .0019
+against .0104 in dark, with `--sidebar-border` between them — and it always was.
+What the hue was adding, on a screen this quiet, was being the loudest thing on
+it.
+
+So `.theme-runtime` takes the console's chrome and the two layers hold the same
+values to the digit. They stay two layers: the mechanism exists so a *customer's*
+can differ (#035), not so these two can, and a contract with one implementation
+is not a contract.
+
+Every lightness holds to within 0.002 of what it was, which is the whole reason
+this could be taken back to the runtime without re-deriving §2's ladder — only
+hue and chroma moved. The two sidebar text tokens moved with the surface they
+are read on, because a warm text ladder over a cool ground reads as brown rather
+than as quiet. The floor was re-measured on the running app rather than reasoned
+about: 20 text styles light and 22 dark, zero below AA, tightest 4.74 / 4.79 —
+both of them badges, at the numbers §4 records for them.
+
+**`--primary` #bb4d00 is untouched, and is the point.** It is now the only warm
+object anywhere in RePanel — the app's mark, the project's mark, and the one
+control where there is exactly one thing to go ahead with. An accent that was
+one warm thing among warm things is now the only one, which is what an accent is
+for.

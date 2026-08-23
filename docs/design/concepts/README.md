@@ -142,3 +142,97 @@ hardcoding 010's acceptance criteria forbid; a free-form icon name would put a
 silent missing-glyph state on screen, which is the failure mode #027 just closed
 everywhere else. This is `packages/contracts` work (task 001's domain) and needs
 its own decision entry — it is not in 010's scope.
+
+---
+
+# Task 014b · Stage 1 — the console
+
+`console-a.html` — the console's project shell, on the `theme-console` layer
+DECISIONS #035 created. Open it directly; append `?theme=dark` for dark. The
+shots are `shots/console-a-{light,dark}.png`, 1440×900 at 2×.
+
+One concept rather than three. 010's brief was "what should an admin look
+like", which is a question with several honest answers; this one is "give the
+console the runtime's skeleton, on its own layer", which has one — the runtime's
+skeleton already exists, is approved, and is what a customer's operators will
+have seen. Three variations on a shell that is not up for redesign would be
+three drawings of the same decision.
+
+| | value |
+|---|---|
+| skeleton | the runtime's: sidebar on the ground, panel inset with a hairline, topbar, one screen |
+| sidebar | project switcher, five destinations (`Settings` off), account card |
+| screen | Overview — three status cards, then the four-step setup checklist, mid-setup |
+| light surfaces | **three**: chrome `#ebe7e1→#e4e0d9`, panel `#f8f6f3`, card `#ffffff` |
+| dark surfaces | chrome `#0d0b09→#080605`, panel `#191715`, card `#211e1b` |
+| type, rhythm, radii | the runtime's, unchanged — shared primitives, and a layer may not move them |
+| accent | `--primary` `#bb4d00`, spent in four places, all of them "you are here" |
+
+## The three divergences from the runtime, and why each
+
+1. **Three light surfaces, not two.** The runtime's light theme puts the panel
+   and the card at the same white, because a table needs one flat field and a
+   raised card inside it would be noise. The console is the opposite shape —
+   half a dozen distinct objects, each a different thing you do — so the panel
+   comes off white to a warm `#f8f6f3` and `--card` keeps `#ffffff`. Measured:
+   panel `.9234` relative luminance against the card's `1.0000` in light,
+   `.0087` against `.0133` in dark. Three steps, real in both themes, and no
+   drop shadow anywhere (§2 still holds).
+2. **Airier by spacing, not by size.** Every control, row and type size is the
+   runtime's. What grows is the space between things. A console with its own
+   type scale would read as a second product; a console at a table's density
+   reads as a cramped one.
+3. **The accent carries identity.** `--primary` marks the project, the current
+   page, the current step, and nothing else. The current page and the current
+   step wear the *same* mark — two pixels of the accent on the left edge —
+   because they are the same sentence.
+
+## Measured, from the rendered DOM
+
+```
+contrast   light  23 distinct text styles, 0 below AA   tightest 4.74
+           dark   23 distinct text styles, 0 below AA   tightest 4.54
+           (light's tightest is the `positive` badge, at the number DESIGN.md
+            §4 records for it — the console spends the runtime's tone family
+            unchanged. Dark's is the project key in the switcher.)
+
+surface    light  chrome .8025 → .7482   panel .9234   card 1.0000
+ladder     dark   chrome .0034 → .0019   panel .0087   card .0133
+           (the snippet inside a card drops back to the panel's value in both,
+            which is what makes it read as recessed rather than as a second card)
+
+overflow   scrollWidth === clientWidth at 1440 and at 768, both themes
+numerals   tabular-nums on a card value
+faces      Geist, and Geist Mono for the one command on the page
+```
+
+## Self-critique, and what it changed
+
+Run once against the first pair of shots. Four things, all of them fixed in
+the file that is now here:
+
+- **Every ghost button was painting the UA's `buttonface`.** The reset said
+  `font` and `color` and not `background`, so the theme toggle and the two step
+  actions arrived as light grey chips — invisible in light and glaring in dark.
+- **The current-page rule was on the sidebar's edge, not the item's.** It was
+  drawn at `left: -8px`, which put it against the window rather than against
+  the thing it marks. It now sits on the item's own left edge, and the current
+  *step* borrowed the same mark.
+- **`Geist Mono` was never loaded**, so the one command on the page rendered in
+  a system fallback and its `--` collapsed into a dash.
+- **The cards and the checklist said the same three things twice.** The steps
+  restated the connection string and the token label the cards above already
+  carried. Cut: the cards say what *is*, the checklist says what is *left*, and
+  neither repeats the other's value.
+
+A fifth was found by measuring rather than looking: the disabled `Settings`
+item was dimmed with `opacity: .55`, which put the only unreachable label on
+the page under the contrast floor. Opacity is gone; it wears the group label's
+colour and the word `Soon` says why.
+
+## What is deliberately not here
+
+`Open admin` — the project in these shots has no definition yet, so the button
+that opens one would be a lie or a disabled control, and neither is worth
+drawing. It belongs on this page the moment the definition validates, next to
+the definition card.

@@ -105,12 +105,12 @@ describe("ProjectsService", () => {
 
   describe("create", () => {
     it("gives the project a key of its own and files it under its owner", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
-      expect(project.key).toMatch(/^skyscout-[a-z0-9]{6}$/);
+      expect(project.key).toMatch(/^crewbase-[a-z0-9]{6}$/);
       expect(project).toEqual({
         id: "project-1",
-        name: "SkyScout",
+        name: "Crewbase",
         key: project.key,
         createdAt: expect.any(String),
       });
@@ -120,7 +120,7 @@ describe("ProjectsService", () => {
     it("draws another key when the one it offered is taken", async () => {
       repository.refuseNextKeys(1);
 
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       expect(repository.attemptedKeys).toHaveLength(2);
       expect(repository.attemptedKeys[0]).not.toBe(repository.attemptedKeys[1]);
@@ -132,7 +132,7 @@ describe("ProjectsService", () => {
     it("gives up rather than draw keys forever", async () => {
       repository.refuseNextKeys(10);
 
-      const refusal = await refusalFrom(service.create(ADA, { name: "SkyScout" }));
+      const refusal = await refusalFrom(service.create(ADA, { name: "Crewbase" }));
 
       expect(refusal).toBeInstanceOf(ConflictError);
       expect(repository.attemptedKeys).toHaveLength(3);
@@ -144,21 +144,21 @@ describe("ProjectsService", () => {
       const failing = { create: () => Promise.reject(outage) } as unknown as ProjectsRepository;
 
       await expect(
-        new ProjectsService(failing, crypto).create(ADA, { name: "SkyScout" }),
+        new ProjectsService(failing, crypto).create(ADA, { name: "Crewbase" }),
       ).rejects.toBe(outage);
     });
   });
 
   describe("list", () => {
     it("answers with the caller's own projects and nobody else's", async () => {
-      const skyscout = await service.create(ADA, { name: "SkyScout" });
+      const crewbase = await service.create(ADA, { name: "Crewbase" });
       const ledger = await service.create(ADA, { name: "Ledger" });
       await service.create(GRACE, { name: "Compiler" });
 
       const listed = await service.list(ADA);
 
       expect(listed).toHaveLength(2);
-      expect(listed).toEqual(expect.arrayContaining([skyscout, ledger]));
+      expect(listed).toEqual(expect.arrayContaining([crewbase, ledger]));
     });
 
     it("answers a user who owns nothing with an empty list", async () => {
@@ -170,7 +170,7 @@ describe("ProjectsService", () => {
 
   describe("requireOwned", () => {
     it("answers with the project when it is the caller's", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       await expect(service.requireOwned(project.id, ADA)).resolves.toEqual(project);
     });
@@ -197,7 +197,7 @@ describe("ProjectsService", () => {
 
   describe("requireOwnedByKey", () => {
     it("answers with the project when the key is the caller's", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       await expect(service.requireOwnedByKey(project.key, ADA)).resolves.toEqual(project);
     });
@@ -225,7 +225,7 @@ describe("ProjectsService", () => {
 
   describe("actionSecret", () => {
     it("mints a secret the first time one is needed, and stores it encrypted", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       const secret = await service.actionSecret(project.id);
 
@@ -237,7 +237,7 @@ describe("ProjectsService", () => {
     });
 
     it("answers with the same secret every time after that", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       const first = await service.actionSecret(project.id);
       const again = await service.actionSecret(project.id);
@@ -249,10 +249,10 @@ describe("ProjectsService", () => {
     });
 
     it("gives two projects two different secrets", async () => {
-      const skyscout = await service.create(ADA, { name: "SkyScout" });
+      const crewbase = await service.create(ADA, { name: "Crewbase" });
       const compiler = await service.create(GRACE, { name: "Compiler" });
 
-      expect(await service.actionSecret(skyscout.id)).not.toBe(
+      expect(await service.actionSecret(crewbase.id)).not.toBe(
         await service.actionSecret(compiler.id),
       );
     });
@@ -268,7 +268,7 @@ describe("ProjectsService", () => {
      * out of the console — must end up signing and verifying with one value.
      */
     it("hands both sides of a race the secret that landed", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       const [signing, revealed] = await Promise.all([
         service.actionSecret(project.id),
@@ -281,7 +281,7 @@ describe("ProjectsService", () => {
 
   describe("revealActionSecret", () => {
     it("answers the owner with the plaintext their application needs", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       const revealed = await service.revealActionSecret(project.id, ADA);
 
@@ -303,7 +303,7 @@ describe("ProjectsService", () => {
     const asAgent = (projectId: string): Principal => ({ kind: "agent", projectId });
 
     it("answers a user with the project they own", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       await expect(service.requireAccess(asUser(ADA), project.id)).resolves.toEqual(project);
     });
@@ -317,7 +317,7 @@ describe("ProjectsService", () => {
     });
 
     it("answers an agent with the project its token names", async () => {
-      const project = await service.create(ADA, { name: "SkyScout" });
+      const project = await service.create(ADA, { name: "Crewbase" });
 
       await expect(service.requireAccess(asAgent(project.id), project.id)).resolves.toEqual(
         project,
@@ -325,10 +325,10 @@ describe("ProjectsService", () => {
     });
 
     it("answers an agent asking after any other project as missing", async () => {
-      const skyscout = await service.create(ADA, { name: "SkyScout" });
+      const crewbase = await service.create(ADA, { name: "Crewbase" });
       const compiler = await service.create(GRACE, { name: "Compiler" });
 
-      const refusal = await refusalFrom(service.requireAccess(asAgent(skyscout.id), compiler.id));
+      const refusal = await refusalFrom(service.requireAccess(asAgent(crewbase.id), compiler.id));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });

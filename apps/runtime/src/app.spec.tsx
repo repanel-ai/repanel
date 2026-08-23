@@ -12,14 +12,14 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("App", () => {
   it("renders the admin for the project in the URL", async () => {
-    renderAt("/a/skyscout/r/users", ADA);
+    renderAt("/a/crewbase/r/users", ADA);
 
     expect(await screen.findByText("Acme Admin")).toBeDefined();
-    expect(screen.getByText("skyscout")).toBeDefined();
+    expect(screen.getByText("crewbase")).toBeDefined();
   });
 
   it("directs a visitor with no session to the console", async () => {
-    renderAt("/a/skyscout", null);
+    renderAt("/a/crewbase", null);
 
     expect(await screen.findByRole("link", { name: "Sign in to RePanel" })).toBeDefined();
   });

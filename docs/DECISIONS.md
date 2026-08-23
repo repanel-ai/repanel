@@ -277,3 +277,7 @@ reads. Why: one file per resource is how a definition stays reviewable once it
 is real — a resource is the unit a human changes, diffs and blames, and a
 thousand-line JSON blob makes every change look like the same change. The
 split costs nothing at the wire, because the wire never sees it.
+
+034 · 2026-08 · The reference app is renamed skyscout -> crewbase, to avoid
+collision with an unrelated real project of that name; its domain, tables and
+acceptance scenario are unchanged.

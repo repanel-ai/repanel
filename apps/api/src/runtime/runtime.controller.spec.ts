@@ -20,29 +20,29 @@ describe("RuntimeController", () => {
   const controller = new RuntimeController(runtime as unknown as RuntimeService);
 
   it("reads the definition for the signed-in owner", async () => {
-    await controller.definition(USER, "skyscout-a3k9x2");
+    await controller.definition(USER, "crewbase-a3k9x2");
 
-    expect(runtime.definitionFor).toHaveBeenCalledWith(USER.id, "skyscout-a3k9x2");
+    expect(runtime.definitionFor).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2");
   });
 
   it("passes a list request through as it was parsed", async () => {
-    await controller.records(USER, "skyscout-a3k9x2", "users", QUERY);
+    await controller.records(USER, "crewbase-a3k9x2", "users", QUERY);
 
-    expect(runtime.listRecords).toHaveBeenCalledWith(USER.id, "skyscout-a3k9x2", "users", QUERY);
+    expect(runtime.listRecords).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "users", QUERY);
   });
 
   it("passes a record request through", async () => {
-    await controller.record(USER, "skyscout-a3k9x2", "users", "user-1");
+    await controller.record(USER, "crewbase-a3k9x2", "users", "user-1");
 
-    expect(runtime.getRecord).toHaveBeenCalledWith(USER.id, "skyscout-a3k9x2", "users", "user-1");
+    expect(runtime.getRecord).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "users", "user-1");
   });
 
   it("passes a related request through", async () => {
-    await controller.related(USER, "skyscout-a3k9x2", "users", "user-1", "orders", QUERY);
+    await controller.related(USER, "crewbase-a3k9x2", "users", "user-1", "orders", QUERY);
 
     expect(runtime.listRelated).toHaveBeenCalledWith(
       USER.id,
-      "skyscout-a3k9x2",
+      "crewbase-a3k9x2",
       "users",
       "user-1",
       "orders",

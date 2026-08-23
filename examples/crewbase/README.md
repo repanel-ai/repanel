@@ -1,11 +1,11 @@
-# SkyScout
+# Crewbase
 
 A small aviation staffing marketplace, and RePanel's reference customer
 application. It exists to be *administered*: a coding agent inspects this
 repository, writes a RePanel definition from what it finds, and the resulting
 admin is judged on whether it handled what is in here.
 
-There is no UI. What SkyScout has is a database worth administering and one
+There is no UI. What Crewbase has is a database worth administering and one
 admin-API module RePanel is allowed to call.
 
 ## Run it
@@ -13,19 +13,19 @@ admin-API module RePanel is allowed to call.
 ```bash
 cp .env.example .env
 docker compose up -d          # postgres on 5433, so RePanel's own db can stay on 5432
-pnpm --filter skyscout db:push
-pnpm --filter skyscout seed   # ~200 rows
-pnpm --filter skyscout dev    # http://localhost:3002
+pnpm --filter crewbase db:push
+pnpm --filter crewbase seed   # ~200 rows
+pnpm --filter crewbase dev    # http://localhost:3002
 ```
 
 `seed` is re-runnable: it truncates first, and the data is generated from a
-fixed seed, so two people looking at SkyScout are looking at the same rows.
+fixed seed, so two people looking at Crewbase are looking at the same rows.
 
 ## The data
 
 | Table | What it is |
 |---|---|
-| `users` | SkyScout's own staff, the people who run placements. |
+| `users` | Crewbase's own staff, the people who run placements. |
 | `airlines` | The hiring side. Approving one is a business decision, not a field edit. |
 | `candidates` | Pilots, crew, engineers and dispatchers. **The hostile resource.** |
 | `job_openings` | Seats an approved airline is hiring for. |
@@ -54,13 +54,13 @@ compared in constant time, with a five-minute tolerance so a captured request
 stops working. `REPANEL_ACTION_SECRET` is the project's action secret, copied
 from the RePanel console (Project → Agent access).
 
-`pnpm --filter skyscout test` covers exactly that endpoint: signed and pending →
+`pnpm --filter crewbase test` covers exactly that endpoint: signed and pending →
 approved, signed and not pending → 409, unknown airline → 404, wrong secret →
 401, no signature → 401, expired timestamp → 401.
 
 ## The traps (for humans reading this)
 
-The point of SkyScout is that a naive admin over these tables would be wrong in
+The point of Crewbase is that a naive admin over these tables would be wrong in
 ways that matter. Each of these is something an authoring agent has to classify
 correctly, and `docs/AUTHORING.md` is what tells it how.
 
@@ -73,7 +73,7 @@ correctly, and `docs/AUTHORING.md` is what tells it how.
 2. **`candidates.status`** — an enum with a workflow behind it. The trap is
    treating it as a field to edit. In a v0 definition every resource is
    read-only, so the correct shape is an *action* that moves it. There is no
-   endpoint for it in SkyScout because there is no rule to enforce, which makes
+   endpoint for it in Crewbase because there is no rule to enforce, which makes
    a `dbUpdate` action the honest answer here — unlike `airlines.approval_status`.
 
 3. **`candidates.deleted_at`** — a soft delete. Rows with it set are gone as far
@@ -95,7 +95,7 @@ correctly, and `docs/AUTHORING.md` is what tells it how.
 
 ```
 src/
-  airlines/    the approval rule, and the only writes SkyScout performs
+  airlines/    the approval rule, and the only writes Crewbase performs
   config/      zod-validated environment, read through one typed service
   db/          drizzle schema, one file per table
   repanel/     the admin API: signature middleware + the routes RePanel may call

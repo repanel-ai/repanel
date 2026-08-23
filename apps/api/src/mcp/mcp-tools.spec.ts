@@ -19,16 +19,16 @@ import { ProjectsService } from "../projects/projects.service";
 import { createMcpServer } from "./mcp-server";
 import { SchemaDocumentationService } from "./schema-documentation.service";
 
-const SKYSCOUT = "project-skyscout";
+const CREWBASE = "project-crewbase";
 
-/** The agent holding SkyScout's token, and one holding some other project's. */
-const AGENT: AgentPrincipal = { kind: "agent", projectId: SKYSCOUT };
+/** The agent holding Crewbase's token, and one holding some other project's. */
+const AGENT: AgentPrincipal = { kind: "agent", projectId: CREWBASE };
 const STRANGER: AgentPrincipal = { kind: "agent", projectId: "project-ledger" };
 
 const PROJECT: ProjectDto = {
-  id: SKYSCOUT,
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  id: CREWBASE,
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 
@@ -85,10 +85,10 @@ class InMemoryDefinitionsRepository
   }
 }
 
-/** Stands in for the projects feature: SkyScout's token reaches SkyScout. */
+/** Stands in for the projects feature: Crewbase's token reaches Crewbase. */
 class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
   requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
-    if (principal.kind !== "agent" || principal.projectId !== projectId || projectId !== SKYSCOUT) {
+    if (principal.kind !== "agent" || principal.projectId !== projectId || projectId !== CREWBASE) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
     return Promise.resolve(PROJECT);
@@ -96,7 +96,7 @@ class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
 }
 
 /** Stands in for the connections feature: the projects that have been pointed
- *  at a database, refusing anything SkyScout's token cannot reach. */
+ *  at a database, refusing anything Crewbase's token cannot reach. */
 class ConnectedProjects implements Pick<ConnectionsService, "hasConnection"> {
   private readonly connected = new Set<string>();
 
@@ -106,7 +106,7 @@ class ConnectedProjects implements Pick<ConnectionsService, "hasConnection"> {
   }
 
   hasConnection(principal: Principal, projectId: string): Promise<boolean> {
-    if (principal.kind !== "agent" || principal.projectId !== projectId || projectId !== SKYSCOUT) {
+    if (principal.kind !== "agent" || principal.projectId !== projectId || projectId !== CREWBASE) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
     return Promise.resolve(this.connected.has(projectId));
@@ -249,8 +249,8 @@ describe("MCP tools", () => {
       const result = await call(client, "get_project");
 
       expect(payloadOf(result)).toEqual({
-        name: "SkyScout",
-        key: "skyscout-a3k9x2",
+        name: "Crewbase",
+        key: "crewbase-a3k9x2",
         hasConnection: false,
         definitionStatus: "none",
         definitionUpdatedAt: null,
@@ -258,7 +258,7 @@ describe("MCP tools", () => {
     });
 
     it("reports the customer database once the project has been pointed at one", async () => {
-      connected.add(SKYSCOUT);
+      connected.add(CREWBASE);
       const client = await connect();
 
       const result = await call(client, "get_project");

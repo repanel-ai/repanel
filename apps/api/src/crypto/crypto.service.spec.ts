@@ -1,7 +1,7 @@
 import type { ConfigService } from "../config/config.service";
 import { CryptoService } from "./crypto.service";
 
-const DSN = "postgres://admin:hunter2@db.example.com:5432/skyscout";
+const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 
 /** A service holding one key. The tests need two, to tell them apart. */
 function cryptoWithKey(fill: number): CryptoService {
@@ -57,7 +57,7 @@ describe("CryptoService", () => {
     });
 
     it("handles a plaintext that is not plain ascii", () => {
-      const value = "postgres://admin:pässwörd–ü@db.example.com/skyscout";
+      const value = "postgres://admin:pässwörd–ü@db.example.com/crewbase";
 
       expect(crypto.decrypt(crypto.encrypt(value))).toBe(value);
     });

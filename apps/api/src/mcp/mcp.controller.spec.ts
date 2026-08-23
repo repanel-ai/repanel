@@ -17,12 +17,12 @@ import { McpController } from "./mcp.controller";
 import { McpService } from "./mcp.service";
 
 const LIVE_TOKEN = `rpk_${"a".repeat(40)}`;
-const AGENT: AgentPrincipal = { kind: "agent", projectId: "project-skyscout" };
+const AGENT: AgentPrincipal = { kind: "agent", projectId: "project-crewbase" };
 const USER: UserDto = { id: "user-ada", email: "ada@example.com", name: "Ada" };
 const PROJECT: ProjectDto = {
-  id: "project-skyscout",
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  id: "project-crewbase",
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 

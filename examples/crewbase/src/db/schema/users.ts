@@ -4,7 +4,7 @@ import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 export const userStatus = pgEnum("user_status", ["invited", "active", "suspended"]);
 
 /**
- * SkyScout's own staff: the people who run placements. `password_hash` is here
+ * Crewbase's own staff: the people who run placements. `password_hash` is here
  * because a real application keeps it here — it is the column an admin must
  * never render, and an example without it would be teaching against the case
  * that matters.

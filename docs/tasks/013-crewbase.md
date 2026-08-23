@@ -1,16 +1,16 @@
-# Task 013 · SkyScout reference app + authoring guide
+# Task 013 · Crewbase reference app + authoring guide
 
 ## Context
-SkyScout is the acceptance vehicle (SCOPE.md): a realistic customer app a
+Crewbase is the acceptance vehicle (SCOPE.md): a realistic customer app a
 fresh coding agent must turn into an admin through MCP, including the
 hostile resource. It also anchors docs/AUTHORING.md — the guide any
 customer's agent reads. This task builds the app and the guide; the
 acceptance RUN is checkpoint D, performed manually.
 
 ## Scope
-### examples/skyscout (added to the pnpm workspace via examples/*)
+### examples/crewbase (added to the pnpm workspace via examples/*)
 - Minimal NestJS app + drizzle, its own docker-compose service (port
-  differs from RePanel's db) and seed script (`pnpm --filter skyscout seed`)
+  differs from RePanel's db) and seed script (`pnpm --filter crewbase seed`)
   generating ~200 realistic rows across tables. No UI.
 - Tables: `users` (name, email, status enum, password_hash — the sensitive
   trap, created_at), `airlines` (name, country, approval_status enum,
@@ -39,8 +39,8 @@ acceptance RUN is checkpoint D, performed manually.
   section (per decision 011 this is the first per-stack guide's seed).
 
 ## Out of scope (binding)
-Running the acceptance itself (checkpoint D), auth on SkyScout beyond the
-HMAC middleware, SkyScout tests beyond the approve endpoint's rule, any
+Running the acceptance itself (checkpoint D), auth on Crewbase beyond the
+HMAC middleware, Crewbase tests beyond the approve endpoint's rule, any
 RePanel core changes (if a gap is found, STOP and report it — that is the
 point of the exercise).
 
@@ -53,4 +53,4 @@ point of the exercise).
       through this reasoning in the summary)
 
 ## Allowed dependencies
-Within examples/skyscout only: the same Nest/drizzle/pg set as apps/api.
+Within examples/crewbase only: the same Nest/drizzle/pg set as apps/api.

@@ -5,7 +5,7 @@ const KEY_FORMAT = /^[a-z0-9]+(?:-[a-z0-9]+)*-[a-z0-9]{6}$/;
 
 describe("createProjectKey", () => {
   it("puts a slug of the name in front of a six-character suffix", () => {
-    expect(createProjectKey("SkyScout")).toMatch(/^skyscout-[a-z0-9]{6}$/);
+    expect(createProjectKey("Crewbase")).toMatch(/^crewbase-[a-z0-9]{6}$/);
   });
 
   it("collapses whatever a name puts between its words", () => {
@@ -32,7 +32,7 @@ describe("createProjectKey", () => {
   });
 
   it("draws a different suffix every time", () => {
-    const keys = new Set(Array.from({ length: 20 }, () => createProjectKey("SkyScout")));
+    const keys = new Set(Array.from({ length: 20 }, () => createProjectKey("Crewbase")));
 
     expect(keys.size).toBe(20);
   });

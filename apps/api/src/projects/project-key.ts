@@ -11,7 +11,7 @@ const SLUG_MAX_LENGTH = 40;
 const SLUG_FALLBACK = "project";
 
 /**
- * The routing identity a project keeps for life: `skyscout-a3k9x2`. The name
+ * The routing identity a project keeps for life: `crewbase-a3k9x2`. The name
  * is only a starting point — it can be anything, and it may later say
  * something else, while the key stays what it was.
  */

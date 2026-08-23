@@ -89,14 +89,14 @@ This is not a formality. Anything you handle is in a transcript.
 When `get_project` answers `hasConnection: false`, stop and hand the job to a
 human:
 
-> SkyScout's RePanel project has no database connection yet. Open the project in
+> Crewbase's RePanel project has no database connection yet. Open the project in
 > the RePanel console — `https://<console-host>/p/<project-id>`, the
 > **Connection** section — and paste the connection string there. It is stored
 > encrypted and never leaves RePanel. Tell me when it is saved and I will carry
 > on.
 
 You will usually not have the project id: your token names the project, not its
-URL. Then name the project instead — "the project called *SkyScout* in the
+URL. Then name the project instead — "the project called *Crewbase* in the
 console" — and let them click through from the project list.
 
 A `repanel link` CLI arrives at MVP and does this handshake without the
@@ -134,7 +134,7 @@ repanel/
 ```json
 {
   "schemaVersion": "0.1",
-  "app": { "name": "SkyScout Admin" },
+  "app": { "name": "Crewbase Admin" },
   "navigation": [
     { "label": "Marketplace", "resources": ["airlines", "job_openings"] },
     { "label": "People", "resources": ["candidates", "applications", "users"] }
@@ -295,7 +295,7 @@ already. The convention (DECISIONS #013):
   record cannot do that", `404` for "no such record".
 - **Answer `200`, not `201`**, when nothing was created.
 
-`examples/skyscout/src/repanel/` in the RePanel repository is a complete worked
+`examples/crewbase/src/repanel/` in the RePanel repository is a complete worked
 example of exactly this: middleware, one endpoint, and the rule in the feature
 that owns it rather than in the controller.
 
@@ -308,7 +308,7 @@ Then the action is four lines of definition:
   "confirm": "Approve this airline? They will be able to post openings immediately.",
   "kind": "httpCall",
   "method": "POST",
-  "url": "https://api.skyscout.example/repanel/airlines/{id}/approve"
+  "url": "https://api.crewbase.example/repanel/airlines/{id}/approve"
 }
 ```
 

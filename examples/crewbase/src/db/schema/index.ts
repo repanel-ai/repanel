@@ -1,4 +1,4 @@
-/** SkyScout's tables, in the order the seed has to fill them. */
+/** Crewbase's tables, in the order the seed has to fill them. */
 export * from "./users";
 export * from "./airlines";
 export * from "./candidates";

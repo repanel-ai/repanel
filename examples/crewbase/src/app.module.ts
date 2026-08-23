@@ -4,7 +4,7 @@ import { DbModule } from "./db/db.module";
 import { RepanelModule } from "./repanel/repanel.module";
 
 /**
- * SkyScout has no UI and, in this cut, no public API: what it has is a
+ * Crewbase has no UI and, in this cut, no public API: what it has is a
  * database worth administering and one admin-API module RePanel can call.
  */
 @Module({

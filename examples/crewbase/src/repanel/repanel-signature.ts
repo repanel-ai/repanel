@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
  * How long a signed request stays acceptable. Five minutes is the convention in
- * docs/SIGNING.md, which is the scheme this file implements — SkyScout writes
+ * docs/SIGNING.md, which is the scheme this file implements — Crewbase writes
  * nothing of its own here, it reproduces what RePanel sends.
  */
 export const TOLERANCE_SECONDS = 300;

@@ -6,7 +6,7 @@ import { AgentTokenGuard, type AgentRequest } from "./agent-token.guard";
 import { AgentTokensService } from "./agent-tokens.service";
 
 const LIVE_TOKEN = `rpk_${"a".repeat(40)}`;
-const AGENT: AgentPrincipal = { kind: "agent", projectId: "project-skyscout" };
+const AGENT: AgentPrincipal = { kind: "agent", projectId: "project-crewbase" };
 
 describe("AgentTokenGuard", () => {
   const asked: string[] = [];

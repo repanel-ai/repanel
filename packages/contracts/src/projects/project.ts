@@ -2,7 +2,7 @@
 export interface ProjectDto {
   id: string;
   name: string;
-  /** Stable routing identity, e.g. `skyscout-a3k9x2`. Fixed at creation. */
+  /** Stable routing identity, e.g. `crewbase-a3k9x2`. Fixed at creation. */
   key: string;
   /** ISO 8601: a DTO carries no `Date`, so browser and Node read it alike. */
   createdAt: string;

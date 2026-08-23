@@ -9,7 +9,7 @@ belongs to one user. Workspaces come post-POC.
 - Table: `projects` (id uuid pk, user_id fk, name, key unique, created_at).
   Migration included.
 - Project key: slugified name + `-` + 6 lowercase alphanumeric chars
-  (e.g. `skyscout-a3k9x2`), generated at creation, immutable, retried on the
+  (e.g. `crewbase-a3k9x2`), generated at creation, immutable, retried on the
   (unlikely) unique collision. This key is the stable routing identity.
 - `projects/` feature module: `POST /projects` (name), `GET /projects`
   (own only), `GET /projects/:id` (own only; others' → NotFoundError, not

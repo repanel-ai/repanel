@@ -4,11 +4,11 @@ import { NotFoundError } from "../errors/domain-errors";
 import { ConnectionsRepository, type ConnectionRow } from "./connections.repository";
 import { CustomerPoolService } from "./customer-pool.service";
 
-const SKYSCOUT = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
+const CREWBASE = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const LEDGER = "1d4e5f60-7a8b-49c0-b1d2-e3f4a5b60718";
 
-const DSN = "postgres://admin:hunter2@db.example.com:5432/skyscout";
-const REPLACEMENT = "postgres://admin:hunter3@replica.example.com:5432/skyscout";
+const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
+const REPLACEMENT = "postgres://admin:hunter3@replica.example.com:5432/crewbase";
 
 const crypto = new CryptoService({
   appEncryptionKey: Buffer.alloc(32, 3).toString("base64"),
@@ -73,7 +73,7 @@ describe("CustomerPoolService", () => {
 
   beforeEach(() => {
     repository = new InMemoryConnectionsRepository();
-    repository.file(SKYSCOUT, DSN);
+    repository.file(CREWBASE, DSN);
     pools = new CustomerPoolService(repository as unknown as ConnectionsRepository, crypto);
   });
 
@@ -83,13 +83,13 @@ describe("CustomerPoolService", () => {
 
   describe("poolFor", () => {
     it("opens the pool on the connection string it decrypts", async () => {
-      const pool = await pools.poolFor(SKYSCOUT);
+      const pool = await pools.poolFor(CREWBASE);
 
       expect(pool.options.connectionString).toBe(DSN);
     });
 
     it("opens it as a guest in someone else's database", async () => {
-      const pool = await pools.poolFor(SKYSCOUT);
+      const pool = await pools.poolFor(CREWBASE);
 
       expect(pool.options.max).toBe(5);
       expect(pool.options.idleTimeoutMillis).toBe(30_000);
@@ -98,16 +98,16 @@ describe("CustomerPoolService", () => {
     });
 
     it("hands the same pool back rather than opening a second one", async () => {
-      const first = await pools.poolFor(SKYSCOUT);
-      const second = await pools.poolFor(SKYSCOUT);
+      const first = await pools.poolFor(CREWBASE);
+      const second = await pools.poolFor(CREWBASE);
 
       expect(second).toBe(first);
     });
 
     it("opens one pool when two callers ask at once", async () => {
       const [first, second] = await Promise.all([
-        pools.poolFor(SKYSCOUT),
-        pools.poolFor(SKYSCOUT),
+        pools.poolFor(CREWBASE),
+        pools.poolFor(CREWBASE),
       ]);
 
       expect(second).toBe(first);
@@ -116,7 +116,7 @@ describe("CustomerPoolService", () => {
     it("keeps one project's pool apart from another's", async () => {
       repository.file(LEDGER, REPLACEMENT);
 
-      expect(await pools.poolFor(LEDGER)).not.toBe(await pools.poolFor(SKYSCOUT));
+      expect(await pools.poolFor(LEDGER)).not.toBe(await pools.poolFor(CREWBASE));
     });
 
     it("refuses a project that points at no database", async () => {
@@ -129,19 +129,19 @@ describe("CustomerPoolService", () => {
 
   describe("release", () => {
     it("closes the pool it lets go of", async () => {
-      const pool = await pools.poolFor(SKYSCOUT);
+      const pool = await pools.poolFor(CREWBASE);
 
-      await pools.release(SKYSCOUT);
+      await pools.release(CREWBASE);
 
       expect(pool.ended).toBe(true);
     });
 
     it("opens the next pool on the connection that replaced the old one", async () => {
-      const stale = await pools.poolFor(SKYSCOUT);
-      repository.file(SKYSCOUT, REPLACEMENT);
+      const stale = await pools.poolFor(CREWBASE);
+      repository.file(CREWBASE, REPLACEMENT);
 
-      await pools.release(SKYSCOUT);
-      const fresh = await pools.poolFor(SKYSCOUT);
+      await pools.release(CREWBASE);
+      const fresh = await pools.poolFor(CREWBASE);
 
       expect(fresh).not.toBe(stale);
       expect(fresh.options.connectionString).toBe(REPLACEMENT);
@@ -153,34 +153,34 @@ describe("CustomerPoolService", () => {
 
     it("invalidates an open that is still reading the connection it replaced", async () => {
       repository.parkNextRead();
-      const opening = pools.poolFor(SKYSCOUT);
+      const opening = pools.poolFor(CREWBASE);
 
       // The replacement lands in the one moment `release` cannot see it: no
       // pool is filed yet, so there is nothing for it to close.
-      repository.file(SKYSCOUT, REPLACEMENT);
-      await pools.release(SKYSCOUT);
+      repository.file(CREWBASE, REPLACEMENT);
+      await pools.release(CREWBASE);
       repository.answerParkedRead();
 
       const pool = await opening;
 
       expect(pool.options.connectionString).toBe(REPLACEMENT);
       // Reading again left one pool behind, not two.
-      expect(await pools.poolFor(SKYSCOUT)).toBe(pool);
+      expect(await pools.poolFor(CREWBASE)).toBe(pool);
     });
   });
 
   describe("onModuleDestroy", () => {
     it("gives every customer database its clients back", async () => {
       repository.file(LEDGER, REPLACEMENT);
-      const skyscout = await pools.poolFor(SKYSCOUT);
+      const crewbase = await pools.poolFor(CREWBASE);
       const ledger = await pools.poolFor(LEDGER);
 
       await pools.onModuleDestroy();
 
-      expect(skyscout.ended).toBe(true);
+      expect(crewbase.ended).toBe(true);
       expect(ledger.ended).toBe(true);
       // Nothing closed is left behind to be handed out again.
-      expect(await pools.poolFor(SKYSCOUT)).not.toBe(skyscout);
+      expect(await pools.poolFor(CREWBASE)).not.toBe(crewbase);
     });
   });
 });

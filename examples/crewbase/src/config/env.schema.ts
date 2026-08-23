@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Every environment variable SkyScout reads, and what a valid value looks like. */
+/** Every environment variable Crewbase reads, and what a valid value looks like. */
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3002),

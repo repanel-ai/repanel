@@ -7,7 +7,7 @@ const TIMEOUT_MS = 5_000;
 const CREDENTIALS = "admin:hunter2";
 
 function dsnFor(port: number): string {
-  return `postgres://${CREDENTIALS}@127.0.0.1:${port}/skyscout`;
+  return `postgres://${CREDENTIALS}@127.0.0.1:${port}/crewbase`;
 }
 
 /** A protocol message: its tag, its length counting itself, and its body. */

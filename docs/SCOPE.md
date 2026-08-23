@@ -26,7 +26,7 @@ MCP, and produce a usable, polished admin without the developer building it?**
 
 ## Acceptance
 
-Reference app (SkyScout-like SaaS: users, airlines, candidates, job openings,
+Crewbase reference app (SaaS: users, airlines, candidates, job openings,
 applications) generates through MCP: tables with search/filter/sort/pagination,
 detail pages with relationships, an approve action (HTTP) and a status action (DB).
 

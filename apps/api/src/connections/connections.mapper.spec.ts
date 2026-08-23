@@ -1,7 +1,7 @@
 import { toConnectionDto } from "./connections.mapper";
 import type { ConnectionRow } from "./connections.repository";
 
-const DSN = "postgres://admin:hunter2@db.example.com:5432/skyscout";
+const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 
 const ROW: ConnectionRow = {
   id: "3a7f1e20-4b8c-4d15-9e63-1a2b3c4d5e6f",
@@ -17,7 +17,7 @@ describe("toConnectionDto", () => {
     expect(toConnectionDto(ROW, DSN)).toEqual({
       kind: "postgres",
       host: "db.example.com",
-      database: "skyscout",
+      database: "crewbase",
     });
   });
 

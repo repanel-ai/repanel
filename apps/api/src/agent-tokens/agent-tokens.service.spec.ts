@@ -12,12 +12,12 @@ import { AgentTokensService } from "./agent-tokens.service";
 
 const ADA = "user-ada";
 const GRACE = "user-grace";
-const SKYSCOUT = "project-skyscout";
+const CREWBASE = "project-crewbase";
 
 const PROJECT: ProjectDto = {
-  id: SKYSCOUT,
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  id: CREWBASE,
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 
@@ -62,10 +62,10 @@ class InMemoryAgentTokensRepository implements TokenStore {
   }
 }
 
-/** Stands in for the projects feature: Ada owns SkyScout, nobody else does. */
+/** Stands in for the projects feature: Ada owns Crewbase, nobody else does. */
 class OwnedProjects implements Pick<ProjectsService, "requireOwned"> {
   requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
-    if (projectId !== SKYSCOUT || ownerId !== ADA) {
+    if (projectId !== CREWBASE || ownerId !== ADA) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
     return Promise.resolve(PROJECT);
@@ -101,7 +101,7 @@ describe("AgentTokensService", () => {
 
   describe("mint", () => {
     it("hands the owner a token in the published format, once", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
 
       expect(minted.token).toMatch(AGENT_TOKEN_PATTERN);
       expect(minted.label).toBe("Claude Code");
@@ -109,21 +109,21 @@ describe("AgentTokensService", () => {
     });
 
     it("keeps only the digest, so the minting response is the only copy", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
 
       expect(repository.rows[0]?.tokenHash).toBe(hashAgentToken(minted.token));
       expect(JSON.stringify(repository.rows)).not.toContain(minted.token);
     });
 
     it("never mints the same token for two labels", async () => {
-      const first = await service.mint(ADA, SKYSCOUT, { label: "Laptop" });
-      const second = await service.mint(ADA, SKYSCOUT, { label: "CI" });
+      const first = await service.mint(ADA, CREWBASE, { label: "Laptop" });
+      const second = await service.mint(ADA, CREWBASE, { label: "CI" });
 
       expect(first.token).not.toBe(second.token);
     });
 
     it("answers minting into someone else's project as missing, and stores nothing", async () => {
-      const refusal = await refusalFrom(service.mint(GRACE, SKYSCOUT, { label: "Claude Code" }));
+      const refusal = await refusalFrom(service.mint(GRACE, CREWBASE, { label: "Claude Code" }));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(repository.rows).toEqual([]);
@@ -132,9 +132,9 @@ describe("AgentTokensService", () => {
 
   describe("list", () => {
     it("shows the owner their tokens without the tokens", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
 
-      const listed = await service.list(ADA, SKYSCOUT);
+      const listed = await service.list(ADA, CREWBASE);
 
       expect(listed).toEqual([
         {
@@ -148,34 +148,34 @@ describe("AgentTokensService", () => {
     });
 
     it("answers a project the caller does not own as missing", async () => {
-      const refusal = await refusalFrom(service.list(GRACE, SKYSCOUT));
+      const refusal = await refusalFrom(service.list(GRACE, CREWBASE));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
 
     it("answers a project with no tokens with an empty list", async () => {
-      await expect(service.list(ADA, SKYSCOUT)).resolves.toEqual([]);
+      await expect(service.list(ADA, CREWBASE)).resolves.toEqual([]);
     });
   });
 
   describe("principalFor", () => {
     it("answers with the agent the token speaks for", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
 
       await expect(service.principalFor(minted.token)).resolves.toEqual({
         kind: "agent",
-        projectId: SKYSCOUT,
+        projectId: CREWBASE,
       });
     });
 
     it("records that the token was used", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
       expect(repository.rows[0]?.lastUsedAt).toBeNull();
 
       await service.principalFor(minted.token);
 
       expect(repository.rows[0]?.lastUsedAt).toEqual(new Date("2026-08-19T11:00:00.000Z"));
-      const [listed] = await service.list(ADA, SKYSCOUT);
+      const [listed] = await service.list(ADA, CREWBASE);
       expect(listed?.lastUsedAt).toBe("2026-08-19T11:00:00.000Z");
     });
 
@@ -193,7 +193,7 @@ describe("AgentTokensService", () => {
     });
 
     it("refuses a token whose row has been deleted", async () => {
-      const minted = await service.mint(ADA, SKYSCOUT, { label: "Claude Code" });
+      const minted = await service.mint(ADA, CREWBASE, { label: "Claude Code" });
       await service.principalFor(minted.token);
 
       repository.revoke("token-1");

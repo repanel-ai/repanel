@@ -6,7 +6,7 @@ import { airlines, applications, candidates, jobOpenings, users } from "../db/sc
 import { seedRows } from "./rows";
 
 /**
- * Fills an empty SkyScout with something worth administering.
+ * Fills an empty Crewbase with something worth administering.
  *
  * It runs through the application's own context rather than a connection of its
  * own, so a seed against a misconfigured environment fails at the same place a

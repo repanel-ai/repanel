@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { setConnectionRequestSchema } from "./requests.js";
 
-const DSN = "postgres://admin:hunter2@db.example.com:5432/skyscout";
+const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 
 function dsnErrors(dsn: string): string[] {
   const result = setConnectionRequestSchema.safeParse({ dsn });
@@ -15,7 +15,7 @@ test("setConnection accepts a postgres:// connection string", () => {
 });
 
 test("setConnection accepts the postgresql:// spelling too", () => {
-  const dsn = "postgresql://admin@db.example.com/skyscout";
+  const dsn = "postgresql://admin@db.example.com/crewbase";
 
   assert.equal(setConnectionRequestSchema.parse({ dsn }).dsn, dsn);
 });
@@ -25,7 +25,7 @@ test("setConnection trims a pasted connection string", () => {
 });
 
 test("setConnection rejects a database RePanel does not speak", () => {
-  assert.deepEqual(dsnErrors("mysql://admin:hunter2@db.example.com:3306/skyscout"), [
+  assert.deepEqual(dsnErrors("mysql://admin:hunter2@db.example.com:3306/crewbase"), [
     "dsn must be a postgres:// or postgresql:// connection string that names a database",
   ]);
 });

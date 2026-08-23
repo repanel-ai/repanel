@@ -5,8 +5,8 @@ import type { ProjectsService } from "./projects.service";
 const USER: UserDto = { id: "user-ada", email: "ada@example.com", name: "Ada" };
 const PROJECT: ProjectDto = {
   id: "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11",
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 
@@ -37,9 +37,9 @@ describe("ProjectsController", () => {
   });
 
   it("creates the project for the signed-in user", async () => {
-    await expect(controller.create(USER, { name: "SkyScout" } as never)).resolves.toEqual(PROJECT);
+    await expect(controller.create(USER, { name: "Crewbase" } as never)).resolves.toEqual(PROJECT);
 
-    expect(asked).toEqual([["create", "user-ada", { name: "SkyScout" }]]);
+    expect(asked).toEqual([["create", "user-ada", { name: "Crewbase" }]]);
   });
 
   it("lists what the signed-in user owns", async () => {

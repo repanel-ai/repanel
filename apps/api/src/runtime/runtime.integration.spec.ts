@@ -46,8 +46,8 @@ const SCHEMA = "repanel_runtime_spec";
 
 const PROJECT: ProjectDto = {
   id: "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11",
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 const OWNER = "0f1e2d3c-4b5a-4988-9776-6655443322aa";

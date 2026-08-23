@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { ConfigService } from "../config/config.service";
 import * as schema from "./schema";
 
-/** Owns the Postgres pool and hands out the one Drizzle instance SkyScout uses. */
+/** Owns the Postgres pool and hands out the one Drizzle instance Crewbase uses. */
 @Injectable()
 export class DbService implements OnModuleDestroy {
   private readonly pool: Pool;

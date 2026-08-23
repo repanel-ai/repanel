@@ -4,7 +4,7 @@ import { AirlinesAdminController } from "./airlines-admin.controller";
 import { RepanelSignatureMiddleware } from "./repanel-signature.middleware";
 
 /**
- * SkyScout's admin API: the one module RePanel's actions may call, mounted
+ * Crewbase's admin API: the one module RePanel's actions may call, mounted
  * under `/repanel` behind one verification middleware (RePanel DECISIONS #013).
  *
  * Everything reachable through it is a route the application already knows how

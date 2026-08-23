@@ -17,7 +17,7 @@ export interface SeedRows {
 }
 
 /**
- * A fixed-seed generator, so two people seeding SkyScout look at the same
+ * A fixed-seed generator, so two people seeding Crewbase look at the same
  * admin. Randomness here is for texture — plausible spread across statuses and
  * dates — never for values anything depends on.
  */
@@ -155,7 +155,7 @@ export function seedRows(): SeedRows {
   const userRows: UserRow[] = STAFF.map((name, index) => ({
     id: randomUUID(),
     name,
-    email: emailFor(name, "skyscout.example", index),
+    email: emailFor(name, "crewbase.example", index),
     status: index < 3 ? "invited" : pick(USER_STATUSES),
     // Bcrypt-shaped and worth nothing: a fixture is not a credential.
     passwordHash: `$2b$12$${"seedseedseedseedseedse"}${String(index).padStart(2, "0")}fixtureonlyfixtureonly`,

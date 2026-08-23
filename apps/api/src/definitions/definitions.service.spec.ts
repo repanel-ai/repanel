@@ -17,20 +17,20 @@ import {
 } from "./definitions.repository";
 import { DefinitionsService } from "./definitions.service";
 
-const SKYSCOUT = "project-skyscout";
+const CREWBASE = "project-crewbase";
 const LEDGER = "project-ledger";
 
-/** Ada owns SkyScout; Grace owns nothing here. */
+/** Ada owns Crewbase; Grace owns nothing here. */
 const ADA: Principal = { kind: "user", userId: "user-ada" };
 const GRACE: Principal = { kind: "user", userId: "user-grace" };
-/** The agent holding SkyScout's token, and one holding another project's. */
-const SKYSCOUT_AGENT: Principal = { kind: "agent", projectId: SKYSCOUT };
+/** The agent holding Crewbase's token, and one holding another project's. */
+const CREWBASE_AGENT: Principal = { kind: "agent", projectId: CREWBASE };
 const LEDGER_AGENT: Principal = { kind: "agent", projectId: LEDGER };
 
 const PROJECT: ProjectDto = {
-  id: SKYSCOUT,
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  id: CREWBASE,
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 
@@ -76,15 +76,15 @@ class InMemoryDefinitionsRepository implements DefinitionStore {
 }
 
 /**
- * Stands in for the projects feature: Ada owns SkyScout, and SkyScout's token
- * reaches SkyScout. Everything else is missing, whoever is asking.
+ * Stands in for the projects feature: Ada owns Crewbase, and Crewbase's token
+ * reaches Crewbase. Everything else is missing, whoever is asking.
  */
 class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
   requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
     const reaches =
       principal.kind === "user"
-        ? principal.userId === "user-ada" && projectId === SKYSCOUT
-        : principal.projectId === projectId && projectId === SKYSCOUT;
+        ? principal.userId === "user-ada" && projectId === CREWBASE
+        : principal.projectId === projectId && projectId === CREWBASE;
 
     if (!reaches) return Promise.reject(new NotFoundError("Project not found"));
     return Promise.resolve(PROJECT);
@@ -126,10 +126,10 @@ describe("DefinitionsService", () => {
 
   describe("submitDraft", () => {
     it("stores a valid definition with nothing left to report", async () => {
-      const result = await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      const result = await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
       expect(result.valid).toBe(true);
-      await expect(service.getDraft(ADA, SKYSCOUT)).resolves.toEqual({
+      await expect(service.getDraft(ADA, CREWBASE)).resolves.toEqual({
         payload: saasDefinition,
         valid: true,
         errors: null,
@@ -138,10 +138,10 @@ describe("DefinitionsService", () => {
     });
 
     it("stores an invalid draft and answers with what was wrong with it", async () => {
-      const reported = errorsOf(await service.submitDraft(ADA, SKYSCOUT, BROKEN));
+      const reported = errorsOf(await service.submitDraft(ADA, CREWBASE, BROKEN));
 
       expect(reported.length).toBeGreaterThan(0);
-      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toEqual({
+      await expect(service.getValidationResult(ADA, CREWBASE)).resolves.toEqual({
         valid: false,
         errors: reported,
         updatedAt: expect.any(String),
@@ -149,18 +149,18 @@ describe("DefinitionsService", () => {
     });
 
     it("keeps an invalid draft readable, so the agent can see what it sent", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, BROKEN);
+      await service.submitDraft(ADA, CREWBASE, BROKEN);
 
-      const draft = await service.getDraft(ADA, SKYSCOUT);
+      const draft = await service.getDraft(ADA, CREWBASE);
 
       expect(draft?.payload).toEqual(BROKEN);
       expect(draft?.valid).toBe(false);
     });
 
     it("stores every error exactly as validation wrote it", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, BROKEN);
+      await service.submitDraft(ADA, CREWBASE, BROKEN);
 
-      const stored = await service.getValidationResult(ADA, SKYSCOUT);
+      const stored = await service.getValidationResult(ADA, CREWBASE);
 
       // Same input, straight from contracts: what came out of storage must be
       // indistinguishable from what validation produced, hints and all.
@@ -171,11 +171,11 @@ describe("DefinitionsService", () => {
     });
 
     it("replaces the draft on resubmission rather than keeping both", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, BROKEN);
-      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      await service.submitDraft(ADA, CREWBASE, BROKEN);
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
       expect(repository.rows).toHaveLength(1);
-      const draft = await service.getDraft(ADA, SKYSCOUT);
+      const draft = await service.getDraft(ADA, CREWBASE);
       expect(draft?.payload).toEqual(saasDefinition);
       expect(draft?.valid).toBe(true);
       // The repaired draft must not inherit the errors of the one it replaced.
@@ -185,21 +185,21 @@ describe("DefinitionsService", () => {
     it("refuses a payload too large to be a definition, and stores nothing", async () => {
       const oversize = { note: "x".repeat(MAX_PAYLOAD_BYTES) };
 
-      const refusal = await refusalFrom(service.submitDraft(ADA, SKYSCOUT, oversize));
+      const refusal = await refusalFrom(service.submitDraft(ADA, CREWBASE, oversize));
 
       expect(refusal).toBeInstanceOf(ValidationFailedError);
       expect(repository.rows).toEqual([]);
     });
 
     it("answers a submission to someone else's project as missing, and stores nothing", async () => {
-      const refusal = await refusalFrom(service.submitDraft(GRACE, SKYSCOUT, saasDefinition));
+      const refusal = await refusalFrom(service.submitDraft(GRACE, CREWBASE, saasDefinition));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(repository.rows).toEqual([]);
     });
 
     it("takes a submission from the agent holding the project's own token", async () => {
-      const result = await service.submitDraft(SKYSCOUT_AGENT, SKYSCOUT, saasDefinition);
+      const result = await service.submitDraft(CREWBASE_AGENT, CREWBASE, saasDefinition);
 
       expect(result.valid).toBe(true);
       expect(repository.rows).toHaveLength(1);
@@ -207,7 +207,7 @@ describe("DefinitionsService", () => {
 
     it("answers an agent submitting to a project its token does not name as missing", async () => {
       const refusal = await refusalFrom(
-        service.submitDraft(LEDGER_AGENT, SKYSCOUT, saasDefinition),
+        service.submitDraft(LEDGER_AGENT, CREWBASE, saasDefinition),
       );
 
       expect(refusal).toBeInstanceOf(NotFoundError);
@@ -217,24 +217,24 @@ describe("DefinitionsService", () => {
 
   describe("getDraft", () => {
     it("answers a project that has never been submitted to with nothing", async () => {
-      await expect(service.getDraft(ADA, SKYSCOUT)).resolves.toBeNull();
+      await expect(service.getDraft(ADA, CREWBASE)).resolves.toBeNull();
     });
 
     it("hands the agent holding the project's token the draft that was submitted", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
-      const draft = await service.getDraft(SKYSCOUT_AGENT, SKYSCOUT);
+      const draft = await service.getDraft(CREWBASE_AGENT, CREWBASE);
 
       expect(draft?.payload).toEqual(saasDefinition);
     });
 
     it("refuses a project the caller cannot reach rather than reading it", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
-      await expect(refusalFrom(service.getDraft(LEDGER_AGENT, SKYSCOUT))).resolves.toBeInstanceOf(
+      await expect(refusalFrom(service.getDraft(LEDGER_AGENT, CREWBASE))).resolves.toBeInstanceOf(
         NotFoundError,
       );
-      await expect(refusalFrom(service.getDraft(GRACE, SKYSCOUT))).resolves.toBeInstanceOf(
+      await expect(refusalFrom(service.getDraft(GRACE, CREWBASE))).resolves.toBeInstanceOf(
         NotFoundError,
       );
     });
@@ -242,13 +242,13 @@ describe("DefinitionsService", () => {
 
   describe("getValidationResult", () => {
     it("answers a project that has never been submitted to with nothing", async () => {
-      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toBeNull();
+      await expect(service.getValidationResult(ADA, CREWBASE)).resolves.toBeNull();
     });
 
     it("answers without validating anything again", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
-      await expect(service.getValidationResult(ADA, SKYSCOUT)).resolves.toEqual({
+      await expect(service.getValidationResult(ADA, CREWBASE)).resolves.toEqual({
         valid: true,
         errors: null,
         updatedAt: expect.any(String),
@@ -256,9 +256,9 @@ describe("DefinitionsService", () => {
     });
 
     it("refuses a project the caller cannot reach", async () => {
-      await service.submitDraft(ADA, SKYSCOUT, saasDefinition);
+      await service.submitDraft(ADA, CREWBASE, saasDefinition);
 
-      const refusal = await refusalFrom(service.getValidationResult(LEDGER_AGENT, SKYSCOUT));
+      const refusal = await refusalFrom(service.getValidationResult(LEDGER_AGENT, CREWBASE));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });

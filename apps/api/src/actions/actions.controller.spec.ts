@@ -14,12 +14,12 @@ describe("ActionsController", () => {
 
   it("runs the action the address names, as the signed-in owner", async () => {
     await expect(
-      controller.run(USER, "skyscout-a3k9x2", "users", "user-1", "suspend"),
+      controller.run(USER, "crewbase-a3k9x2", "users", "user-1", "suspend"),
     ).resolves.toEqual({ ok: true, label: "Suspend" });
 
     expect(actions.run).toHaveBeenCalledWith(
       USER.id,
-      "skyscout-a3k9x2",
+      "crewbase-a3k9x2",
       "users",
       "user-1",
       "suspend",

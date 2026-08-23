@@ -8,7 +8,7 @@ const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const CONNECTION: ConnectionDto = {
   kind: "postgres",
   host: "db.example.com",
-  database: "skyscout",
+  database: "crewbase",
 };
 
 const FAILED: ConnectionTestDto = { ok: false, reason: "auth_failed" };
@@ -32,7 +32,7 @@ describe("ConnectionsController", () => {
   });
 
   it("sets the connection of the signed-in user's project", async () => {
-    const dsn = "postgres://admin:hunter2@db.example.com:5432/skyscout";
+    const dsn = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 
     await expect(controller.set(USER, PROJECT_ID, { dsn } as never)).resolves.toEqual(CONNECTION);
 

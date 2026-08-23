@@ -20,7 +20,7 @@ Place in docs/tasks/. Run in order. The prompt for every task is identical:
 | 010 | Runtime shell + tables | PLAN GATE | design plan reviewed before code |
 | 011 | Detail pages | — | |
 | 012 | Actions (dbUpdate + signed httpCall) | — | |
-| 013 | SkyScout reference app + authoring guide | — | |
+| 013 | Crewbase reference app + authoring guide | — | |
 | 014 | Control plane (minimal) | — | |
 
 ## Checkpoints — stop and report to the CTO
@@ -32,7 +32,7 @@ Place in docs/tasks/. Run in order. The prompt for every task is identical:
 - **C — after 010:** screenshots of the rendered table view, light + dark.
   Visual quality is the wedge — this gets a real review before 011 proceeds.
 - **D — after 013:** run the acceptance scenario (SCOPE.md) with a fresh
-  coding agent against SkyScout; send the generated definition + screenshots.
+  coding agent against Crewbase; send the generated definition + screenshots.
 
 Between checkpoints, run tasks back-to-back. Send each task's completion
 summary regardless; only the checkpoints require waiting for a reply.

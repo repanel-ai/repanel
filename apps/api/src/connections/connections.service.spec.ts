@@ -16,18 +16,18 @@ import { CustomerPoolService } from "./customer-pool.service";
 
 const ADA = "user-ada";
 const GRACE = "user-grace";
-const SKYSCOUT = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
+const CREWBASE = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const LEDGER = "1d4e5f60-7a8b-49c0-b1d2-e3f4a5b60718";
 
 const PROJECT: ProjectDto = {
-  id: SKYSCOUT,
-  name: "SkyScout",
-  key: "skyscout-a3k9x2",
+  id: CREWBASE,
+  name: "Crewbase",
+  key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 
-const DSN = "postgres://admin:hunter2@db.example.com:5432/skyscout";
-const REPLACEMENT = "postgres://reader:s3cret@replica.example.com:5432/skyscout";
+const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
+const REPLACEMENT = "postgres://reader:s3cret@replica.example.com:5432/crewbase";
 
 const crypto = new CryptoService({
   appEncryptionKey: Buffer.alloc(32, 5).toString("base64"),
@@ -60,10 +60,10 @@ class InMemoryConnectionsRepository
   }
 }
 
-/** Stands in for the projects feature: SkyScout is Ada's, and nothing else exists. */
+/** Stands in for the projects feature: Crewbase is Ada's, and nothing else exists. */
 class OwnedProjects implements Pick<ProjectsService, "requireOwned" | "requireAccess"> {
   requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
-    if (projectId !== SKYSCOUT || ownerId !== ADA) {
+    if (projectId !== CREWBASE || ownerId !== ADA) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
     return Promise.resolve(PROJECT);
@@ -71,7 +71,7 @@ class OwnedProjects implements Pick<ProjectsService, "requireOwned" | "requireAc
 
   requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
     if (principal.kind === "user") return this.requireOwned(projectId, principal.userId);
-    if (principal.projectId !== projectId || projectId !== SKYSCOUT) {
+    if (principal.projectId !== projectId || projectId !== CREWBASE) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
     return Promise.resolve(PROJECT);
@@ -136,15 +136,15 @@ describe("ConnectionsService", () => {
 
   describe("set", () => {
     it("describes the database the project now points at", async () => {
-      await expect(connections.set(ADA, SKYSCOUT, { dsn: DSN })).resolves.toEqual({
+      await expect(connections.set(ADA, CREWBASE, { dsn: DSN })).resolves.toEqual({
         kind: "postgres",
         host: "db.example.com",
-        database: "skyscout",
+        database: "crewbase",
       });
     });
 
     it("stores the connection string encrypted, and readable only with the key", async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
       const [stored] = repository.rows;
 
       expect(stored?.encryptedDsn).not.toContain("hunter2");
@@ -153,8 +153,8 @@ describe("ConnectionsService", () => {
     });
 
     it("replaces the connection rather than adding a second one", async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
-      const replaced = await connections.set(ADA, SKYSCOUT, { dsn: REPLACEMENT });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+      const replaced = await connections.set(ADA, CREWBASE, { dsn: REPLACEMENT });
 
       expect(repository.rows).toHaveLength(1);
       expect(replaced.host).toBe("replica.example.com");
@@ -162,13 +162,13 @@ describe("ConnectionsService", () => {
     });
 
     it("lets go of the pool the replaced connection string opened", async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
 
-      expect(pools.released).toEqual([SKYSCOUT]);
+      expect(pools.released).toEqual([CREWBASE]);
     });
 
     it("refuses a project the caller does not own, and files nothing", async () => {
-      const refusal = await refusalFrom(connections.set(GRACE, SKYSCOUT, { dsn: DSN }));
+      const refusal = await refusalFrom(connections.set(GRACE, CREWBASE, { dsn: DSN }));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(repository.rows).toEqual([]);
@@ -178,38 +178,38 @@ describe("ConnectionsService", () => {
 
   describe("test", () => {
     beforeEach(async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
     });
 
     it("asks the database itself, with the connection string as it was given", async () => {
-      await connections.test(ADA, SKYSCOUT);
+      await connections.test(ADA, CREWBASE);
 
       expect(probe.asked).toEqual([DSN]);
     });
 
     it("passes a working connection through as it stands", async () => {
-      await expect(connections.test(ADA, SKYSCOUT)).resolves.toEqual({ ok: true });
+      await expect(connections.test(ADA, CREWBASE)).resolves.toEqual({ ok: true });
     });
 
     it("passes every kind of failure through as a category", async () => {
       for (const reason of ["unreachable", "auth_failed", "timeout", "unknown"] as const) {
         probe.verdict = { ok: false, reason };
 
-        await expect(connections.test(ADA, SKYSCOUT)).resolves.toEqual({ ok: false, reason });
+        await expect(connections.test(ADA, CREWBASE)).resolves.toEqual({ ok: false, reason });
       }
     });
 
     it("refuses a project that points at no database", async () => {
       repository.rows.length = 0;
 
-      const refusal = await refusalFrom(connections.test(ADA, SKYSCOUT));
+      const refusal = await refusalFrom(connections.test(ADA, CREWBASE));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(probe.asked).toEqual([]);
     });
 
     it("refuses a project the caller does not own, and connects to nothing", async () => {
-      const refusal = await refusalFrom(connections.test(GRACE, SKYSCOUT));
+      const refusal = await refusalFrom(connections.test(GRACE, CREWBASE));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(probe.asked).toEqual([]);
@@ -221,29 +221,29 @@ describe("ConnectionsService", () => {
     const asAgent = (projectId: string): Principal => ({ kind: "agent", projectId });
 
     it("says no before a database has been named", async () => {
-      await expect(connections.hasConnection(asUser(ADA), SKYSCOUT)).resolves.toBe(false);
+      await expect(connections.hasConnection(asUser(ADA), CREWBASE)).resolves.toBe(false);
     });
 
     it("says yes once one has", async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
 
-      await expect(connections.hasConnection(asUser(ADA), SKYSCOUT)).resolves.toBe(true);
+      await expect(connections.hasConnection(asUser(ADA), CREWBASE)).resolves.toBe(true);
     });
 
     it("answers the project's own agent, which is all it can ask after", async () => {
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN });
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
 
-      await expect(connections.hasConnection(asAgent(SKYSCOUT), SKYSCOUT)).resolves.toBe(true);
+      await expect(connections.hasConnection(asAgent(CREWBASE), CREWBASE)).resolves.toBe(true);
     });
 
     it("answers an agent asking after another project as missing", async () => {
-      const refusal = await refusalFrom(connections.hasConnection(asAgent(SKYSCOUT), LEDGER));
+      const refusal = await refusalFrom(connections.hasConnection(asAgent(CREWBASE), LEDGER));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
 
     it("answers a user asking after someone else's project as missing", async () => {
-      const refusal = await refusalFrom(connections.hasConnection(asUser(GRACE), SKYSCOUT));
+      const refusal = await refusalFrom(connections.hasConnection(asUser(GRACE), CREWBASE));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
@@ -251,9 +251,9 @@ describe("ConnectionsService", () => {
 
   it("never answers with the connection string, whatever it is asked", async () => {
     const answers = [
-      await connections.set(ADA, SKYSCOUT, { dsn: DSN }),
-      await connections.test(ADA, SKYSCOUT),
-      await connections.hasConnection({ kind: "user", userId: ADA }, SKYSCOUT),
+      await connections.set(ADA, CREWBASE, { dsn: DSN }),
+      await connections.test(ADA, CREWBASE),
+      await connections.hasConnection({ kind: "user", userId: ADA }, CREWBASE),
     ];
 
     const rendered = JSON.stringify(answers);

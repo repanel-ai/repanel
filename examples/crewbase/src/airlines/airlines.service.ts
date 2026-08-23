@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from "@nestjs/common
 import { AirlinesRepository, type AirlineApproval } from "./airlines.repository";
 
 /**
- * What an airline may do in SkyScout, and the rules about getting there.
+ * What an airline may do in Crewbase, and the rules about getting there.
  *
  * The rule lives here rather than in the admin API's controller — and could not
  * live in RePanel's definition at all. An admin that flipped the column would

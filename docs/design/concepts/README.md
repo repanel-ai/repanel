@@ -299,61 +299,111 @@ professional, and passes every contrast pair. If that reasoning lands, the
 selection to make is *B's structure with C's accent*, which costs a palette
 swap and nothing else.
 
-## The control — `console-d.html`, stock shadcn
+## SELECTED — `console-d.html`, stock shadcn, refined
 
-Not a candidate. The same page rendered on shadcn's defaults — the stock neutral
-palette (converted from its `oklch()` exactly; it lands on Tailwind's `neutral`
-scale), the stock radius, the stock component sizes, the stock `sidebar-inset`
-shell, Geist. Shots: `shots/console-d-{light,dark}.png`.
+**This is the direction.** shadcn's default theme is the palette and stays the
+palette: achromatic neutrals, a monochrome `--primary` that is a weight rather
+than a colour, white cards on a near-white ground, its own `shadow-sm`, Geist.
+Shots: `shots/console-d-{light,dark}.png` at 1440x900 and
+`shots/console-d-wide-{light,dark}.png` at 2560x1440.
 
-It exists so the comparison against B and C is a comparison rather than a
-memory, and it earns its place: it is a good-looking screen, and four specific
-things it cannot do are the things the approved work is buying.
+It began as a control — stock rendered faithfully, to show what the approved work
+was buying — which means the four things that were *observations* about a control
+are now defects to fix. They are, plus the compactness pass.
 
-**1. There is no accent.** `--primary` is `#171717` in light and `#e5e5e5` in
-dark — a weight, not a colour. All four places 014b spends an accent come out
-grey or black. That is a real look (roughly Vercel's), but it is a decision to
-have no brand colour rather than a decision deferred. It also breaks between
-themes: `--sidebar-primary`, which the project's mark wears, is near-black in
-light and `#1447e6` blue in dark, so the mark changes colour and nothing else
-on either screen agrees with it.
+### The five deviations from stock, each forced
 
-**2. There is no success tone and no attention tone.** Stock ships exactly one
-state colour, `destructive`. So `Answered`, `Waiting` and `Never used` are the
-same grey badge, and the one fact the connection card exists to report — the
-database answered — stops being legible at a glance. This is the biggest loss
-and the easiest to miss, because grey badges look tidy.
-
-**3. Dark puts the panel under the chrome.** `--sidebar` `#171717` against
-`--background` `#0a0a0a`: shadcn's own inset variant renders the content panel
-*darker* than the chrome around it, so it reads recessed, and light and dark
-disagree about which surface is on top. DESIGN.md §2 names this exact inversion
-and corrects it; the correction is absent here by construction.
-
-**4. It fails the contrast floor, in its own default pairing.**
+**1. The rhythm and the type come back to RePanel's.** Stock renders at
+Tailwind's raw steps — 14px for body *and* for every caption under it, 24px
+titles, 36px controls, a 256px sidebar, 24px gutters — which on a page of eight
+small facts reads loose rather than generous, and gave a step's title and its
+note the same size, so nothing was subordinate to anything.
 
 ```
-console-d  light  21 text styles, 2 BELOW AA   tightest 4.35
-           dark   22 text styles, 0 below AA   tightest 5.86
+body / control label      14   ->  13.5    (--t-body)
+caption, note, meta       14   ->  12.5    (--t-small)
+badge, card label         12   ->  11.5    (--t-micro)
+page title                24   ->  20      (--t-title)
+control height            36   ->  32      (--h-control)
+nav item                  32   ->  30      (--h-nav)
+sidebar                   256  ->  236
+radius                  0.625rem -> 0.45rem, with the runtime's ramp
 ```
 
-Both light failures are `--muted-foreground` `#737373` on `--muted` `#f5f5f5`
-— 4.35:1, a pairing shadcn itself uses constantly (any muted surface with
-secondary text on it: here the avatar's initials, and every line of body copy
-inside the current step). Task 010's own notes recorded the same defect in the
-preset it started from. B and C measure 0 below AA in both themes.
+This is the compactness, and it is also what makes the whole thing a **theme
+layer** rather than a fork. DESIGN.md §1 rules the type scale, the radii and the
+control rhythm shared primitives no layer may move; stock moved all three, and
+that was the one objection to it that was structural rather than cosmetic.
+Refined stock moves none of them, so it is expressible as `.theme-console` —
+colour, and nothing else. `font-variant-numeric: tabular-nums` is back at the
+root, which stock leaves to per-element classes.
 
-**And it moves shared primitives, so it is not a theme-layer proposal.** B and C
-change colour and nothing else, because DESIGN.md §1 rules the type scale, the
-radii and the control rhythm shared across every RePanel surface. Stock changes
-all of them: radius `0.45rem → 0.625rem`, control `32 → 36`, nav item `30 → 32`,
-sidebar `236 → 256`, body `13.5 → 14`, badge `11.5 → 12`, page title `20 → 24`,
-and tabular figures stop being global. Visible in the shots: the setup command
-no longer fits its box in either theme.
+**2. `--muted-foreground` `#737373` → `#6f6f6f`.** Forced by the contrast floor:
+stock's own `--muted-foreground` on `--muted` `#f5f5f5` measures **4.35:1**,
+under the 4.5 §7 sets as a gate. Not an edge case — it is the avatar's initials
+and every line of body copy inside the current step. Four values darker measures
+4.61 on `--muted`, 4.81 on the page, 5.03 on a card. Task 010 recorded the same
+defect in the preset it started from.
 
-None of this is a criticism of shadcn — the defaults are good defaults, and this
-repo is built on its component anatomy (DECISIONS #026, owned not installed).
-The palette is the part that was never meant to survive contact with a product.
+**3. The surface ladder, in both themes.** Stock dark paints the chrome
+`#171717` and the inset panel `#0a0a0a`, so content sits *below* its chrome and
+reads recessed — the inversion DESIGN.md §2 names in shadcn's own
+`sidebar-inset` variant and corrects. Corrected the same way: chrome takes
+`#0a0a0a`, panel takes `#171717`. Cards then need a step above the panel, which
+stock dark has not got between `#171717` and `#262626`, so `#212121` is
+interpolated — **the one value in the file that is not shadcn's.** Light needed
+one step too: the active nav pill at `#f5f5f5` on a `#fafafa` sidebar measured
+1.04:1 against its own ground, which is not a state but a rounding error →
+`#efefef`.
+
+**4. `--sidebar-primary` follows `--primary` in both themes.** Stock sets it
+`#171717` light and `#1447e6` — a blue — dark, so the project mark, the one
+object wearing it, changes colour between themes while nothing else agrees with
+it. This direction is monochrome on purpose; the mark is monochrome in both.
+
+**5. §4's `positive` and `attention` families are added.** Stock ships exactly
+one state colour, and its `destructive` is already ours to the digit (`#e7000b`
+/ `#ff6467` — which is where §4's family came from). The other two were missing,
+so `Answered`, `Waiting` and `Never used` rendered as the same grey badge and
+the one fact the connection card exists to report stopped being readable at a
+glance. The runtime already ships all four tones, the schema already lets a
+customer name them (#029), and the console's own status chip already spends
+them; a console with no success tone could not report on the product it
+administers. **Colour is spent on state and nowhere else** — the accent slot
+stays monochrome, which is this direction's whole character.
+
+### Three refinements
+
+- **The sidebar holds two kinds of thing and now says so** — a `PROJECT` label
+  over the four destinations, a rule, then `Settings` and `Sign out`. One list
+  with `Settings` greyed at the bottom made "off" and "different in kind" look
+  like one statement, and sign-out had no home in this shell at all.
+- **A card carries a mark, tinted by its state** — 26px, quiet, coloured out of
+  §4's family rather than per card. A chip whose colour told you *which* card
+  you were on would be repeating the label.
+- **The content has a measure** — capped at 1100px and centred, so a 2560px
+  window gives two even margins instead of one enormous one. The panel still
+  fills: it is the app's frame. The wide shots are why this is stated rather
+  than assumed.
+
+### Measured, from the rendered DOM
+
+```
+console-d  light  24 text styles, 0 below AA   tightest 4.61
+           dark   26 text styles, 0 below AA   tightest 4.94
+
+surface    light  chrome #fafafa .9559   panel #ffffff 1.0000   card #ffffff
+ladder            (light has two surfaces and a shadow, as stock does)
+           dark   chrome #0a0a0a .0030   panel #171717 .0086   card #212121 .0152
+                  (three steps, panel above the chrome in both themes now)
+
+overflow          768, 1440 and 2560, both themes: no horizontal scroll
+numerals          tabular-nums;  faces Geist + Geist Mono
+```
+
+Stock measured 2 below AA in light and put the panel under the chrome in dark;
+both are gone, and nothing was changed for taste that could have been left
+alone.
 
 ## Round 3 — `console-e.html`, B with a voice
 

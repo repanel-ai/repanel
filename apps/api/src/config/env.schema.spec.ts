@@ -9,7 +9,9 @@ describe("validateEnv", () => {
       NODE_ENV: "development",
       PORT: 3001,
       DATABASE_URL,
+      API_URL: "http://localhost:3001",
       CONSOLE_URL: "http://localhost:5173",
+      RUNTIME_URL: "http://localhost:5174",
       APP_ENCRYPTION_KEY,
     });
   });
@@ -53,19 +55,28 @@ describe("validateEnv", () => {
     expect(env.APP_ENCRYPTION_KEY).toBe(APP_ENCRYPTION_KEY);
   });
 
-  it("drops a trailing slash from the console URL, because links are built onto it", () => {
+  it("drops a trailing slash from every surface URL, because links are built onto them", () => {
     const env = validateEnv({
       DATABASE_URL,
       APP_ENCRYPTION_KEY,
+      API_URL: "https://api.repanel.app/",
       CONSOLE_URL: "https://console.repanel.app/",
+      RUNTIME_URL: "https://admin.repanel.app//",
     });
 
-    expect(env.CONSOLE_URL).toBe("https://console.repanel.app");
+    expect(env).toMatchObject({
+      API_URL: "https://api.repanel.app",
+      CONSOLE_URL: "https://console.repanel.app",
+      RUNTIME_URL: "https://admin.repanel.app",
+    });
   });
 
-  it("refuses a console URL that is not a URL", () => {
-    expect(() =>
-      validateEnv({ DATABASE_URL, APP_ENCRYPTION_KEY, CONSOLE_URL: "console.repanel.app" }),
-    ).toThrow(/CONSOLE_URL/);
-  });
+  it.each(["API_URL", "CONSOLE_URL", "RUNTIME_URL"])(
+    "refuses a %s that is not a URL",
+    (name) => {
+      expect(() =>
+        validateEnv({ DATABASE_URL, APP_ENCRYPTION_KEY, [name]: "console.repanel.app" }),
+      ).toThrow(new RegExp(name));
+    },
+  );
 });

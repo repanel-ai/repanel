@@ -18,20 +18,43 @@ const appEncryptionKey = z
   .base64(KEY_REQUIREMENT)
   .refine((key) => Buffer.from(key, "base64").byteLength === KEY_BYTES, KEY_REQUIREMENT);
 
+/**
+ * Where one of RePanel's own surfaces answers. Every deployment has three of
+ * them on three origins, and each is read here rather than written anywhere
+ * else: a link, an allowed origin and a setup snippet that disagree about where
+ * something lives are three different bugs with one cause.
+ *
+ * A trailing slash is dropped once, here, because links are built onto these by
+ * concatenation and no caller should have to remember that.
+ */
+const surfaceUrl = (fallback: string) =>
+  z
+    .url()
+    .default(fallback)
+    .transform((url) => url.replace(/\/+$/, ""));
+
 /** Every environment variable the API reads, and what a valid value looks like. */
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.url(),
   /**
+   * Where this API answers from outside the browser — the origin an agent's MCP
+   * client dials. It is the deployment's own address, stated so that whatever
+   * has to print it prints the same one.
+   */
+  API_URL: surfaceUrl("http://localhost:3001"),
+  /**
    * Where the console is served from. The MCP tools hand it to an authoring
    * agent as a deep link, so a human can go and paste the one thing an agent
    * must never handle — the customer's connection string.
    */
-  CONSOLE_URL: z
-    .url()
-    .default("http://localhost:5173")
-    .transform((url) => url.replace(/\/+$/, "")),
+  CONSOLE_URL: surfaceUrl("http://localhost:5173"),
+  /**
+   * Where the rendered admin is served. A second origin by design (#025), which
+   * is why it has to be named: it is one of the two browsers this API answers.
+   */
+  RUNTIME_URL: surfaceUrl("http://localhost:5174"),
   /**
    * Encrypts customer DSNs at rest. It is the only thing standing between a
    * leaked `connections` table and every customer database, so it belongs

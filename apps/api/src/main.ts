@@ -16,6 +16,13 @@ const BODY_LIMIT = MAX_PAYLOAD_BYTES + 64 * 1024;
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const config = app.get(ConfigService);
+  // Two browsers reach this API, and both are on another origin by design
+  // (DECISIONS #025). Development proxies them through one origin and never
+  // asks; a deployment does, and the request carries the session cookie — so
+  // the allowance names the two surfaces this deployment was configured with
+  // rather than standing open.
+  app.enableCors({ origin: [config.consoleUrl, config.runtimeUrl], credentials: true });
   app.useBodyParser("json", { limit: BODY_LIMIT });
   // Express 5 parses a query string flat, so `filter[status]=active` would
   // arrive as one key with brackets in its name. The runtime's filters are
@@ -24,7 +31,7 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());
   app.enableShutdownHooks();
-  await app.listen(app.get(ConfigService).port);
+  await app.listen(config.port);
 }
 
 void bootstrap();

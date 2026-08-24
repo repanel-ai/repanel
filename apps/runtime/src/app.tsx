@@ -1,9 +1,7 @@
 import { Route, Routes, useParams } from "react-router";
+import { CONSOLE_URL } from "./config/env";
 import { RuntimeShell } from "./features/runtime/runtime-shell";
 import { SessionGate } from "./features/session/session-gate";
-
-/** Where an operator signs in; the runtime has no login screen of its own. */
-const CONSOLE_URL = import.meta.env.VITE_CONSOLE_URL ?? "http://localhost:5173";
 
 export function App() {
   return (

@@ -19,9 +19,19 @@ export class ConfigService {
     return this.env.get("DATABASE_URL", { infer: true });
   }
 
+  /** This API's own origin, without a trailing slash. */
+  get apiUrl(): string {
+    return this.env.get("API_URL", { infer: true });
+  }
+
   /** The console's origin, without a trailing slash. Links are built onto it. */
   get consoleUrl(): string {
     return this.env.get("CONSOLE_URL", { infer: true });
+  }
+
+  /** The rendered admin's origin, without a trailing slash. */
+  get runtimeUrl(): string {
+    return this.env.get("RUNTIME_URL", { infer: true });
   }
 
   /** Base64 for 32 bytes; `CryptoService` is the only thing that reads it. */

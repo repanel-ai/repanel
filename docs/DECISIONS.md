@@ -482,3 +482,46 @@ standing for one task; a negative is also where the rule-shaped condition
 starts, because "not approved" is usually three states rather than one. It is
 recorded as a limitation in SCHEMA.md rather than left to be discovered, so an
 authoring agent reads the absence as an answer instead of trying it.
+
+040 · 2026-08 · Every address of a RePanel surface comes from validated
+environment, and nowhere else. The API declares three — `API_URL`,
+`CONSOLE_URL`, `RUNTIME_URL` — through one `surfaceUrl` shape that requires a
+URL, defaults to the development port and drops a trailing slash once, so a
+link built by concatenation cannot grow a double slash in one deployment and
+not another. Each Vite app gets the same set it actually needs in a single
+`src/config/env.ts`, read from `import.meta.env` with the identical defaults.
+
+**The rule is spatial, which is what makes it checkable.** No file outside those
+env/config modules may contain an absolute http URL literal naming one of our
+own surfaces. The MCP setup snippet, `connectionSetupUrl`, "Open admin", the
+CORS allowance and the runtime's console-login link all read config now, and one
+grep over `apps` and `packages` says so:
+
+```
+grep -rnE "https?://(localhost|127\.0\.0\.1)" --include='*.ts' --include='*.tsx' apps packages \
+  | grep -vE "src/config/env\.ts:|src/config/env\.schema\.ts:|vite\.config\.ts:|\.spec\.tsx?:|\.test\.ts:"
+```
+
+The exemptions are the config modules themselves, Vite's own config — which is
+a config file and holds only the dev proxy's target — and tests, where a URL is
+the case's data rather than a deployment's address.
+
+**Prerequisite rather than tidying.** Hosted RePanel has three origins and not
+one of them is localhost, and the single worst place for a wrong one is the MCP
+snippet: a customer's agent is configured from it once, by copy and paste, and a
+literal that was right on a laptop is then wrong in a way nothing on the screen
+reports. The same is true of the CLI this precedes. A URL that lives in exactly
+one validated place is configured, and a URL compiled into a component is not.
+
+**CORS is derived rather than declared.** The two browsers reaching this API are
+the console and the runtime, so the allowance is exactly `[CONSOLE_URL,
+RUNTIME_URL]` with credentials — it cannot drift from where those surfaces are
+deployed because it is read from the same two variables that put them there.
+Development never needed it and still does not: both Vite servers proxy the API
+onto their own origin, which is why this arrives now, with the first deployment,
+rather than earlier.
+
+**`API_URL` is declared with no in-process reader.** Nothing on the API prints
+its own address today — the console writes the setup snippet from its own Vite
+env. It is stated anyway because a deployment configures its surfaces as a set
+of three, and a deploy contract with a hole in it is filled in by guessing.

@@ -73,7 +73,7 @@ function RecordScreen({
         to={back}
         className={
           "inline-flex w-fit items-center gap-1.5 rounded-sm text-small text-muted-foreground " +
-          "outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45"
+          "outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45"
         }
       >
         <ArrowLeftIcon className="size-3.5" />

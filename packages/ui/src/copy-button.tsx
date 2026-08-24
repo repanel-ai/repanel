@@ -48,7 +48,7 @@ export function CopyButton({ value, what, children, className }: CopyButtonProps
         onClick={() => void copy()}
         className={cn(
           "group inline-flex max-w-full items-center gap-1.5 rounded-sm text-muted-foreground outline-none",
-          "hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45",
+          "transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45",
           className,
         )}
       >

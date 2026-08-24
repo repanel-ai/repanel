@@ -29,7 +29,7 @@ export function ProjectShell() {
       <main className="m-2 ml-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-sidebar-border bg-background">
         <div className="flex h-top flex-none items-center gap-2.5 border-b border-border px-4">
           <p className="truncate text-small text-muted-foreground">
-            <Link to="/" className="rounded-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45">
+            <Link to="/" className="rounded-sm outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45">
               Projects
             </Link>{" "}
             <span className="opacity-50">/</span>{" "}

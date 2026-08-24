@@ -53,7 +53,7 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
                     className={({ isActive }) =>
                       [
                         "flex h-nav items-center gap-2 rounded-md px-2 text-body font-medium outline-none",
-                        "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
+                        "transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
                         isActive
                           ? "bg-sidebar-accent text-accent-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",

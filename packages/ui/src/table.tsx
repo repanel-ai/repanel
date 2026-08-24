@@ -37,9 +37,16 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
 
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
+    // No transition, and it is the rule rather than an omission: a row is data,
+    // and data does not move (DESIGN.md §12). The hover highlight lands the
+    // moment the pointer is over the row, which is what makes a list of two
+    // hundred of them scannable rather than soft.
     <tr
       data-slot="table-row"
-      className={cn("transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring", className)}
+      className={cn(
+        "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+        className,
+      )}
       {...props}
     />
   );

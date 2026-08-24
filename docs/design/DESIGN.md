@@ -646,6 +646,131 @@ numerals   tabular-nums at the root; faces self-hosted Geist + Geist Mono
 
 ---
 
+## 12. Motion — two durations, one easing, and a list that is closed
+
+**Ruling: RePanel has a motion vocabulary of two durations and one curve, it is
+spent only on the list below, and data surfaces are banned from it outright.
+DECISIONS #041.**
+
+The vocabulary was not absent before this section; it was borrowed and
+unwritten. Every `transition-colors` in the product resolved its duration from
+Tailwind's `--default-transition-duration`, which is 150ms on
+`cubic-bezier(0.4, 0, 0.2, 1)` — an ease-*in*-out, so a hover started slowly,
+which is the one thing a hover may not do. Nothing chose that. It was the
+default of a library, applied to a product whose entire argument is that an
+operator's eye is the scarce resource.
+
+### The vocabulary
+
+| token | value | what it is for |
+|---|---|---|
+| `--motion-fast` | `120ms` | a colour changing under a pointer, or under a keyboard |
+| `--motion-base` | `180ms` | a surface arriving that was not on the screen a moment ago |
+| `--motion-ease` | `cubic-bezier(0, 0, 0.2, 1)` | all of it, always |
+
+Three values, and there is no fourth. `--motion-fast` and `--motion-base` are
+the only durations, and nothing is slower than `--motion-base`: 180ms is the
+outer edge of a step that still reads as the same gesture as the click that
+caused it. The curve is an ease-out and only an ease-out — motion leaves at
+speed and settles, and nothing in RePanel eases *in*, because a thing that
+starts slowly is a thing that has not answered yet. The value is the standard
+decelerate, taken rather than invented: it is what Tailwind's own `ease-out`
+holds. What is ours is that there is exactly one of them, under a name, so a
+review can grep for anything else.
+
+`tokens.css` also answers Tailwind's own `--default-transition-duration` and
+`--default-transition-timing-function` with these, so a bare `transition-colors`
+written anywhere lands on the vocabulary rather than back on the library's
+default. Spending a step by name (`duration-base`) is for the one case that is
+not fast.
+
+### The list, and it is closed
+
+Motion appears in these places and nowhere else:
+
+| what | step | what moves |
+|---|---|---|
+| hover, focus, and the active nav row | fast | colour only — text, background, border, underline |
+| the dialog, and its backdrop | base | fade up over 4px; the backdrop fades |
+| the date-range popover | base | fade up over 4px |
+| a dropdown, when RePanel owns one | base | the same enter, by the same rule |
+| a toast | base | fade up over 4px |
+| the theme toggle | fast | the colours of the whole screen cross |
+| a checklist step turning done | fast | the mark's and the title's colour |
+
+**Enters only.** A dialog, a popover and a toast arrive; not one of them leaves.
+An exit is time an operator spends watching something they have already
+finished with, and the answer to "I am done with this" is for it to be gone.
+This is not a simplification to be revisited: it is the rule.
+
+**A dropdown has no owned implementation today.** RePanel's only dropdown is a
+real `<select>`, whose popup the browser draws and the browser animates. The row
+is in the table so that the day an owned menu is built, what it does is already
+decided rather than invented.
+
+**Anything not in that table does not move.** The list is closed in the strict
+sense: a new place for motion is a change to this section and a decision entry,
+not a judgement call at a call site. That is what makes the rule reviewable —
+one grep over the source returns the whole of RePanel's motion, and every line
+it returns should be traceable to a row above:
+
+```
+grep -rn "animate-\|transition-\|duration-\|ease-" --include='*.tsx' apps packages
+```
+
+### Data surfaces are banned from motion
+
+**A table row, a sort, a filter, a page change and a record load are instant.**
+Not fast — instant. No row fades in, no row transitions its hover highlight, the
+table does not animate when a column is sorted or a filter narrows it, a record
+does not fade onto its page, and a skeleton does not pulse.
+
+The reason is not taste. An admin is a place where somebody reads a value and
+then acts on it, and the read is under time pressure in exactly the moments that
+matter most. Motion on data costs twice: it delays the value by however long the
+step lasts, and — worse — it draws the eye to the fact that something changed
+instead of to what it now says. A 200-row table whose rows each animate their
+hover is a surface that shimmers as a pointer crosses it. The operator did not
+ask a question about the pointer.
+
+It also protects the one thing motion is genuinely good at. Because nothing in
+the data panel ever moves, a toast rising in the corner is unmistakably *an
+event* rather than the screen breathing. Motion is a scarce signal here, and it
+is spent on things that happened rather than on things that are.
+
+Three things were removed to make this true rather than declared: the table
+row's `transition-colors`, the skeleton's `animate-pulse`, and the JSON block's
+rotating chevron. Each was a library default nobody had ruled on.
+
+**The theme swap is the single exception, and it is bounded.** A theme belongs
+to the whole screen rather than to anything on it, so a crossfade that stopped
+at the edge of the data panel would be half a screen changing at 120ms beside
+half a screen snapping — which is worse than either alone. `useTheme` marks the
+document immediately before the class flips and takes the mark off once the fast
+step has run; outside that window the rule matches nothing, and the row under a
+pointer is as instant as this section says. It is written down as an exception
+because that is what it is.
+
+### Reduced motion takes all of it away
+
+`prefers-reduced-motion: reduce` collapses every value above to `0ms`, and it is
+answered twice on purpose, because the two halves reach different things:
+
+1. **The vocabulary collapses.** `--motion-fast` and `--motion-base` are
+   redeclared as `0ms` at the root, which empties every token that spends them —
+   including the dialog backdrop's fade, which lives on `::backdrop` and which a
+   universal selector cannot address.
+2. **The blanket reset stays.** `*`, `*::before` and `*::after` get
+   `animation-duration: 0ms`, `transition-duration: 0ms` and
+   `scroll-behavior: auto`, all `!important`, which catches anything that never
+   asked the vocabulary for a number.
+
+The rule predates this section and, until it, had almost nothing to collapse.
+It has something to collapse now, which is the point at which it had to be
+checked rather than assumed.
+
+---
+
 ## BUILD REQUIREMENTS
 
 Conditions carried from direction approval. Each is binding on Stage 2.

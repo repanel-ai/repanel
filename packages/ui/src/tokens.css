@@ -29,10 +29,13 @@
  * the same token is declared here as `--color-foreground` and spent as
  * `text-foreground`. The mapping is mechanical and total:
  *
- *   DESIGN.md          here                 generates
- *   --foreground       --color-foreground   text-foreground, bg-foreground, …
- *   --t-body           --text-body          text-body
- *   --h-row            --spacing-row        h-row
+ *   DESIGN.md          here                        generates
+ *   --foreground       --color-foreground          text-foreground, bg-foreground, …
+ *   --t-body           --text-body                 text-body
+ *   --h-row            --spacing-row               h-row
+ *   --motion-fast      --transition-duration-fast  duration-fast
+ *   --motion-base      --transition-duration-base  duration-base
+ *   --motion-ease      --ease-motion               ease-motion
  *
  * `@theme static` emits every variable whether or not a utility spends it: the
  * apps read a few of these through `var()` directly (the page ground, the body
@@ -135,6 +138,51 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+
+  /* ---- motion ---------------------------------------------------------- */
+  /*
+   * Two durations and one easing, and that is the whole vocabulary
+   * (DESIGN.md §12, DECISIONS #041). `fast` is a colour changing under a
+   * pointer; `base` is a surface arriving that was not on the screen a moment
+   * ago. Nothing is slower than `base`, nothing eases in, and nothing on a data
+   * surface moves at all.
+   */
+  --transition-duration-fast: 120ms;
+  --transition-duration-base: 180ms;
+  --ease-motion: cubic-bezier(0, 0, 0.2, 1);
+
+  /*
+   * Tailwind's own defaults, answered. A bare `transition-colors` resolves its
+   * duration and curve from these, so a site that forgets to name a step lands
+   * on the vocabulary rather than on 150ms `ease-in-out` — which is what every
+   * `transition-*` in RePanel was quietly running at before this file said
+   * otherwise.
+   */
+  --default-transition-duration: var(--transition-duration-fast);
+  --default-transition-timing-function: var(--ease-motion);
+
+  /*
+   * The one enter, and the backdrop that comes with it. A surface that was not
+   * on the screen fades up over four pixels; `fade` is the same arrival for
+   * something that covers the viewport, where a rise would show a seam at the
+   * bottom edge. Neither has an exit — a dialog, a popover and a notice all
+   * leave the moment they are dismissed (DESIGN.md §12).
+   */
+  --animate-enter: enter var(--transition-duration-base) var(--ease-motion);
+  --animate-fade: fade var(--transition-duration-base) var(--ease-motion);
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
 
   /* ---- the colour contract --------------------------------------------- */
   /*
@@ -438,13 +486,53 @@
     color-scheme: dark;
   }
 
+  /*
+   * The theme swap, and the one rule that reaches a data surface.
+   *
+   * A theme is a property of the whole screen rather than of anything on it,
+   * so the crossfade cannot be attached to the handful of elements that happen
+   * to be chrome — half a screen changing at 120ms and the other half snapping
+   * is worse than either. The attribute is set by `useTheme` immediately
+   * before the class flips and taken off once the step has run, which is what
+   * keeps this bounded: outside that window nothing here matches, and a table
+   * row is as instant as §12 says it is (DECISIONS #041).
+   */
+  :root[data-theme-switching] *,
+  :root[data-theme-switching] *::before,
+  :root[data-theme-switching] *::after {
+    transition:
+      background-color var(--transition-duration-fast) var(--ease-motion),
+      border-color var(--transition-duration-fast) var(--ease-motion),
+      color var(--transition-duration-fast) var(--ease-motion),
+      fill var(--transition-duration-fast) var(--ease-motion),
+      outline-color var(--transition-duration-fast) var(--ease-motion),
+      text-decoration-color var(--transition-duration-fast) var(--ease-motion);
+  }
+
+  /*
+   * Somebody who has asked their machine for less motion has asked this one
+   * too, and gets none of it.
+   *
+   * It is answered twice on purpose, because the two halves reach different
+   * things. Collapsing the vocabulary itself takes the duration out of every
+   * token that spends it — including `--animate-fade` on a dialog's
+   * `::backdrop`, which the universal selector below cannot address. The
+   * blanket reset then catches whatever never asked the vocabulary for a
+   * number: a `scroll-behavior`, a third-party keyframe, a `transition` some
+   * future file writes out in full.
+   */
   @media (prefers-reduced-motion: reduce) {
+    :root {
+      --transition-duration-fast: 0ms;
+      --transition-duration-base: 0ms;
+    }
+
     *,
     *::before,
     *::after {
-      animation-duration: 0.01ms !important;
+      animation-duration: 0ms !important;
       animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+      transition-duration: 0ms !important;
       scroll-behavior: auto !important;
     }
   }

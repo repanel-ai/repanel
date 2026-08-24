@@ -198,7 +198,7 @@ function ColumnHeader({
           onClick={() => onSort(field.key)}
           className={cn(
             "-mx-1 inline-flex items-center gap-1 rounded-sm px-1 outline-none",
-            "hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45",
+            "transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45",
             // The arrow moves to the label's other side so the label itself
             // stays flush with the edge the column is aligned to.
             alignRight && "flex-row-reverse",

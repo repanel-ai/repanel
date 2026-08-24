@@ -63,7 +63,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={onClearAll}
-          className="rounded-sm text-small text-muted-foreground underline underline-offset-[3px] outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45"
+          className="rounded-sm text-small text-muted-foreground underline underline-offset-[3px] outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/45"
         >
           Clear all
         </button>

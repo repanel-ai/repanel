@@ -39,7 +39,7 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
   return (
     <details
       ref={disclosure}
-      className="relative"
+      className="group relative"
       onKeyDown={(event) => {
         if (event.key === "Escape") close();
       }}
@@ -61,7 +61,14 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
         <ChevronDownIcon className="pointer-events-none absolute right-2.5 size-3 opacity-55" />
       </summary>
 
-      <div className="absolute z-20 mt-1 flex w-60 flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+      {/*
+        * The panel arrives the way every other surface that was not on the
+        * screen does (DESIGN.md §12). The animation hangs off the disclosure's
+        * own `open`, so it is applied at the moment the panel opens rather than
+        * sitting on a hidden element waiting to replay — and closing removes it
+        * with nothing to play, which is the whole of "enters only".
+        */}
+      <div className="absolute z-20 mt-1 flex w-60 flex-col gap-2 rounded-lg border border-border bg-card p-2.5 group-open:animate-enter">
         <label className="flex items-center justify-between gap-2 text-small text-muted-foreground">
           From
           <DayInput value={value?.from?.slice(0, 10) ?? ""} onChange={(day) => edit("from", day)} />
@@ -77,7 +84,7 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
               onChange(undefined);
               close();
             }}
-            className="self-start text-small text-muted-foreground underline underline-offset-[3px] hover:text-foreground"
+            className="self-start text-small text-muted-foreground underline underline-offset-[3px] transition-colors hover:text-foreground"
           >
             Clear {label.toLowerCase()}
           </button>

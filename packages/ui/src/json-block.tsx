@@ -25,7 +25,9 @@ export function JsonBlock({ value, className }: JsonBlockProps) {
           "[&::-webkit-details-marker]:hidden focus-visible:ring-3 focus-visible:ring-ring/45",
         )}
       >
-        <ChevronDownIcon className="size-3 shrink-0 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0" />
+        {/* The chevron turns without travelling: this is a value on a record,
+            and §12 gives a data surface no motion — not even a rotation. */}
+        <ChevronDownIcon className="size-3 shrink-0 -rotate-90 text-muted-foreground group-open:rotate-0" />
         <span className="truncate font-data text-muted-foreground">{oneLine(value)}</span>
       </summary>
       <pre className="mt-1.5 overflow-x-auto rounded-md bg-accent p-2.5 font-data text-small leading-5">

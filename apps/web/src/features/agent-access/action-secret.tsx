@@ -25,7 +25,7 @@ export function ActionSecret({ projectId }: { projectId: string }) {
         in your application&rsquo;s own secret store as{" "}
         <code className="font-mono text-small">REPANEL_ACTION_SECRET</code> and verify the
         signature there —{" "}
-        <a className="underline underline-offset-2 hover:text-foreground" href={SIGNING_DOC}>
+        <a className="underline underline-offset-2 transition-colors hover:text-foreground" href={SIGNING_DOC}>
           docs/SIGNING.md
         </a>{" "}
         is the scheme.

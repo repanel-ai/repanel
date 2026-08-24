@@ -43,6 +43,10 @@ export function Toast({ tone, title, description, onDismiss }: ToastProps) {
       className={cn(
         "pointer-events-auto flex w-[min(26rem,calc(100vw-2rem))] items-start gap-2.5",
         "rounded-lg border px-3.5 py-3",
+        // It was not on the screen a moment ago, so it arrives (DESIGN.md §12).
+        // Dismissing takes it off the screen at once: an operator who has read
+        // a notice and closed it is not made to watch it leave.
+        "animate-enter",
         TONES[tone],
       )}
     >

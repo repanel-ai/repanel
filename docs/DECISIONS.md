@@ -525,3 +525,70 @@ rather than earlier.
 its own address today — the console writes the setup snippet from its own Vite
 env. It is stated anyway because a deployment configures its surfaces as a set
 of three, and a deploy contract with a hole in it is filled in by guessing.
+
+041 · 2026-08 · RePanel has a motion vocabulary of two durations and one
+easing — `--motion-fast` 120ms, `--motion-base` 180ms, `--motion-ease`
+`cubic-bezier(0, 0, 0.2, 1)` — spent on a closed list of seven places, with data
+surfaces banned from motion outright. DESIGN.md §12 is the record. The list is
+hover/focus/active-nav colour (fast); the dialog and its backdrop, the
+date-range popover and a toast, all **enters only** (base, fade up over 4px, no
+exit); the theme swap (fast); and a checklist step turning done (fast). A table
+row, a sort, a filter, a page change and a record load are instant.
+
+**Founder-driven, and post-D.** Nothing asked for this. The design record ran to
+eleven sections and 700 lines without the word *motion* in it, which meant the
+product shipped whatever its libraries defaulted to — measured before the
+change, every `transition-colors` in RePanel was running at Tailwind's 150ms on
+`cubic-bezier(0.4, 0, 0.2, 1)`, an ease-**in**-out. A hover that starts slowly
+is the one hover a product like this cannot have, and nobody had chosen it. The
+absence of a decision was itself functioning as one.
+
+**Why a closed list rather than a principle.** "Use motion sparingly" is not
+enforceable and does not survive contact with a hundred call sites. A list is:
+a new place for motion is an edit to §12 and an entry here, and until then the
+answer at the call site is no. It is also auditable in one line, the way #040's
+URL rule is —
+
+```
+grep -rn "animate-\|transition-\|duration-\|ease-" --include='*.tsx' apps packages
+```
+
+— which today returns eighteen lines, every one of them traceable to a row of
+§12's table. Expanding the list requires a decision entry; that is the whole
+point of writing it down as closed.
+
+**The ban is the substantive half.** Motion on a data surface costs twice: it
+delays the value by the length of the step, and it moves the eye to the fact
+that something changed rather than to what it now says. An operator reading a
+row before acting on it is under time pressure precisely when it matters most.
+The ban also protects the signal: because nothing in the data panel ever moves,
+a toast rising in the corner reads as an event rather than as the screen
+breathing. Three defaults were removed to make the ban true rather than
+declared — the table row's `transition-colors`, the skeleton's `animate-pulse`,
+and the JSON block's rotating chevron. Each was a library's opinion that had
+never been ruled on.
+
+**Two mechanisms, both in `tokens.css`.** Tailwind's own
+`--default-transition-duration` and `--default-transition-timing-function` are
+answered with the vocabulary, so a bare `transition-colors` written anywhere
+lands on 120ms ease-out instead of on the library's default — the vocabulary is
+the floor, not something each site has to remember. The enter is a token too:
+`--animate-enter` plus a keyframe in `@theme`, spent as one `animate-enter`
+utility, so the dialog, the popover and the toast cannot drift from each other.
+
+**The theme swap is the one exception to the ban, and it is bounded in time.** A
+theme belongs to the whole screen, so a crossfade stopping at the data panel's
+edge would be half a screen changing and half snapping. `useTheme` marks the
+document immediately before the class flips and unmarks it after the fast step;
+outside that window the rule matches nothing. The cost is the vocabulary's one
+duplicated number — 120 written in each app's hook, because what arms the
+crossfade is an attribute on the document rather than a rule in the stylesheet.
+
+**Reduced motion is answered twice, deliberately.** The two durations are
+redeclared as `0ms` under `prefers-reduced-motion: reduce`, which empties every
+token that spends them — including the dialog backdrop's fade, which lives on
+`::backdrop` where the universal selector cannot reach. The pre-existing blanket
+reset stays for whatever never asked the vocabulary for a number. That rule had
+been in the file since #028 with almost nothing to collapse; it has something to
+collapse now, which is why it was checked rather than assumed.
+

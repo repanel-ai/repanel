@@ -35,7 +35,7 @@ export function TabBar({
 export function tabClasses(isCurrent: boolean, className?: string): string {
   return cn(
     "-mb-px inline-flex h-head items-center border-b-2 text-body font-medium whitespace-nowrap",
-    "rounded-t-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/45",
+    "rounded-t-sm outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/45",
     isCurrent
       ? "border-foreground text-foreground"
       : "border-transparent text-muted-foreground hover:text-foreground",

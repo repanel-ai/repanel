@@ -61,9 +61,15 @@ export function Dialog({
         if (pending === undefined) onCancel();
       }}
       // A stray click is not an answer: the backdrop dismisses nothing.
+      //
+      // It arrives rather than appears, and the arrival is keyed off `open` —
+      // the attribute the platform adds when `showModal` runs — so there is
+      // nothing to unwind on the way out. A question that has been answered
+      // leaves the instant it is answered (DESIGN.md §12).
       className={cn(
         "m-auto w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-border bg-card p-0",
         "text-foreground backdrop:bg-black/45",
+        "open:animate-enter backdrop:animate-fade",
       )}
     >
       <div className="flex flex-col gap-2 p-4">

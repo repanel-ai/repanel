@@ -14,7 +14,7 @@ const PAGES = [
 /** One row of the sidebar's list, whether it is a link, a button or off. */
 const ROW = [
   "flex h-nav items-center gap-2 rounded-md px-2 text-body font-medium outline-none",
-  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
+  "transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
 ].join(" ");
 
 const AT_REST = "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground";
@@ -108,7 +108,7 @@ function ProjectSwitcher({ project }: { project: ProjectDto | undefined }) {
     <Link
       to="/"
       aria-label="Switch project"
-      className="flex h-11 items-center gap-2.5 rounded-md px-2 outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/45"
+      className="flex h-11 items-center gap-2.5 rounded-md px-2 outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/45"
     >
       <div className="grid size-[22px] flex-none place-items-center rounded-md bg-primary text-micro font-semibold text-primary-foreground">
         {(project?.name ?? "?").slice(0, 1).toUpperCase()}

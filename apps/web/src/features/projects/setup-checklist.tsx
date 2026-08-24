@@ -32,7 +32,15 @@ export function SetupChecklist({ steps, extra }: SetupChecklistProps) {
           <Mark step={step} index={index} />
 
           <div className="min-w-0 flex-1">
-            <p className={cn("text-body font-medium", step.state === "todo" && "text-muted-foreground")}>
+            {/* A step turning done is the one thing on this page that changes
+                while somebody is looking at it, so it changes at the fast step
+                rather than snapping (DESIGN.md §12). */}
+            <p
+              className={cn(
+                "text-body font-medium transition-colors",
+                step.state === "todo" && "text-muted-foreground",
+              )}
+            >
               {step.title}
             </p>
             <p className="mt-0.5 text-small text-muted-foreground">{step.note}</p>
@@ -61,7 +69,8 @@ export function SetupChecklist({ steps, extra }: SetupChecklistProps) {
 
 /** Done, next, or not yet: a tick, the step's number in the accent, or a ring. */
 function Mark({ step, index }: { step: SetupStep; index: number }) {
-  const shared = "mt-0.5 grid size-[19px] flex-none place-items-center rounded-full text-micro font-semibold";
+  const shared =
+    "mt-0.5 grid size-[19px] flex-none place-items-center rounded-full text-micro font-semibold transition-colors";
 
   if (step.state === "done") {
     return (

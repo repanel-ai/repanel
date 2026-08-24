@@ -441,3 +441,44 @@ it is where an author starts writing a rule in the wrong file.
 
 Additive by construction (#012): an action with no `visibleWhen` is offered
 exactly as every action written before this one was.
+
+039 · 2026-08 · `visibleWhen`'s `equals` is typed at validation. It is legal
+against a `text`, `enum`, `boolean`, `number`, `email` or `url` field, and the
+literal must be of that field's own type — a string for the three string types,
+a number for `number`, `true` or `false` for `boolean`, and for an `enum` one of
+its declared values, which is the check #038 already shipped. Against a
+`relation`, `json`, `date`, `dateTime` or `longText` field it is an error, and
+the hint offers the two real fixes: ask `isSet`, or move the rule to the
+endpoint (#010). `isSet` stays legal on every field type, because "does this
+record hold anything here" is a question every type can answer.
+
+**The class this closes is a button that is never drawn and never explained.**
+`{ "field": "created_at", "equals": "2026-08-01" }` parses today. It then
+compares an ISO string the runtime rendered as `1 Aug 2026` against a literal an
+author wrote by hand, never holds, and the action vanishes from every record —
+no error, no log, nothing on the screen that could be read as a problem. The
+same is true of a `relation`, whose value on the wire is `{ id }` rather than
+the key; of `json`, where equality is structural; and of `longText`, which holds
+prose. #008 says a definition's problems are answered at validation with a path
+and a fix, and this was a problem that reached production silently instead.
+
+**Narrowed now because now is when narrowing is free.** #012's ratchet closes
+against external definitions, and there are none: the only `visibleWhen` in
+existence is the fixture's, crewbase's `approve`, and whatever this repository
+writes. Both are `enum`/`equals`. After the first customer definition ships, the
+same change is a breaking one and would need a `schemaVersion` — so the rung is
+cut to shape before it bears weight, not after.
+
+**`longText` is refused, and the allow-list is why.** It is a text type and
+`isTextField` counts it, so it could have been let through on the strength of
+its typeof. But the list of comparable types is closed rather than open, and a
+long-text column holds a paragraph: an `equals` against one is the same
+never-holds comparison in a friendlier shape. A type joins the list by being
+asked for.
+
+**No negative form, deliberately.** There is no `isSet: false` and no
+`notEquals`. #010's ladder grows a rung at a time and this rung has been
+standing for one task; a negative is also where the rule-shaped condition
+starts, because "not approved" is usually three states rather than one. It is
+recorded as a limitation in SCHEMA.md rather than left to be discovered, so an
+authoring agent reads the absence as an answer instead of trying it.

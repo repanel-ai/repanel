@@ -323,7 +323,10 @@ repeats what the endpoint already knows; it never moves the rule. The endpoint
 still refuses, and it is still the only thing that does.
 
 `visibleWhen` says exactly one thing about one non-sensitive field of the same
-resource: `equals` a value, or `isSet`. Anything needing two conditions, a
+resource: `equals` a value, or `isSet`. `equals` names a `text`, `enum`,
+`boolean`, `number`, `email` or `url` field and states a literal of that field's
+own type; a `relation`, `json`, `date`, `dateTime` or `longText` field can only
+be asked whether it is set. Anything needing two conditions, a negative, a
 comparison between two fields, or a reason to be given for the refusal is a
 rule — put it in the endpoint, where it can be tested (DECISIONS #010).
 

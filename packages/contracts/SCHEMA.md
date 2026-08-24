@@ -299,6 +299,18 @@ never both forms, never neither:
 | `{ "field": …, "equals": <string, number or boolean> }` | the field holds exactly that value; nothing is coerced across types |
 | `{ "field": …, "isSet": true }` | the field is not null — for a `relation`, that it points at a record |
 
+`equals` may name a `text`, `enum`, `boolean`, `number`, `email` or `url`
+field, and states a literal of that field's own type: a string for `text`,
+`email` and `url`, a number for `number`, `true` or `false` for `boolean`, and
+for an `enum` one of its declared `values`. Nothing is coerced across types —
+`"3"` is not `3`, and `"true"` is not `true`.
+
+`equals` against a `relation`, `json`, `date`, `dateTime` or `longText` field is
+refused. None of those holds a value one literal names reliably, so the
+comparison would parse and then never hold: an action nobody is ever offered,
+with nothing anywhere to say why. Ask instead that the field is set, or state
+the rule in the endpoint the action calls. `isSet` is legal on every field type.
+
 The field may not be `sensitive`: whether a button is drawn is visible to
 everyone who opens the record, so a condition on a secret answers questions
 about it one record at a time. A `hidden` field is allowed — a precondition
@@ -358,8 +370,9 @@ then checks what a schema cannot express:
 - a label field reads as a name: never a `json` or `relation` field;
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
   writes one of the enum's values or a boolean literal;
-- a `visibleWhen` states exactly one of `equals` or `isSet`, and on an `enum`
-  field compares against one of that field's declared values;
+- a `visibleWhen` states exactly one of `equals` or `isSet`; an `equals` names a
+  field of a comparable type and states a literal of that field's own type —
+  on an `enum` field, one of its declared values;
 - every key of an enum's `tones` map is one of that enum's declared `values`.
 
 A structural failure skips the referential pass: those checks need a
@@ -388,6 +401,14 @@ record, and there is no `and`, no `or`, no negation and no comparison between
 two fields. There is also no way to say why a record was passed over — an action
 that does not apply is simply absent. Anything more is a rule, and a rule lives
 in the endpoint the action calls (DECISIONS #010).
+
+**No negative form.** `isSet` is only ever `true`; there is no `isSet: false`,
+and no `notEquals`. This is a deferral rather than an oversight: the ladder in
+#010 grows one rung at a time, and the positive rung is the one checkpoint D
+asked for. A negative reads as a rule far more often than a positive does —
+"not approved" is usually several states rather than one — so it is worth
+seeing asked for before it exists. Until then, say the positive case, or state
+the rule in the endpoint (DECISIONS #039).
 
 ## Compatibility
 

@@ -73,6 +73,123 @@ test("a precondition on an enum field must compare against one of its values", (
 });
 
 /**
+ * Which fields an `equals` may name, one type at a time. The fixture's `users`
+ * carries one field of every type on purpose, so each case names a real field
+ * rather than inventing one (DECISIONS #039).
+ */
+
+const COMPARABLE: ReadonlyArray<readonly [string, string, string | number | boolean]> = [
+  ["name", "text", "Ada"],
+  ["email", "email", "ada@acme.test"],
+  ["avatar_url", "url", "https://cdn.acme.test/ada.png"],
+  ["login_count", "number", 3],
+  ["is_active", "boolean", false],
+];
+
+for (const [field, type, value] of COMPARABLE) {
+  test(`a precondition may compare a ${type} field against a matching literal`, () => {
+    const definition = validFor((draft) => {
+      resourceIn(draft, "users").actions = [approving({ field, equals: value })];
+    });
+
+    const users = definition.resources.find((resource) => resource.key === "users");
+    assert.ok(users);
+    assert.deepEqual(users.actions[0]?.visibleWhen, { field, equals: value });
+  });
+}
+
+/**
+ * The types no literal can name. Each of these comparisons parses, and each of
+ * them would then never hold — a button an operator can never be offered and
+ * nothing anywhere would say why.
+ */
+
+const UNCOMPARABLE: ReadonlyArray<readonly [string, string]> = [
+  ["organization_id", "relation"],
+  ["preferences", "json"],
+  ["trial_ends_on", "date"],
+  ["created_at", "dateTime"],
+  ["notes", "longText"],
+];
+
+for (const [field, type] of UNCOMPARABLE) {
+  test(`a precondition cannot compare a ${type} field with equals`, () => {
+    const errors = errorsFor((draft) => {
+      resourceIn(draft, "users").actions = [approving({ field, equals: "anything" })];
+    });
+
+    const error = errorAt(errors, "resources[1].actions[0].visibleWhen.field");
+    assert.equal(
+      error.message,
+      `A \`visibleWhen\` cannot compare field \`${field}\` of type \`${type}\` with \`equals\`.`,
+    );
+    assert.equal(error.expected, "a field of type text, enum, boolean, number, email, url");
+    assert.match(error.hint, /"isSet": true/);
+    assert.match(error.hint, /the endpoint the action calls/);
+  });
+}
+
+/** A comparable field still refuses a literal of the wrong kind: nothing coerces. */
+
+const MISMATCHED: ReadonlyArray<readonly [string, string, string | number | boolean, string]> = [
+  ["name", "text", 42, "`42` is not a string."],
+  ["email", "email", true, "`true` is not a string."],
+  ["avatar_url", "url", 1, "`1` is not a string."],
+  ["login_count", "number", "3", "`3` is not a number."],
+  ["is_active", "boolean", "true", "`true` is not a boolean."],
+];
+
+for (const [field, type, value, message] of MISMATCHED) {
+  test(`a precondition on a ${type} field refuses a literal of another type`, () => {
+    const errors = errorsFor((draft) => {
+      resourceIn(draft, "users").actions = [approving({ field, equals: value })];
+    });
+
+    const error = errorAt(errors, "resources[1].actions[0].visibleWhen.equals");
+    assert.equal(error.message, message);
+    assert.match(error.hint, /nothing is coerced across types/);
+  });
+}
+
+test("the hint for a boolean field names both literals it accepts", () => {
+  const errors = errorsFor((draft) => {
+    resourceIn(draft, "users").actions = [approving({ field: "is_active", equals: "true" })];
+  });
+
+  const error = errorAt(errors, "resources[1].actions[0].visibleWhen.equals");
+  assert.equal(error.expected, "`true` or `false`");
+  assert.match(error.hint, /Change `resources\[1\]\.actions\[0\]\.visibleWhen\.equals` to `true` or `false`/);
+});
+
+/** `isSet` reads whether the record holds anything, which every type answers. */
+test("a precondition may ask that any non-sensitive field is set, whatever its type", () => {
+  const readable = [
+    "id",
+    "email",
+    "name",
+    "status",
+    "organization_id",
+    "is_active",
+    "notes",
+    "created_at",
+    "avatar_url",
+    "trial_ends_on",
+    "login_count",
+    "preferences",
+  ];
+
+  for (const field of readable) {
+    const definition = validFor((draft) => {
+      resourceIn(draft, "users").actions = [approving({ field, isSet: true })];
+    });
+
+    const users = definition.resources.find((resource) => resource.key === "users");
+    assert.ok(users);
+    assert.deepEqual(users.actions[0]?.visibleWhen, { field, isSet: true });
+  }
+});
+
+/**
  * The button's presence is the answer. A condition on a secret turns the detail
  * page into the same oracle a filter on one would be (DECISIONS #014), and the
  * hint offers only fixes that keep the secret contained (DECISIONS #015).

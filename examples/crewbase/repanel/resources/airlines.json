@@ -1,0 +1,57 @@
+{
+  "key": "airlines",
+  "label": { "singular": "Airline", "plural": "Airlines" },
+  "source": { "table": "airlines" },
+  "primaryKey": "id",
+  "labelField": "name",
+  "icon": "building",
+  "readOnly": true,
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "name", "label": "Name", "type": "text" },
+    { "key": "country", "label": "Country", "type": "text" },
+    {
+      "key": "approval_status",
+      "label": "Approval status",
+      "type": "enum",
+      "values": ["pending", "approved", "rejected"],
+      "tones": { "pending": "attention", "approved": "positive", "rejected": "critical" }
+    },
+    { "key": "verification", "label": "Verification notes", "type": "json" },
+    { "key": "created_at", "label": "Created", "type": "dateTime" }
+  ],
+  "relationships": [
+    { "key": "openings", "kind": "hasMany", "target": "job_openings", "foreignKey": "airline_id" },
+    { "key": "placed_candidates", "kind": "hasMany", "target": "candidates", "foreignKey": "airline_id" }
+  ],
+  "views": {
+    "table": {
+      "columns": ["name", "country", "approval_status", "created_at"],
+      "defaultSort": { "field": "created_at", "direction": "desc" },
+      "search": ["name", "country"],
+      "filters": [
+        { "field": "approval_status", "kind": "enum" },
+        { "field": "created_at", "kind": "dateRange" }
+      ]
+    },
+    "detail": {
+      "sections": [
+        { "title": "Airline", "fields": ["name", "country", "approval_status", "created_at"] },
+        { "title": "Compliance", "fields": ["verification"] }
+      ],
+      "relatedLists": ["openings", "placed_candidates"],
+      "relatedLayout": "tabs"
+    }
+  },
+  "actions": [
+    {
+      "key": "approve",
+      "label": "Approve",
+      "confirm": "Approve this airline? They will be able to post openings immediately. Only a pending airline can be approved — one already approved or rejected will be refused.",
+      "visibleWhen": { "field": "approval_status", "equals": "pending" },
+      "kind": "httpCall",
+      "method": "POST",
+      "url": "http://localhost:3002/repanel/airlines/{id}/approve"
+    }
+  ]
+}

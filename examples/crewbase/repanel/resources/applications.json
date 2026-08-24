@@ -1,0 +1,43 @@
+{
+  "key": "applications",
+  "label": { "singular": "Application", "plural": "Applications" },
+  "source": { "table": "applications" },
+  "primaryKey": "id",
+  "icon": "file",
+  "readOnly": true,
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "candidate_id", "label": "Candidate", "type": "relation", "target": "candidates" },
+    { "key": "opening_id", "label": "Opening", "type": "relation", "target": "job_openings" },
+    {
+      "key": "status",
+      "label": "Status",
+      "type": "enum",
+      "values": ["submitted", "screening", "interview", "offer", "hired", "rejected"],
+      "tones": { "offer": "positive", "hired": "positive", "rejected": "critical" }
+    },
+    { "key": "created_at", "label": "Applied", "type": "dateTime" }
+  ],
+  "relationships": [
+    { "key": "candidate", "kind": "belongsTo", "target": "candidates", "foreignKey": "candidate_id" },
+    { "key": "opening", "kind": "belongsTo", "target": "job_openings", "foreignKey": "opening_id" }
+  ],
+  "views": {
+    "table": {
+      "columns": ["candidate_id", "opening_id", "status", "created_at"],
+      "defaultSort": { "field": "created_at", "direction": "desc" },
+      "filters": [
+        { "field": "status", "kind": "enum" },
+        { "field": "candidate_id", "kind": "relation" },
+        { "field": "opening_id", "kind": "relation" },
+        { "field": "created_at", "kind": "dateRange" }
+      ]
+    },
+    "detail": {
+      "sections": [
+        { "title": "Application", "fields": ["candidate_id", "opening_id", "status", "created_at"] }
+      ]
+    }
+  },
+  "actions": []
+}

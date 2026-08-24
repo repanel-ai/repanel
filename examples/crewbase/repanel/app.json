@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.1",
+  "app": { "name": "Crewbase Admin" },
+  "navigation": [
+    { "label": "Marketplace", "resources": ["airlines", "job_openings"] },
+    { "label": "People", "resources": ["candidates", "applications"] },
+    { "label": "Internal", "resources": ["users"] }
+  ]
+}

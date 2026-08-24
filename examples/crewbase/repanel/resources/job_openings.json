@@ -1,0 +1,44 @@
+{
+  "key": "job_openings",
+  "label": { "singular": "Opening", "plural": "Openings" },
+  "source": { "table": "job_openings" },
+  "primaryKey": "id",
+  "labelField": "title",
+  "icon": "tag",
+  "readOnly": true,
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "airline_id", "label": "Airline", "type": "relation", "target": "airlines" },
+    { "key": "title", "label": "Title", "type": "text" },
+    {
+      "key": "status",
+      "label": "Status",
+      "type": "enum",
+      "values": ["draft", "open", "closed"],
+      "tones": { "open": "positive" }
+    },
+    { "key": "created_at", "label": "Created", "type": "dateTime" }
+  ],
+  "relationships": [
+    { "key": "airline", "kind": "belongsTo", "target": "airlines", "foreignKey": "airline_id" },
+    { "key": "applications", "kind": "hasMany", "target": "applications", "foreignKey": "opening_id" }
+  ],
+  "views": {
+    "table": {
+      "columns": ["title", "airline_id", "status", "created_at"],
+      "defaultSort": { "field": "created_at", "direction": "desc" },
+      "search": ["title"],
+      "filters": [
+        { "field": "status", "kind": "enum" },
+        { "field": "airline_id", "kind": "relation" },
+        { "field": "created_at", "kind": "dateRange" }
+      ]
+    },
+    "detail": {
+      "sections": [{ "title": "Opening", "fields": ["title", "airline_id", "status", "created_at"] }],
+      "relatedLists": ["applications"],
+      "relatedLayout": "inline"
+    }
+  },
+  "actions": []
+}

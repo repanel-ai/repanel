@@ -402,3 +402,42 @@ object anywhere in RePanel — the app's mark, the project's mark, and the one
 control where there is exactly one thing to go ahead with. An accent that was
 one warm thing among warm things is now the only one, which is what an accent is
 for.
+
+038 · 2026-08 · Actions gain a precondition: an optional `visibleWhen` on any
+action, naming one field of the same record and saying exactly one thing about
+it — `{ field, equals: <string | number | boolean> }` or
+`{ field, isSet: true }`. The runtime reads it against the record on screen and
+does not draw an action whose condition does not hold. This is the first rung of
+#010's "fixed-vocabulary preconditions", and it is a rung and not a door: no
+`and`, no `or`, no negation, no comparison between two fields, and never an
+expression language. Anything one comparison cannot say is a rule, and #010
+already says where a rule lives.
+
+**Driven by checkpoint D.** Crewbase's `approve` calls an endpoint that refuses
+anything not `pending` with a 409, and the admin drew that button on every
+airline — so the honest answer to "approve an already-approved airline" was an
+error toast. The definition knew the rule; it is written out in the `confirm`
+sentence. It had no way to say it anywhere the runtime could read it.
+
+**UI-only, and that is the whole of it.** The server does not enforce
+`visibleWhen`. An action is still run by key, and what refuses it is what
+refused it before — validation and the target column for a `dbUpdate`, the
+customer's own endpoint for an `httpCall`. Both still refuse a request this
+screen never drew, which is #027's defense in depth applied to a rule that now
+has two statements of itself. The definition may be wrong; the endpoint may not.
+
+**A precondition may not read a `sensitive` field.** Whether a button is drawn
+is visible to everyone who opens the record, so a condition on a secret is the
+interactive oracle #014 refuses a filter for — the same value probed one record
+at a time, without ever rendering it. `hidden` stays legal: a precondition reads
+a value and never renders one, and #014's line between a display flag and a
+security one is not blurred here either. Hints name safe fixes only (#015).
+
+**"Exactly one condition" is a referential check, not a union.** The schema
+admits both keys and the second pass refuses zero or two of them, because a zod
+union failure can only say the object matched no arm, and #008 is worth more
+than a tighter inferred type. Saying both is the mistake worth its own sentence:
+it is where an author starts writing a rule in the wrong file.
+
+Additive by construction (#012): an action with no `visibleWhen` is offered
+exactly as every action written before this one was.

@@ -3,10 +3,12 @@ import { formatList, type ValidationError } from "./errors.js";
 import type { Field } from "./fields.js";
 import { unknownField, type FieldEntry } from "./reference-errors.js";
 import type { Resource } from "./schema.js";
+import { checkVisibleWhen } from "./visibility-checks.js";
 
 /**
  * Every field an action names must exist, be safe to write from the admin, and
- * — for an `httpCall` — be safe to put in a URL.
+ * — for an `httpCall` — be safe to put in a URL. An action's precondition names
+ * a field too, and is checked the same way.
  */
 export function checkActions(
   resource: Resource,
@@ -18,6 +20,10 @@ export function checkActions(
 
   resource.actions.forEach((action, index) => {
     const actionAt = `${at}.actions[${index}]`;
+
+    if (action.visibleWhen) {
+      errors.push(...checkVisibleWhen(action.visibleWhen, resource, actionAt, fields, fieldKeys));
+    }
 
     if (action.kind === "dbUpdate") {
       const entry = fields.get(action.field);

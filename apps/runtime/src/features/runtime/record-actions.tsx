@@ -1,4 +1,4 @@
-import type { Action, RecordId, Resource } from "@repanel/contracts";
+import type { Action, RecordId } from "@repanel/contracts";
 import { Button, Dialog, Toast, ToastViewport } from "@repanel/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "../../lib/api-client";
@@ -21,8 +21,10 @@ interface Notice {
 
 export interface RecordActionsProps {
   projectKey: string;
-  resource: Resource;
+  resourceKey: string;
   recordId: RecordId;
+  /** The ones this record is offered — which is not always all of them. */
+  actions: readonly Action[];
 }
 
 /**
@@ -36,11 +38,11 @@ export interface RecordActionsProps {
  * sentence is the whole of the dialog: it is the author's warning, in the
  * author's words, and the runtime adds nothing to it.
  */
-export function RecordActions({ projectKey, resource, recordId }: RecordActionsProps) {
+export function RecordActions({ projectKey, resourceKey, recordId, actions }: RecordActionsProps) {
   const [asking, setAsking] = useState<Action | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const nextNotice = useRef(0);
-  const run = useRunAction(projectKey, resource.key, recordId);
+  const run = useRunAction(projectKey, resourceKey, recordId);
 
   const dismiss = useCallback(
     (id: number) => setNotices((open) => open.filter((notice) => notice.id !== id)),
@@ -77,7 +79,7 @@ export function RecordActions({ projectKey, resource, recordId }: RecordActionsP
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        {resource.actions.map((action) => (
+        {actions.map((action) => (
           <Button key={action.key} variant="outline" onClick={() => setAsking(action)}>
             {action.label}
           </Button>

@@ -331,6 +331,20 @@ describe("the record page", () => {
       expect(offered).toEqual(declared);
     });
 
+    /**
+     * The definition offers `suspend` on an active user and nowhere else, so an
+     * invited one is not handed a button whose only answer would be a refusal.
+     * The rule itself is unmoved: the column and the endpoint behind an action
+     * still refuse a request this screen never drew.
+     */
+    it("withholds an action whose precondition this record does not meet", async () => {
+      await loaded(renderAdmin("/a/acme/r/users/u_2", { record: sparseUserRecord }));
+
+      expect(screen.queryByRole("button", { name: "Suspend" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Deactivate" })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Resend invite" })).toBeDefined();
+    });
+
     it("asks nothing until it is asked to", async () => {
       await loaded(renderAdmin("/a/acme/r/users/u_1"));
 
@@ -419,6 +433,22 @@ describe("the record page", () => {
       const badge = await screen.findByText("suspended");
       expect(badge.dataset.tone).toBe("critical");
       expect(screen.queryByText("active")).toBeNull();
+    });
+
+    /** And with the state, what may be done to the record in it. */
+    it("stops offering an action once the record has moved past it", async () => {
+      const suspended: RecordDto = {
+        ...userRecord,
+        values: { ...userRecord.values, status: "suspended" },
+      };
+      await loaded(renderAdmin("/a/acme/r/users/u_1", { recordAfterAction: suspended }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+
+      await screen.findByText("suspended");
+      expect(screen.queryByRole("button", { name: "Suspend" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Deactivate" })).toBeDefined();
     });
 
     describe("when the action does not go through", () => {

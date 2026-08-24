@@ -3,9 +3,9 @@ import type { DefinitionInput } from "../schema.js";
 /**
  * Reference definition for a small SaaS: organizations own users, users place
  * orders. Exercises every v0 concept — every field type, enum tones, hidden
- * and sensitive fields, both relationship kinds, both action kinds, and
- * navigation groups. `users` carries one field of each type on purpose: it is
- * the record every renderer is reviewed against.
+ * and sensitive fields, both relationship kinds, both action kinds, an action
+ * precondition, and navigation groups. `users` carries one field of each type
+ * on purpose: it is the record every renderer is reviewed against.
  */
 export const saasDefinition: DefinitionInput = {
   schemaVersion: "0.1",
@@ -129,6 +129,11 @@ export const saasDefinition: DefinitionInput = {
           key: "suspend",
           label: "Suspend",
           confirm: "Suspend this user? They lose access immediately.",
+          // There is nothing to suspend a user out of but access they have, so
+          // the button is offered on an active one and nowhere else. The other
+          // two actions say nothing, which is how every action read before
+          // preconditions existed.
+          visibleWhen: { field: "status", equals: "active" },
           kind: "dbUpdate",
           field: "status",
           value: "suspended",

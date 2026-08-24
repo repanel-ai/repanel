@@ -270,8 +270,45 @@ required, because every action is a write against a read-only resource.
 | `dbUpdate` | `field`, `value` | Sets one field to one literal. The target must be an `enum` field (the literal is one of its `values`) or a `boolean` field (the literal is `true` or `false`), and never a `sensitive` field. |
 | `httpCall` | `method`, `url` | Calls the customer's application. `{field_key}` placeholders are filled from the record; every placeholder must name a field of the resource, and never a `sensitive` one. No request body in v0. |
 
-Business logic belongs in the customer's application: anything conditional or
-multi-step is an endpoint invoked by `httpCall`, not configuration here.
+Business logic belongs in the customer's application: anything multi-step, or
+conditional beyond the single comparison `visibleWhen` allows, is an endpoint
+invoked by `httpCall`, not configuration here.
+
+### `visibleWhen`
+
+An action may state one precondition, and is then offered only on a record that
+meets it — so an operator is not handed a button whose only answer is a refusal.
+
+```json
+{
+  "key": "approve",
+  "label": "Approve",
+  "confirm": "Approve this airline? They can post openings immediately.",
+  "visibleWhen": { "field": "approval_status", "equals": "pending" },
+  "kind": "httpCall",
+  "method": "POST",
+  "url": "https://api.crewbase.example/repanel/airlines/{id}/approve"
+}
+```
+
+It names a field of the same resource and says exactly one thing about it —
+never both forms, never neither:
+
+| Form | Holds when |
+|---|---|
+| `{ "field": …, "equals": <string, number or boolean> }` | the field holds exactly that value; nothing is coerced across types |
+| `{ "field": …, "isSet": true }` | the field is not null — for a `relation`, that it points at a record |
+
+The field may not be `sensitive`: whether a button is drawn is visible to
+everyone who opens the record, so a condition on a secret answers questions
+about it one record at a time. A `hidden` field is allowed — a precondition
+reads a value, it never renders one.
+
+**`visibleWhen` decides what is drawn, and nothing else.** The server does not
+enforce it: an action is run by key, and what refuses it is what refused it
+before — validation and the target column for a `dbUpdate`, the customer's own
+endpoint for an `httpCall`. State the rule where it is enforced and describe it
+here; never move it here.
 
 ## Validation
 
@@ -305,21 +342,24 @@ then checks what a schema cannot express:
 
 - every navigation entry, column, sort field, search field, filter field,
   section field, related list, relationship target, relation-field target,
-  primary key, label field, `dbUpdate` field and `httpCall` URL placeholder
-  names something that exists;
+  primary key, label field, `dbUpdate` field, `httpCall` URL placeholder and
+  `visibleWhen` field names something that exists;
 - resource, field, relationship and action keys are unique;
 - a `belongsTo` foreign key exists on the declaring resource, a `hasMany`
   foreign key on the target;
 - searchable fields are text-typed and filter kinds match field types;
 - a detail view asking for the `tabs` layout names at least one related list;
 - sensitive fields never appear as table columns, search fields, filters or
-  the default sort, never inside an `httpCall` URL template, and are never a
-  resource's primary key, its label field, or a relationship's foreign key;
+  the default sort, never inside an `httpCall` URL template, never decide
+  whether an action is offered, and are never a resource's primary key, its
+  label field, or a relationship's foreign key;
 - hidden fields never appear as table columns, search fields, filters, the
   default sort or the label field — detail sections may still use them;
 - a label field reads as a name: never a `json` or `relation` field;
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
   writes one of the enum's values or a boolean literal;
+- a `visibleWhen` states exactly one of `equals` or `isSet`, and on an `enum`
+  field compares against one of that field's declared values;
 - every key of an enum's `tones` map is one of that enum's declared `values`.
 
 A structural failure skips the referential pass: those checks need a
@@ -342,6 +382,12 @@ field, and never a `sensitive` one. Text, numbers, dates, JSON and relations are
 excluded on purpose: setting them almost always carries rules — validation, side
 effects, cascades — that belong to the application rather than the admin.
 Express those as an endpoint invoked by an `httpCall` action (DECISIONS #010).
+
+**Preconditions.** `visibleWhen` is one comparison against one field of the same
+record, and there is no `and`, no `or`, no negation and no comparison between
+two fields. There is also no way to say why a record was passed over — an action
+that does not apply is simply absent. Anything more is a rule, and a rule lives
+in the endpoint the action calls (DECISIONS #010).
 
 ## Compatibility
 

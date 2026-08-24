@@ -298,13 +298,14 @@ already. The convention (DECISIONS #013):
 example of exactly this: middleware, one endpoint, and the rule in the feature
 that owns it rather than in the controller.
 
-Then the action is four lines of definition:
+Then the action is a few lines of definition:
 
 ```json
 {
   "key": "approve",
   "label": "Approve",
   "confirm": "Approve this airline? They will be able to post openings immediately.",
+  "visibleWhen": { "field": "approval_status", "equals": "pending" },
   "kind": "httpCall",
   "method": "POST",
   "url": "https://api.crewbase.example/repanel/airlines/{id}/approve"
@@ -314,6 +315,17 @@ Then the action is four lines of definition:
 `{field_key}` placeholders are filled from the record, and never from a
 sensitive field. Write `confirm` as a sentence that tells an operator what will
 actually happen — it is the last thing they read before it happens.
+
+**Say when the action applies.** Where the endpoint refuses in some state — the
+approve above answers `409` for an airline that is not `pending` — add a
+`visibleWhen`, and the button is drawn only on records it would work on. This
+repeats what the endpoint already knows; it never moves the rule. The endpoint
+still refuses, and it is still the only thing that does.
+
+`visibleWhen` says exactly one thing about one non-sensitive field of the same
+resource: `equals` a value, or `isSet`. Anything needing two conditions, a
+comparison between two fields, or a reason to be given for the refusal is a
+rule — put it in the endpoint, where it can be tested (DECISIONS #010).
 
 ---
 

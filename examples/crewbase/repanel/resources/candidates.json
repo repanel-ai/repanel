@@ -1,0 +1,83 @@
+{
+  "key": "candidates",
+  "label": { "singular": "Candidate", "plural": "Candidates" },
+  "source": { "table": "candidates" },
+  "primaryKey": "id",
+  "labelField": "name",
+  "icon": "users",
+  "readOnly": true,
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "name", "label": "Name", "type": "text" },
+    { "key": "email", "label": "Email", "type": "email" },
+    {
+      "key": "type",
+      "label": "Discipline",
+      "type": "enum",
+      "values": ["pilot", "cabin_crew", "engineer", "dispatcher"]
+    },
+    {
+      "key": "status",
+      "label": "Status",
+      "type": "enum",
+      "values": ["new", "screening", "verified", "placed", "rejected"],
+      "tones": { "verified": "positive", "placed": "positive", "rejected": "critical" }
+    },
+    { "key": "profile", "label": "Recruiter profile", "type": "json" },
+    { "key": "airline_id", "label": "Placed with", "type": "relation", "target": "airlines" },
+    { "key": "deleted_at", "label": "Deleted at", "type": "dateTime", "hidden": true },
+    { "key": "created_at", "label": "Created", "type": "dateTime" }
+  ],
+  "relationships": [
+    { "key": "airline", "kind": "belongsTo", "target": "airlines", "foreignKey": "airline_id" },
+    { "key": "applications", "kind": "hasMany", "target": "applications", "foreignKey": "candidate_id" }
+  ],
+  "views": {
+    "table": {
+      "columns": ["name", "email", "type", "status", "airline_id", "created_at"],
+      "defaultSort": { "field": "created_at", "direction": "desc" },
+      "search": ["name", "email"],
+      "filters": [
+        { "field": "status", "kind": "enum" },
+        { "field": "type", "kind": "enum" },
+        { "field": "airline_id", "kind": "relation" },
+        { "field": "created_at", "kind": "dateRange" }
+      ]
+    },
+    "detail": {
+      "sections": [
+        { "title": "Candidate", "fields": ["name", "email", "type", "status", "created_at"] },
+        { "title": "Placement", "fields": ["airline_id", "deleted_at"] },
+        { "title": "Recruiter profile", "fields": ["profile"] }
+      ],
+      "relatedLists": ["applications"],
+      "relatedLayout": "inline"
+    }
+  },
+  "actions": [
+    {
+      "key": "move_to_screening",
+      "label": "Move to screening",
+      "confirm": "Move this candidate to screening? They will appear in the screening queue for a coordinator to work through.",
+      "kind": "dbUpdate",
+      "field": "status",
+      "value": "screening"
+    },
+    {
+      "key": "mark_verified",
+      "label": "Mark verified",
+      "confirm": "Mark this candidate verified? Their licences and references are confirmed and they become placeable against open seats.",
+      "kind": "dbUpdate",
+      "field": "status",
+      "value": "verified"
+    },
+    {
+      "key": "reject",
+      "label": "Reject",
+      "confirm": "Reject this candidate? They stay in the system but are no longer considered for placements.",
+      "kind": "dbUpdate",
+      "field": "status",
+      "value": "rejected"
+    }
+  ]
+}

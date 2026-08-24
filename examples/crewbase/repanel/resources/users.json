@@ -1,0 +1,39 @@
+{
+  "key": "users",
+  "label": { "singular": "Staff member", "plural": "Staff" },
+  "source": { "table": "users" },
+  "primaryKey": "id",
+  "labelField": "name",
+  "icon": "shield",
+  "readOnly": true,
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "name", "label": "Name", "type": "text" },
+    { "key": "email", "label": "Email", "type": "email" },
+    {
+      "key": "status",
+      "label": "Status",
+      "type": "enum",
+      "values": ["invited", "active", "suspended"],
+      "tones": { "active": "positive", "invited": "attention", "suspended": "critical" }
+    },
+    { "key": "password_hash", "label": "Password hash", "type": "text", "sensitive": true },
+    { "key": "created_at", "label": "Created", "type": "dateTime" }
+  ],
+  "relationships": [],
+  "views": {
+    "table": {
+      "columns": ["name", "email", "status", "created_at"],
+      "defaultSort": { "field": "created_at", "direction": "desc" },
+      "search": ["name", "email"],
+      "filters": [
+        { "field": "status", "kind": "enum" },
+        { "field": "created_at", "kind": "dateRange" }
+      ]
+    },
+    "detail": {
+      "sections": [{ "title": "Staff member", "fields": ["name", "email", "status", "created_at"] }]
+    }
+  },
+  "actions": []
+}

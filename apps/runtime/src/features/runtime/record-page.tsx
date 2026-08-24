@@ -3,6 +3,7 @@ import { labelFieldOf } from "@repanel/contracts";
 import { ArrowLeftIcon, Badge, CopyButton, FieldRow, Fields, Section } from "@repanel/ui";
 import { Link, useLocation, useParams, type To } from "react-router";
 import { ApiError } from "../../lib/api-client";
+import { visibleActions } from "./action-visibility";
 import { DetailValue } from "./detail-value";
 import { headerStatusField, relatedListsOf, sectionFields, type RelatedList as Related } from "./detail-layout";
 import { ErrorState } from "./error-state";
@@ -156,6 +157,10 @@ function RecordScreen({
  * What can be done to the record sits opposite what it is, on the header rather
  * than on a panel: the header identifies the record and does not move between
  * tabs, and neither does what may be done to it (DESIGN.md §9).
+ *
+ * What may be done is read against the record itself: an action the definition
+ * offers only in some state is drawn only in that state, and a record with
+ * nothing left to do to it wears no buttons at all.
  */
 function RecordHeader({
   projectKey,
@@ -168,6 +173,7 @@ function RecordHeader({
 }) {
   const status = headerStatusField(resource);
   const state = status ? record.values[status.key] : undefined;
+  const offered = visibleActions(resource.actions, record.values);
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2.5">
@@ -187,8 +193,13 @@ function RecordHeader({
         </CopyButton>
       </div>
 
-      {resource.actions.length > 0 && (
-        <RecordActions projectKey={projectKey} resource={resource} recordId={record.id} />
+      {offered.length > 0 && (
+        <RecordActions
+          projectKey={projectKey}
+          resourceKey={resource.key}
+          recordId={record.id}
+          actions={offered}
+        />
       )}
     </div>
   );

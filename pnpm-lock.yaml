@@ -270,9 +270,6 @@ importers:
       '@repanel/engine':
         specifier: workspace:*
         version: link:../engine
-      pg:
-        specifier: ^8.16.3
-        version: 8.23.0
     devDependencies:
       '@repanel/runtime':
         specifier: workspace:*

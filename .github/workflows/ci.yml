@@ -34,9 +34,14 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgres://repanel:repanel@localhost:5432/repanel
       # Set here and never conditionally: this is what stops the env-gated
       # suites from skipping in CI, which is the whole point of the job.
+      #
+      # It is also the *only* database variable this job may set. `DATABASE_URL`
+      # in particular must stay unset: the CLI proves it reads an env file
+      # without loading it by asserting that `process.env.DATABASE_URL` is still
+      # undefined afterwards, and an ambient one makes that proof fail. Nothing
+      # in the suite connects to a database of RePanel's own anyway.
       TEST_CUSTOMER_DATABASE_URL: postgres://repanel:repanel@localhost:5432/repanel
 
     steps:

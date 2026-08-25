@@ -1,4 +1,9 @@
-import { listRecordsQuerySchema, type ListRecordsQuery } from "@repanel/contracts";
+import {
+  listRecordsQuerySchema,
+  optionsQuerySchema,
+  type ListRecordsQuery,
+  type OptionsQuery,
+} from "@repanel/contracts";
 
 /** `filter[status]`, or `filter[created_at][from]` — the two shapes a table asks in. */
 const FILTER_PARAM = /^filter\[([^\]]+)\](?:\[(from|to)\])?$/;
@@ -64,4 +69,22 @@ function repeated(existing: unknown, value: string): unknown {
 
 function isRange(value: unknown): boolean {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * What a picker is asking, read off the same query string. There is nothing to
+ * rebuild here — a box holds one value — so this is the schema and the same
+ * refusal, said the same way.
+ */
+export function readOptionsQuery(params: URLSearchParams): OptionsQuery {
+  const asked: Record<string, unknown> = {};
+  for (const [key, value] of params) asked[key] = repeated(asked[key], value);
+
+  const parsed = optionsQuerySchema.safeParse(asked);
+  if (!parsed.success) {
+    throw new UnreadableQueryError(
+      parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
+    );
+  }
+  return parsed.data;
 }

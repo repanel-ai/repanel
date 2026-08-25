@@ -2,6 +2,7 @@ export { Badge, type BadgeProps, type BadgeTone } from "./badge";
 export { Button, buttonClasses, type ButtonProps, type ButtonSize, type ButtonVariant } from "./button";
 export { Card, type CardProps } from "./card";
 export { cn } from "./class-names";
+export { Combobox, type ComboboxOption, type ComboboxProps } from "./combobox";
 export { ControlShell, type ControlShellProps } from "./control-shell";
 export { CopyButton, type CopyButtonProps } from "./copy-button";
 export { Dialog, type DialogProps } from "./dialog";

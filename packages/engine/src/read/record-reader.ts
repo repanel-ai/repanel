@@ -1,15 +1,17 @@
 import {
   formatList,
   type ListRecordsQuery,
+  type OptionsQuery,
   type RecordDto,
   type RecordId,
   type RecordListDto,
+  type RecordOptionDto,
   type Relationship,
   type Resource,
 } from "@repanel/contracts";
 import type { Pool, QueryResult } from "pg";
 import { InvalidQueryError, NotFoundError, QueryTimeoutError, type DomainError } from "../errors.js";
-import { identityField, indexFields, requireField } from "../query/fields.js";
+import { identityField, indexFields, labelField, requireField } from "../query/fields.js";
 import {
   LOOKUP_ALIAS,
   QueryBuilder,
@@ -18,7 +20,7 @@ import {
   type Query,
 } from "../query/query-builder.js";
 import { requireResource } from "../resources.js";
-import { toRecordDtos, toTotal } from "./records.mapper.js";
+import { toOptionDtos, toRecordDtos, toTotal } from "./records.mapper.js";
 
 /** The customer's database ran out of the time the pool gave the statement. */
 const STATEMENT_TIMEOUT = "57014";
@@ -73,6 +75,35 @@ export class RecordReader {
     const [record] = toRecordDtos(result, query.select, resource.primaryKey);
     if (!record) throw new NotFoundError("Record not found");
     return record;
+  }
+
+  /**
+   * The records a relation may be pointed at, for the picker that chooses one.
+   *
+   * It answers with keys and names and nothing else — no view, no page, no
+   * count — because that is the whole of what a picker draws. What it may read
+   * is decided in the statement it runs (`optionsStatement`), which refuses a
+   * sensitive key and a sensitive label the way every other read does.
+   */
+  async listOptions(
+    context: ReadContext,
+    resourceKey: string,
+    query: OptionsQuery,
+  ): Promise<RecordOptionDto[]> {
+    const resource = requireResource(context.resources, resourceKey);
+
+    const statement = this.queries.options(resource, query.q);
+    // Both sides of the comparison are text — a label that is not one is read
+    // as text — so there is no term here a column could fail to hold. The
+    // sentence stands because running a statement means saying what a value the
+    // database refuses would have been.
+    const result = await this.execute(
+      context,
+      statement,
+      () => new InvalidQueryError("A search term is not one this resource can be matched against."),
+    );
+
+    return toOptionDtos(result, labelField(resource));
   }
 
   /**

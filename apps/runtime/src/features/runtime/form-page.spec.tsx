@@ -1,4 +1,10 @@
-import type { Definition, RecordDto, UserDto, ValidationError } from "@repanel/contracts";
+import type {
+  Definition,
+  RecordDto,
+  RecordOptionDto,
+  UserDto,
+  ValidationError,
+} from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -10,6 +16,7 @@ import {
   adminEditing,
   adminKeyedByClient,
   orderRecords,
+  organizationOptions,
   organizationRecord,
   organizationRecords,
   sparseUserRecord,
@@ -200,33 +207,41 @@ describe("the form", () => {
 
   /**
    * A relation is written as the key of another record and read as a label
-   * belonging to it. v1 types the key, so the label is shown under the input —
-   * wearing the mark every relation in this admin wears — for as long as the
-   * key is still the one it belongs to.
+   * belonging to it. The form opens on the label, because that is what the
+   * record it was drawn from carries — an operator sees which record this one
+   * points at before they change it.
    */
-  it("opens a relation on the key it points at, and says what that is", async () => {
+  it("opens a relation on the name of the record it points at", async () => {
     renderAdmin("/a/acme/r/users/u_1/edit");
 
-    expect(await screen.findByLabelText("Organization")).toHaveProperty("value", "o_1");
-    const label = screen.getByText("Northwind Labs");
-    expect(label.dataset.slot).toBe("relation");
-
-    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "o_2" } });
-    expect(screen.queryByText("Northwind Labs")).toBeNull();
+    expect(await screen.findByLabelText("Organization")).toHaveProperty(
+      "value",
+      "Northwind Labs",
+    );
   });
 
-  /**
-   * The note is the only thing that says what a bare key points at, so a
-   * control that did not carry it would be handing a screen reader a box with
-   * no explanation in it.
-   */
-  it("points the control at what is said about its value", async () => {
-    renderAdmin("/a/acme/r/users/u_1/edit");
-
+  it("writes the key of the record that was chosen by name", async () => {
+    const { calls } = renderAdmin("/a/acme/r/users/u_1/edit");
     const relation = await screen.findByLabelText("Organization");
-    const said = relation.getAttribute("aria-describedby");
-    expect(said).not.toBeNull();
-    expect(document.getElementById(said as string)?.textContent).toContain("Northwind Labs");
+
+    fireEvent.keyDown(relation, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "Ridgeline" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(written(calls)).toEqual({ values: { organization_id: "o_2" } }));
+  });
+
+  /** A search over names cannot find a record nobody named, and an operator
+   *  who already has the key must not be stopped by that. */
+  it("takes a key that was typed where no record was found under it", async () => {
+    const { calls } = renderAdmin("/a/acme/r/users/u_1/edit", { options: [] });
+    const relation = await screen.findByLabelText("Organization");
+
+    fireEvent.change(relation, { target: { value: "o_9" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Use key o_9" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(written(calls)).toEqual({ values: { organization_id: "o_9" } }));
   });
 
   describe("a value that may be nothing", () => {
@@ -776,6 +791,8 @@ interface AdminOptions {
    * the write.
    */
   keepsFresh?: boolean;
+  /** What the picker over the relation's target is answered with. */
+  options?: RecordOptionDto[];
 }
 
 interface Call {
@@ -816,6 +833,7 @@ function renderAdmin(path: string, options: AdminOptions = {}): Rendered {
       return json(method === "POST" ? { ...record, id: "u_9" } : record);
     }
 
+    if (url.includes("/options")) return json(options.options ?? organizationOptions);
     if (url.includes("/related/")) return json(page([]));
     if (url.includes("/records/")) return json(options.record ?? userRecord);
     if (url.includes("/records")) return json(page(options.records ?? userRecords));

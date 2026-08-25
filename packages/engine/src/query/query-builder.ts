@@ -11,6 +11,7 @@ import { ROW_ALIAS, selectFields, type SelectEntry } from "./columns.js";
 import { filterConditions, searchCondition } from "./conditions.js";
 import { identityField, indexFields, listFields } from "./fields.js";
 import { column, quoteIdentifier } from "./identifier.js";
+import { optionsStatement } from "./options.js";
 import { Parameters } from "./parameters.js";
 import { insertStatement, updateStatement, type Assignment } from "./write-statements.js";
 
@@ -158,6 +159,17 @@ export class QueryBuilder {
       values: parameters.values(),
       select: [],
     };
+  }
+
+  /**
+   * The records a relation may be pointed at: each one's key, and the name it
+   * is chosen by. It is built beside the write statements rather than here for
+   * the same reason they are — the file it lives in is what a review of the
+   * rules reads — and it comes through this builder because every statement
+   * does (DECISIONS #024).
+   */
+  options(resource: Resource, term?: string): Query {
+    return optionsStatement(resource, term);
   }
 
   /**

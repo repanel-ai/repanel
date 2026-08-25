@@ -16,6 +16,7 @@ describe("RuntimeController", () => {
     listRecords: jest.fn().mockResolvedValue({ records: [], total: 0, page: 2, pageSize: 10 }),
     getRecord: jest.fn().mockResolvedValue({ id: "user-1", values: {} }),
     listRelated: jest.fn().mockResolvedValue({ records: [], total: 0, page: 2, pageSize: 10 }),
+    listOptions: jest.fn().mockResolvedValue([{ id: "org-1", label: "Acme" }]),
   };
   const controller = new RuntimeController(runtime as unknown as RuntimeService);
 
@@ -35,6 +36,14 @@ describe("RuntimeController", () => {
     await controller.record(USER, "crewbase-a3k9x2", "users", "user-1");
 
     expect(runtime.getRecord).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "users", "user-1");
+  });
+
+  it("passes a picker's question through as it was parsed", async () => {
+    await controller.options(USER, "crewbase-a3k9x2", "organizations", { q: "acm" });
+
+    expect(runtime.listOptions).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "organizations", {
+      q: "acm",
+    });
   });
 
   it("passes a related request through", async () => {

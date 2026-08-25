@@ -1,4 +1,4 @@
-import type { Field, Resource } from "@repanel/contracts";
+import { labelFieldOf, type Field, type Resource } from "@repanel/contracts";
 import { UnservableResourceError } from "../errors.js";
 
 /** A resource's fields, by key. Referential validation has already run. */
@@ -33,6 +33,24 @@ export function identityField(resource: Resource): Field {
   if (field.sensitive) {
     throw new UnservableResourceError(
       `Resource \`${resource.key}\` cannot be served: its primary key \`${field.key}\` is marked sensitive.`,
+    );
+  }
+  return field;
+}
+
+/**
+ * The field a record is named by wherever the admin names one rather than
+ * showing it — a relation column, a related list, a picker's list of records to
+ * point at. A sensitive one is refused: a label is read in lists that belong to
+ * *other* resources, so a resource that has made a secret of its name cannot be
+ * pointed at at all. Validation rejects this too — this is the same rule
+ * standing where a query is built, for a definition stored before it existed.
+ */
+export function labelField(resource: Resource): Field {
+  const field = requireField(indexFields(resource), labelFieldOf(resource), resource);
+  if (field.sensitive) {
+    throw new UnservableResourceError(
+      `Resource \`${resource.key}\` cannot be pointed at: its label field \`${field.key}\` is marked sensitive.`,
     );
   }
   return field;

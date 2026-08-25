@@ -129,6 +129,25 @@ test("a related list is a page of the target resource", async () => {
   assert.match(api.pool.texts().join("\n"), /from "orders"/);
 });
 
+test("a picker's options are served the way the hosted API serves them", async () => {
+  api.pool.statements.length = 0;
+  const response = await get("/api/runtime/local/resources/organizations/options?q=acme");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), [{ id: "value-c0", label: "value-c1" }]);
+  assert.match(
+    api.pool.texts()[0] ?? "",
+    /^select "t"\."id" as "c0", "t"\."name" as "c1" from "organizations"/,
+  );
+});
+
+test("a picker's box is a query string like any other, and a typo in it is refused", async () => {
+  const response = await get("/api/runtime/local/resources/organizations/options?query=acme");
+
+  assert.equal(response.status, 400);
+  assert.equal(((await response.json()) as { error: { code: string } }).error.code, "bad_request");
+});
+
 test("an action the definition declares runs against the record", async () => {
   api.pool.statements.length = 0;
   const response = await fetch(`${origin}/api/runtime/local/resources/users/records/u_1/actions/suspend`, {

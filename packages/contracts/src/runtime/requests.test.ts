@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { listRecordsQuerySchema } from "./requests.js";
+import { listRecordsQuerySchema, optionsQuerySchema } from "./requests.js";
 
 /**
  * Every value here arrives the way express hands a query string over: as text,
@@ -58,4 +58,18 @@ test("listRecords refuses a parameter nobody recognizes", () => {
 
 test("listRecords refuses a filter key that could not name a field", () => {
   assert.equal(errorsFor({ filter: { 'status" or "1': "active" } }).length, 1);
+});
+
+test("options reads the box somebody is typing into", () => {
+  assert.deepEqual(optionsQuerySchema.parse({ q: " acme " }), { q: "acme" });
+});
+
+test("options treats an empty box as no search at all", () => {
+  assert.equal(optionsQuerySchema.parse({ q: "   " }).q, undefined);
+  assert.deepEqual(optionsQuerySchema.parse({}), {});
+});
+
+test("options refuses a parameter it does not recognize", () => {
+  const result = optionsQuerySchema.safeParse({ q: "acme", limit: "500" });
+  assert.equal(result.success, false);
 });

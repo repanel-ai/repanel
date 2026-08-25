@@ -1280,3 +1280,51 @@ unchanged, and the second wall is what stands between it and a write.
 creates no records is a validation error rather than a harmless extra: it is an
 author who believes they opened something, and silence would be the only answer
 they got.
+
+060 · 2026-08 · A relation is chosen from a list of records, and the list is a
+battery: the engine gains one read shape — `options(resource, q?)`, the primary
+key and the `labelField`, matched with ILIKE on the label, hard-limited to 20 —
+and every place a relation is set spends it. The form's field and the table's
+filter are the same control over the same list; there is nothing in the
+definition to configure, because the only thing a picker needs was already
+declared for the relation column that renders the label. Why: #058's gate asks
+"could RePanel do this as a battery instead?", and here the answer was yes with
+no customer-side surface at all. What it replaces was in SCHEMA.md's known
+limitations as a box an operator typed a key into — the one control in the admin
+that asked a human to know a uuid.
+
+**It reads exactly one column, and it is the column the admin already shows.**
+An options list could have searched several fields, or the key, or every text
+column; it searches the label and stops. #014 rules that a filter and a search
+are interactive oracles, so the columns they may probe are the ones whose values
+this admin already renders — and the label is the one column guaranteed to be
+that, everywhere a relation appears. The two guards that make it true are the
+ones every other read meets (`identityField`, `labelField`), and they stand in
+the query builder as well as in the validator, for a definition stored before
+the rules existed.
+
+**Twenty, and the number is ours.** The caller does not get to raise it, so an
+options list is bounded work whoever is asking and whatever they type; a picker
+that has more than twenty matches says so and asks for more typing. It is not a
+page, because a list read at a glance and narrowed by typing has no second page
+— that is a table, and a table is what the resource's own screen is for.
+
+**The key an operator has still works, and it is offered exactly when it is the
+only reading left.** A search that comes back with nothing gets one row: what was
+typed, as a key. While the search is still matching records it gets none —
+offering to write the letters of a search beside the records they found would be
+offering an answer nobody meant. A search over labels cannot find a record nobody
+labelled, and the affordance that was the whole of v1 is worth keeping as the
+floor under the one that replaced it.
+
+**The panel is Radix's, the behaviour is ours.** `@radix-ui/react-popover` is
+the first Radix dependency in the tree — the stack line always said "owned
+components over Radix primitives", and until now the browser had an element for
+everything we needed. It has none for this: a `<select>` cannot be typed into
+and a `<datalist>` cannot show a name while writing a key. What Radix supplies
+is the floating panel — anchored, portalled out of a panel that clips its own
+overflow, dismissed on a press outside; what `packages/ui` writes is the
+combobox itself, which is a keyboard and an `aria-activedescendant` and is not
+something a library can be trusted to have got right for us. The panel arrives
+with the enter every other surface gets, which is the row DESIGN.md §12 has been
+holding open for "a dropdown, when RePanel owns one".

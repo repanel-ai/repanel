@@ -143,6 +143,6 @@ function requireDate(key: string, end: string, value: string): string {
 }
 
 /** `%`, `_` and the escape character are ours to mean, never the searcher's. */
-function escapeLike(term: string): string {
+export function escapeLike(term: string): string {
   return term.replace(/[\\%_]/g, "\\$&");
 }

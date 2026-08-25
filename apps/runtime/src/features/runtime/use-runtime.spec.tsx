@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adminDefinition } from "./definition.fixture";
-import { runtimeKeys, useDefinition, useRecords, useRunAction } from "./use-runtime";
+import { runtimeKeys, useDefinition, useRecordOptions, useRecords, useRunAction } from "./use-runtime";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -51,6 +51,38 @@ describe("useDefinition", () => {
 
     await waitFor(() => expect(result.current.data?.app.name).toBe("Acme Admin"));
     expect(fetched()).toBe("/api/runtime/acme/definition");
+  });
+});
+
+describe("useRecordOptions", () => {
+  it("asks the resource being pointed at for the records it offers", async () => {
+    const fetched = stubFetch([{ id: "org-1", label: "Acme" }]);
+    const { result } = renderHook(() => useRecordOptions("acme", "organizations", "acm", true), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.data?.[0]?.label).toBe("Acme"));
+    expect(fetched()).toBe("/api/runtime/acme/resources/organizations/options?q=acm");
+  });
+
+  it("asks for the first records when the box is empty", async () => {
+    const fetched = stubFetch([]);
+    const { result } = renderHook(() => useRecordOptions("acme", "organizations", "", true), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(fetched()).toBe("/api/runtime/acme/resources/organizations/options");
+  });
+
+  /** A table of filters is a screenful of pickers; none of them asks anything
+   *  until somebody opens it. */
+  it("asks nothing at all until the picker is opened", async () => {
+    const fetched = stubFetch([]);
+    renderHook(() => useRecordOptions("acme", "organizations", "acm", false), { wrapper });
+
+    await Promise.resolve();
+    expect(fetched()).toBe("");
   });
 });
 

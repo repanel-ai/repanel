@@ -1,7 +1,7 @@
-import type { Field, JsonValue, RecordDto, Resource, WriteMode } from "@repanel/contracts";
+import type { Field, RecordDto, RecordValue, Resource, WriteMode } from "@repanel/contracts";
 import { checkRecordValues } from "@repanel/contracts";
-import { Button, Dialog, FormFields, Relation } from "@repanel/ui";
-import { useState, type ReactNode } from "react";
+import { Button, Dialog, FormFields } from "@repanel/ui";
+import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { FormField } from "./form-field";
 import {
@@ -109,11 +109,12 @@ export function RecordForm({ projectKey, resource, record, onWritten, onLeave }:
           {fields.map((field) => (
             <FormField
               key={field.key}
+              projectKey={projectKey}
               field={field}
               mode={mode}
               value={draft[field.key]}
+              valueLabel={nameOf(record?.values[field.key])}
               error={problems.fields[field.key]}
-              note={noteFor(field, record, draft[field.key])}
               onChange={(value) => answer(field, value)}
             />
           ))}
@@ -171,28 +172,16 @@ export function RecordForm({ projectKey, resource, record, onWritten, onLeave }:
 }
 
 /**
- * What there is to say about a value that is not a problem with it. Only a
- * relation has anything: it is written as the key of another record, and a key
- * on its own says nothing about which record that is.
- *
- * So while the field still holds what the record came with, the label that key
- * resolved to is shown under it, wearing the mark every relation in this admin
- * wears (DESIGN.md §5). Change the key and the label goes: it belonged to the
- * record that was there, and leaving it up would be naming the wrong one.
+ * What the record this form opened on calls the record it points at. The key is
+ * what gets written and the name is what an operator recognizes, so the picker
+ * opens on the name — and it can only do that because the read path resolved it
+ * already (DECISIONS #060). A value that is not a relation has no name of its
+ * own, and a relation whose row is gone has none either.
  */
-function noteFor(field: Field, record: RecordDto | undefined, value: JsonValue | undefined): ReactNode {
-  if (field.type !== "relation") return undefined;
-
-  const current = record?.values[field.key];
-  const label =
-    current !== null && typeof current === "object" && !Array.isArray(current) && "label" in current
-      ? current.label
-      : null;
-
-  if (typeof label !== "string" || value !== (current as { id: JsonValue }).id) {
-    return "The key of the record to point at.";
-  }
-  return <>Now: <Relation>{label}</Relation></>;
+function nameOf(value: RecordValue | undefined): string | null {
+  if (value === null || value === undefined || typeof value !== "object") return null;
+  if (Array.isArray(value) || !("label" in value)) return null;
+  return typeof value.label === "string" ? value.label : null;
 }
 
 /** Where a refusal from the write path is shown. */

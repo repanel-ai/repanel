@@ -4,9 +4,16 @@ import type {
   RecordDto,
   RecordId,
   RecordListDto,
+  RecordOptionDto,
   RecordValues,
 } from "@repanel/contracts";
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 
 /**
@@ -35,6 +42,14 @@ export const runtimeKeys = {
    */
   records: (projectKey: string, resourceKey: string, query: string) =>
     [...runtimeKeys.resourceRecords(projectKey, resourceKey), query] as const,
+  /**
+   * The records a relation may be pointed at, by what was typed into the box.
+   * It is filed under the resource being pointed *at*: the same list answers
+   * every field and every filter that names it, so two pickers over one
+   * resource ask one question.
+   */
+  options: (projectKey: string, resourceKey: string, term: string) =>
+    [...runtimeKeys.project(projectKey), "options", resourceKey, term] as const,
   record: (projectKey: string, resourceKey: string, id: RecordId) =>
     [...runtimeKeys.project(projectKey), "record", resourceKey, String(id)] as const,
   /**
@@ -69,6 +84,33 @@ export function useRecords(projectKey: string, resourceKey: string, query: strin
   return useQuery({
     queryKey: runtimeKeys.records(projectKey, resourceKey, query),
     queryFn: () => api.get<RecordListDto>(asked(`${resourcePath(projectKey, resourceKey)}/records`, query)),
+  });
+}
+
+/**
+ * What a relation picker offers. It asks nothing until the picker has been
+ * opened — a filter bar is several pickers and a form is several more, and none
+ * of them is a question until somebody looks at it — and it keeps the list that
+ * is on screen while the next answer is in flight, so typing narrows a list
+ * rather than emptying it between keystrokes.
+ */
+export function useRecordOptions(
+  projectKey: string,
+  resourceKey: string,
+  term: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: runtimeKeys.options(projectKey, resourceKey, term),
+    queryFn: () =>
+      api.get<RecordOptionDto[]>(
+        asked(
+          `${resourcePath(projectKey, resourceKey)}/options`,
+          term === "" ? "" : new URLSearchParams({ q: term }).toString(),
+        ),
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

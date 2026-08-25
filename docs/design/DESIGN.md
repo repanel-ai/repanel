@@ -465,6 +465,17 @@ component composition are untouched.**
 | Badge | `px-2 py-0.5 text-xs` -> 8 / 2 / 12 | 7 / 1 / 11.5 |
 | Inset panel | `m-2 rounded-xl shadow-sm` | `m-2 rounded-xl`, no shadow |
 | Toast | `sonner`, an installed dependency | owned; 416 wide, 14 / 12, `--t-body` 13.5, `--radius-xl` |
+| Combobox | `cmdk` inside a popover, two dependencies | owned; the box is `Input`'s 32 / 12, the panel `--radius-lg`, rows 20px on 10 / 4 |
+
+**The combobox is the one control with no element under it.** Everything else in
+`packages/ui` dresses something the browser already owns — a `<select>`, a
+`<dialog>`, an `<input type="date">` — and this one has nothing to dress: a
+select cannot be typed into and a datalist cannot show a name while writing a
+key. So the behaviour is written (the combobox keyboard, `aria-activedescendant`,
+a real listbox) and the floating panel under it is Radix's, which is what keeps
+it above a form panel that clips its own overflow. Its box is `Input` at
+`--h-control` and its rows are a `--t-body` line in 4px of air, so a list of
+records reads at the table's own rhythm rather than at a menu's. DECISIONS #060.
 
 Rhythm tokens: `--h-nav 30px`, `--h-control 32px`, `--h-row 36px`,
 `--h-head 34px`, `--h-top 48px`. 18 records visible at 1440x900.
@@ -933,7 +944,7 @@ Motion appears in these places and nowhere else:
 | hover, focus, and the active nav row | fast | colour only — text, background, border, underline |
 | the dialog, and its backdrop | base | fade up over 4px; the backdrop fades |
 | the date-range popover | base | fade up over 4px |
-| a dropdown, when RePanel owns one | base | the same enter, by the same rule |
+| the relation picker's list | base | fade up over 4px; the rows inside it never move |
 | a form | base | fade up over 4px |
 | a toast arriving | base | fade up over 4px |
 | a toast leaving | fast | fade back down over the same 4px |
@@ -980,10 +991,22 @@ two ideas. **The stack does not animate closed** — the notice holds its place
 until it has gone, and the ones under it come up instantly, because that is
 layout and layout is still banned from motion.
 
-**A dropdown has no owned implementation today.** RePanel's only dropdown is a
-real `<select>`, whose popup the browser draws and the browser animates. The row
-is in the table so that the day an owned menu is built, what it does is already
-decided rather than invented.
+**The dropdown row is spent, and it was spent exactly as written.** It sat in
+this table before there was anything to put in it, so that the day RePanel owned
+one, what it did would already be decided rather than invented. The relation
+picker's panel is that day (DECISIONS #060): it arrives with the base enter over
+four pixels, like the dialog and the date-range popover, and it does not leave.
+RePanel's other dropdown is still a real `<select>`, whose popup the browser
+draws and the browser animates.
+
+**The list inside it does not move, and that includes its hover.** Rows do not
+fade in as an answer arrives, the panel does not resize into its new height, and
+the row under the cursor takes its highlight instantly — the same instant
+highlight a table row takes, and for the same reason. A list of records is a
+data surface and the ban below applies to it in full: the enter is spent on the
+panel appearing, which is a surface arriving, and on nothing that happens inside
+it afterwards. It is the one place in the product where an arriving surface and
+a data surface are the same object, and the line between them is its edge.
 
 **Anything not in that table does not move.** The list is closed in the strict
 sense: a new place for motion is a change to this section and a decision entry,

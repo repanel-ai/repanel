@@ -1,6 +1,14 @@
-import type { Field, RecordDto, RecordId, RecordValue, RelationValue } from "@repanel/contracts";
+import type {
+  Field,
+  RecordDto,
+  RecordId,
+  RecordOptionDto,
+  RecordValue,
+  RelationValue,
+} from "@repanel/contracts";
 import type { QueryResult } from "pg";
 import type { SelectEntry } from "../query/columns.js";
+import { OPTION_ID_ALIAS, OPTION_LABEL_ALIAS } from "../query/options.js";
 
 /**
  * Postgres types whose text carries no time zone. The driver reads both by
@@ -47,6 +55,25 @@ export function toRecordDtos(
     }
 
     return { id: toRequiredRecordId(id), values };
+  });
+}
+
+/**
+ * Rows into records to point at. It is `toRecordDtos`' two-column sibling and
+ * reads both columns exactly as that one does — the key by the same rule, the
+ * label through the same `toLabel` — so a record reads identically in the
+ * picker that chooses it and in the cell that shows it afterwards.
+ */
+export function toOptionDtos(result: QueryResult, label: Field): RecordOptionDto[] {
+  const oid = new Map(result.fields.map((field) => [field.name, field.dataTypeID])).get(
+    OPTION_LABEL_ALIAS,
+  );
+
+  return result.rows.map((row: Record<string, unknown>) => {
+    const id = row[OPTION_ID_ALIAS];
+    if (id === null || id === undefined) throw new Error("a record came back with no primary key");
+
+    return { id: toRequiredRecordId(id), label: toLabel(label, row[OPTION_LABEL_ALIAS], oid) };
   });
 }
 

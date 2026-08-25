@@ -1,9 +1,11 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import {
   listRecordsQuerySchema,
+  optionsQuerySchema,
   type Definition,
   type RecordDto,
   type RecordListDto,
+  type RecordOptionDto,
   type UserDto,
 } from "@repanel/contracts";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -13,6 +15,7 @@ import { RuntimeService } from "./runtime.service";
 
 /** Declared parameter type, so the global validation pipe knows what to parse. */
 class ListRecordsQueryDto extends zodDto(listRecordsQuerySchema) {}
+class OptionsQueryDto extends zodDto(optionsQuerySchema) {}
 
 /** What the rendered admin reads. Everything it may read belongs to its owner. */
 @Controller("runtime/:projectKey")
@@ -43,6 +46,22 @@ export class RuntimeController {
     @Param("id") id: string,
   ): Promise<RecordDto> {
     return this.runtime.getRecord(user.id, projectKey, key, id);
+  }
+
+  /**
+   * The records a relation may be pointed at. It is under the resource being
+   * pointed *at* rather than under the field pointing at it: what a picker
+   * offers is a fact about the target, and the same list is right for every
+   * field and filter that names it.
+   */
+  @Get("resources/:key/options")
+  options(
+    @CurrentUser() user: UserDto,
+    @Param("projectKey") projectKey: string,
+    @Param("key") key: string,
+    @Query() query: OptionsQueryDto,
+  ): Promise<RecordOptionDto[]> {
+    return this.runtime.listOptions(user.id, projectKey, key, query);
   }
 
   @Get("resources/:key/records/:id/related/:relationshipKey")

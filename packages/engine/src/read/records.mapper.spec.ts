@@ -1,7 +1,7 @@
 import type { Field } from "@repanel/contracts";
 import type { QueryResult } from "pg";
 import type { SelectEntry } from "../query/columns.js";
-import { toRecordDtos, toTotal } from "./records.mapper.js";
+import { toOptionDtos, toRecordDtos, toTotal } from "./records.mapper.js";
 
 /** The oids node-postgres reads each of the three date-ish types with. */
 const DATE = 1082;
@@ -164,5 +164,33 @@ describe("toTotal", () => {
 
   it("refuses a count that is not one", () => {
     expect(() => toTotal(undefined)).toThrow(/a row count came back as/);
+  });
+});
+
+describe("toOptionDtos", () => {
+  it("reads a record as the key that would be written and the name it is chosen by", () => {
+    const result = resultOf({ c0: TEXT, c1: TEXT }, [{ c0: "org-1", c1: "Acme" }]);
+
+    expect(toOptionDtos(result, field("name", "text"))).toEqual([{ id: "org-1", label: "Acme" }]);
+  });
+
+  it("says a record has no name rather than inventing one", () => {
+    const result = resultOf({ c0: TEXT, c1: TEXT }, [{ c0: "org-1", c1: null }]);
+
+    expect(toOptionDtos(result, field("name", "text"))).toEqual([{ id: "org-1", label: null }]);
+  });
+
+  it("reads a label the same way the record beside it is read", () => {
+    const result = resultOf({ c0: TEXT, c1: DATE }, [{ c0: "org-1", c1: new Date(2026, 0, 1) }]);
+
+    expect(toOptionDtos(result, field("opened_on", "date"))).toEqual([
+      { id: "org-1", label: "2026-01-01" },
+    ]);
+  });
+
+  it("refuses a row that came back with no key", () => {
+    const result = resultOf({ c0: TEXT, c1: TEXT }, [{ c0: null, c1: "Acme" }]);
+
+    expect(() => toOptionDtos(result, field("name", "text"))).toThrow(/primary key/);
   });
 });

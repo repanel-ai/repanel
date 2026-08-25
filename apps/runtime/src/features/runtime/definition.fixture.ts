@@ -1,4 +1,10 @@
-import { validateDefinition, type Definition, type RecordDto, type Resource } from "@repanel/contracts";
+import {
+  validateDefinition,
+  type Definition,
+  type RecordDto,
+  type RecordOptionDto,
+  type Resource,
+} from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 
 /**
@@ -195,6 +201,12 @@ export const sparseUserRecord: RecordDto = {
 };
 
 /** One organization in full — the record whose related list is a tab. */
+/** What the picker over `organizations` is answered with. */
+export const organizationOptions: RecordOptionDto[] = [
+  { id: "o_1", label: "Northwind Labs" },
+  { id: "o_2", label: "Ridgeline" },
+];
+
 export const organizationRecord: RecordDto = {
   id: "o_1",
   values: {

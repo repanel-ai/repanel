@@ -39,3 +39,30 @@ export const listRecordsQuerySchema = z.strictObject({
 });
 
 export type ListRecordsQuery = z.infer<typeof listRecordsQuerySchema>;
+
+/**
+ * How many records a picker offers at once. A hard ceiling rather than a page
+ * size: a list of options is read at a glance and narrowed by typing, so a
+ * second page of them would be a table with none of a table's affordances. The
+ * caller does not get to raise it, which is why it is here rather than in the
+ * query — an options list is bounded work whoever is asking.
+ */
+export const OPTIONS_LIMIT = 20;
+
+/**
+ * What a picker asks: the text somebody has typed into it, or nothing at all —
+ * a box that has just been opened offers the first records rather than none.
+ * Strict, for the same reason a record list is: a parameter nobody recognizes
+ * is a typo, and a typo answered with the first twenty of everything is worse
+ * than a refusal.
+ */
+export const optionsQuerySchema = z.strictObject({
+  /** An empty box is not a search, so it reads as no search at all. */
+  q: z
+    .string()
+    .trim()
+    .transform((term) => (term === "" ? undefined : term))
+    .optional(),
+});
+
+export type OptionsQuery = z.infer<typeof optionsQuerySchema>;

@@ -25,3 +25,17 @@ if (dialog && typeof dialog.showModal !== "function") {
     this.dispatchEvent(new Event("close"));
   };
 }
+
+/**
+ * The floating panel under a combobox is positioned by Radix, which watches the
+ * anchor with a `ResizeObserver`. jsdom has no such thing, so a spec that opens
+ * one would fail on the environment rather than on the component. Nothing here
+ * measures anything: no spec asserts where the panel landed, only what is in it.
+ */
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  } as unknown as typeof ResizeObserver;
+}

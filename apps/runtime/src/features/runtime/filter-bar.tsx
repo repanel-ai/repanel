@@ -1,12 +1,14 @@
 import type { DateRangeFilter as DateRange, Field, Filter, Resource } from "@repanel/contracts";
-import { ControlShell, Select } from "@repanel/ui";
+import { Select } from "@repanel/ui";
 import type { ReactNode } from "react";
 import { DateRangeFilter } from "./date-range-filter";
-import { DebouncedInput } from "./debounced-input";
+import { RelationPicker } from "./relation-picker";
 import { SearchBox } from "./search-box";
 import type { FilterValue } from "./table-state";
 
 export interface FilterBarProps {
+  /** Which admin this is, so a relation filter can ask what it may narrow to. */
+  projectKey: string;
   resource: Resource;
   search: string;
   filters: Record<string, FilterValue>;
@@ -24,6 +26,7 @@ export interface FilterBarProps {
  * (DESIGN.md BUILD REQUIREMENT 1).
  */
 export function FilterBar({
+  projectKey,
   resource,
   search,
   filters,
@@ -51,6 +54,7 @@ export function FilterBar({
         return field ? (
           <FilterControl
             key={filter.field}
+            projectKey={projectKey}
             filter={filter}
             field={field}
             value={filters[filter.field]}
@@ -73,11 +77,13 @@ export function FilterBar({
 }
 
 function FilterControl({
+  projectKey,
   filter,
   field,
   value,
   onChange,
 }: {
+  projectKey: string;
   filter: Filter;
   field: Field;
   value: FilterValue | undefined;
@@ -117,18 +123,22 @@ function FilterControl({
     );
   }
 
-  // A relation is filtered by the key it points at. v0 takes that key as text:
-  // choosing the record itself needs a picker that can search the resource on
-  // the other side, and that is not this task's to build.
+  // A relation is filtered by the key it points at, and the key is chosen the
+  // same way it is on a form: by the name the resource on the other side is
+  // read by (DECISIONS #060). Nothing chosen is `Any`, which is what every
+  // other filter here calls it.
   return (
-    <ControlShell label={field.label} className="w-52" title="Matches by id">
-      <DebouncedInput
-        value={typeof value === "string" ? value : ""}
-        onSettled={(next) => onChange(next === "" ? undefined : next)}
-        placeholder="id"
-        className="h-auto w-auto flex-1 border-0 bg-transparent px-0 font-data font-medium placeholder:font-normal focus-visible:ring-0"
+    <div className="w-56">
+      <RelationPicker
+        projectKey={projectKey}
+        target={field.type === "relation" ? field.target : field.key}
+        value={typeof value === "string" ? value : null}
+        onChange={(id) => onChange(id ?? undefined)}
+        clearable
+        label={field.label}
+        placeholder="Any"
       />
-    </ControlShell>
+    </div>
   );
 }
 

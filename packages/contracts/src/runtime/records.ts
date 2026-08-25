@@ -35,3 +35,14 @@ export interface RecordListDto {
   page: number;
   pageSize: number;
 }
+
+/**
+ * One record, offered as something to point at: the key a relation would be
+ * written with, and what the record is called. The label is the target's
+ * `labelField` — the same one a relation cell reads — and is null where the
+ * record has no name of its own.
+ */
+export interface RecordOptionDto {
+  id: RecordId;
+  label: string | null;
+}

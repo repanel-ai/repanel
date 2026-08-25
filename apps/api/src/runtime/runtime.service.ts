@@ -3,9 +3,11 @@ import {
   validateDefinition,
   type Definition,
   type ListRecordsQuery,
+  type OptionsQuery,
   type RecordDto,
   type RecordId,
   type RecordListDto,
+  type RecordOptionDto,
 } from "@repanel/contracts";
 import { RecordReader, indexResources, type ReadContext } from "@repanel/engine";
 import type { Principal } from "../auth/principal";
@@ -69,6 +71,22 @@ export class RuntimeService {
     const context = await this.readContext(ownerId, projectKey);
 
     return this.reader.getRecord(context, resourceKey, id);
+  }
+
+  /**
+   * The records a relation may be pointed at. It is a read like any other here
+   * — the same owner check, the same published definition — and what a picker
+   * is allowed to see is the engine's answer, not this one's.
+   */
+  async listOptions(
+    ownerId: string,
+    projectKey: string,
+    resourceKey: string,
+    query: OptionsQuery,
+  ): Promise<RecordOptionDto[]> {
+    const context = await this.readContext(ownerId, projectKey);
+
+    return this.reader.listOptions(context, resourceKey, query);
   }
 
   async listRelated(

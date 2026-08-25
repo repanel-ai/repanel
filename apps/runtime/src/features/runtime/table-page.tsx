@@ -95,6 +95,7 @@ function ResourceScreen({ projectKey, resource }: { projectKey: string; resource
       </div>
 
       <FilterBar
+        projectKey={projectKey}
         resource={resource}
         search={state.search}
         filters={state.filters}

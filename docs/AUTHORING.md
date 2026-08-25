@@ -390,13 +390,24 @@ Check the column before you write either one: a key column with no default and
 is told about a column they cannot fill in. An edit form never shows the key
 whichever you declare — a key addresses the record and is chosen once.
 
-**An editable relation is typed as a key.** There is no picker and no
-search-by-name in v0: the form shows a box, and the operator puts the target
-record's key in it. It shows what the key currently points at, by the same label
-the table and the record page use, so an operator can see what they are about to
-change — but they cannot look one up from here. Where the key is not something
-they could reasonably have to hand, leave the relation closed and set it from
-your application.
+**An editable relation is chosen by name, and you configure nothing.** The form
+draws a box that searches the resource the field points at and writes the key of
+the record that was chosen; the table's relation filter is the same box. What it
+searches is that resource's `labelField` — the one you already declared for its
+relation columns and its related lists — so there is no picker to define, no
+search endpoint to write and no second place for this to drift.
+
+Two things follow for you. First, `labelField` is what an operator reads every
+record of that resource by, so name it something a human recognizes: a resource
+with no `labelField` falls back to its primary key, and a list of keys is honest
+but not much use. Second, `sensitive` on that field closes the door entirely —
+a resource that has made a secret of its name cannot be pointed at, and
+validation says so rather than the runtime discovering it (DECISIONS #014).
+
+An operator who already has a key can still use it: when the search finds
+nothing, the list offers what is in the box as a key of its own. That is the
+answer for a row nobody named, and for a key somebody was given rather than
+looked up.
 
 **What you cannot do in v0:** delete a record, edit a `json` field, edit files
 or images, or edit many records at once. And an update is last-write-wins —

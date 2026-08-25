@@ -7,7 +7,7 @@ import {
   type RecordReader,
   type RecordWriter,
 } from "@repanel/engine";
-import { readListQuery } from "./query-params.js";
+import { readListQuery, readOptionsQuery } from "./query-params.js";
 import { UnreadableBodyError } from "./request-body.js";
 
 /**
@@ -79,8 +79,23 @@ export async function handleApi(
     return { body: api.definition(), status: 200 };
   }
 
-  if (rest[0] !== "resources" || rest[2] !== "records") throw notFound(url);
+  if (rest[0] !== "resources") throw notFound(url);
   const resourceKey = rest[1] ?? "";
+
+  // What a picker asks for. It hangs off the resource being pointed at, exactly
+  // as the hosted route does.
+  if (method === "GET" && rest.length === 3 && rest[2] === "options") {
+    return {
+      status: 200,
+      body: await api.reader.listOptions(
+        api.read(),
+        resourceKey,
+        readOptionsQuery(url.searchParams),
+      ),
+    };
+  }
+
+  if (rest[2] !== "records") throw notFound(url);
 
   if (method === "GET" && rest.length === 3) {
     return {

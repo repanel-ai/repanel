@@ -1,6 +1,5 @@
-import { labelFieldOf, type Field, type Resource } from "@repanel/contracts";
-import { UnservableResourceError } from "../errors.js";
-import { requireField } from "./fields.js";
+import type { Field, Resource } from "@repanel/contracts";
+import { labelField } from "./fields.js";
 import { column, quoteIdentifier } from "./identifier.js";
 
 /** The table every record query reads its own columns from. */
@@ -65,25 +64,19 @@ export function selectFields(
       throw new Error(`relation field \`${field.key}\` targets unknown resource \`${field.target}\``);
     }
 
-    const labelKey = labelFieldOf(target);
-    const labelField = requireField(new Map(target.fields.map((f) => [f.key, f])), labelKey, target);
     // The label is joined into a list that belongs to another resource, so it
-    // is subject to the same rule as any other column in that list. Validation
-    // refuses this on both the label field and the primary key it falls back
-    // to; refusing again here is what keeps the guarantee local to this file.
-    if (labelField.sensitive) {
-      throw new UnservableResourceError(
-        `Resource \`${target.key}\` cannot be pointed at: its label field \`${labelField.key}\` is marked sensitive.`,
-      );
-    }
+    // is subject to the same rule as any other column in that list — and to the
+    // same refusal, which lives with the field it is about (`fields.ts`) so
+    // that every path to a label inherits it rather than repeating it.
+    const label = labelField(target);
 
     const joinAlias = `j${joins.length}`;
     joins.push(
       `left join ${quoteIdentifier(target.source.table)} as ${quoteIdentifier(joinAlias)}` +
         ` on ${column(joinAlias, target.primaryKey)} = ${column(ROW_ALIAS, field.key)}`,
     );
-    columns.push(select(column(joinAlias, labelKey), entries.length));
-    entries.push({ alias: aliasFor(entries.length), key: field.key, kind: "label", field: labelField });
+    columns.push(select(column(joinAlias, label.key), entries.length));
+    entries.push({ alias: aliasFor(entries.length), key: field.key, kind: "label", field: label });
   }
 
   return { columns: columns.join(", "), joins: joins.join(" "), entries };

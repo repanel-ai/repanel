@@ -394,6 +394,57 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
   });
 
+  /**
+   * What a picker asks for: the records on the other side of a relation, by the
+   * name they are chosen by. It is the narrowest read here — two columns, a
+   * bounded count — and it meets the same walls every other one does.
+   */
+  describe("the records a relation may point at", () => {
+    it("offers each record's key and the name it is chosen by", async () => {
+      const options = await runtime.listOptions(OWNER, PROJECT.key, "organizations", {});
+
+      expect(options).toEqual([
+        { id: ACME, label: "Acme" },
+        { id: BETA, label: "Beta" },
+      ]);
+    });
+
+    it("narrows to what was typed, without regard to case", async () => {
+      const options = await runtime.listOptions(OWNER, PROJECT.key, "organizations", { q: "ACM" });
+
+      expect(options).toEqual([{ id: ACME, label: "Acme" }]);
+    });
+
+    it("takes a wildcard in the box literally", async () => {
+      const options = await runtime.listOptions(OWNER, PROJECT.key, "users", { q: "%" });
+
+      expect(options).toEqual([]);
+    });
+
+    it("puts nothing on the wire but the key and the label", async () => {
+      const options = await runtime.listOptions(OWNER, PROJECT.key, "users", { q: "ada" });
+
+      expect(options).toEqual([{ id: ADA, label: "ada@acme.test" }]);
+      expect(JSON.stringify(options)).not.toContain("do-not-leak");
+    });
+
+    it("reads a mixed-case table and column", async () => {
+      draft = prismaDefinition;
+
+      const options = await runtime.listOptions(OWNER, PROJECT.key, "Team", { q: "plat" });
+
+      expect(options).toEqual([{ id: "team-1", label: "Platform" }]);
+    });
+
+    it("is taken back after the five seconds the pool allows it", async () => {
+      draft = slowDefinition;
+
+      await expect(
+        runtime.listOptions(OWNER, PROJECT.key, "slow_records", {}),
+      ).rejects.toBeInstanceOf(QueryTimeoutError);
+    });
+  });
+
   describe("a Prisma-shaped schema", () => {
     beforeEach(() => {
       draft = prismaDefinition;

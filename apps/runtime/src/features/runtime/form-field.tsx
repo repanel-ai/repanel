@@ -9,13 +9,18 @@ import {
 } from "@repanel/ui";
 import { useState, type ReactNode } from "react";
 import type { DraftValue } from "./form-draft";
+import { RelationPicker } from "./relation-picker";
 
 export interface FormFieldProps {
+  /** Which admin this is, so a relation can ask what it may point at. */
+  projectKey: string;
   /** What the definition says this field is. Nothing else decides the control. */
   field: Field;
   /** Which write this is. A record being made has no value to have emptied. */
   mode: WriteMode;
   value: DraftValue;
+  /** What the relation the record came with is called, where it has a name. */
+  valueLabel?: string | null;
   /** What is wrong with this value, in the words of whatever refused it. */
   error?: string;
   /** Something true about the value that is not a problem with it. */
@@ -29,14 +34,25 @@ export interface FormFieldProps {
  * (`DetailValue`), which is what makes a form and a record two views of one
  * definition rather than two guesses at it.
  */
-export function FormField({ field, mode, value, error, note, onChange }: FormFieldProps) {
+export function FormField({
+  projectKey,
+  field,
+  mode,
+  value,
+  valueLabel,
+  error,
+  note,
+  onChange,
+}: FormFieldProps) {
   return (
     <FormFieldRow label={field.label} required={field.required} error={error} note={note}>
       {(control) => (
         <FieldControl
+          projectKey={projectKey}
           field={field}
           mode={mode}
           value={value}
+          valueLabel={valueLabel}
           control={control}
           onChange={onChange}
         />
@@ -65,15 +81,19 @@ const DATA_TYPES: ReadonlySet<Field["type"]> = new Set([
 ]);
 
 function FieldControl({
+  projectKey,
   field,
   mode,
   value,
+  valueLabel,
   control,
   onChange,
 }: {
+  projectKey: string;
   field: Field;
   mode: WriteMode;
   value: DraftValue;
+  valueLabel?: string | null;
   control: FormControlProps;
   onChange: (value: DraftValue) => void;
 }) {
@@ -119,9 +139,11 @@ function FieldControl({
   return (
     <div className="flex min-w-0 items-start gap-1.5">
       <TypedInput
+        projectKey={projectKey}
         field={field}
         mode={mode}
         value={value}
+        valueLabel={valueLabel}
         control={control}
         autoFocus={moved}
         onChange={onChange}
@@ -269,16 +291,20 @@ function read(field: Field, mode: WriteMode, chosen: string): DraftValue {
  * again, and an operator already knows all of it.
  */
 function TypedInput({
+  projectKey,
   field,
   mode,
   value,
+  valueLabel,
   control,
   autoFocus,
   onChange,
 }: {
+  projectKey: string;
   field: Field;
   mode: WriteMode;
   value: DraftValue;
+  valueLabel?: string | null;
   control: FormControlProps;
   autoFocus: boolean;
   onChange: (value: DraftValue) => void;
@@ -300,6 +326,27 @@ function TypedInput({
   const emptied: DraftValue =
     mode === "create" ? undefined : TEXT_TYPES.has(field.type) ? "" : null;
   const give = (typed: string) => onChange(typed === "" ? emptied : typed);
+
+  /**
+   * A relation is chosen rather than typed: the box searches the resource it
+   * points at by the name that resource is read by, and what lands in the draft
+   * is the key of the record that was chosen (DECISIONS #060). The key itself
+   * is still accepted, from the last row of the list.
+   */
+  if (field.type === "relation") {
+    return (
+      <RelationPicker
+        {...control}
+        projectKey={projectKey}
+        target={field.target}
+        value={shown === "" ? null : shown}
+        valueLabel={valueLabel}
+        autoFocus={autoFocus}
+        placeholder={`Search ${field.label.toLowerCase()}`}
+        onChange={(id) => onChange(id ?? emptied)}
+      />
+    );
+  }
 
   if (field.type === "longText") {
     return (

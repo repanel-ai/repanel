@@ -529,13 +529,17 @@ a rule-bearing act — what cascades, what is archived instead, what an operator
 may undo — and it waits for the audit log that would make it accountable.
 Express it as an endpoint invoked by an `httpCall` action.
 
-**A relation is edited by its key.** An `editable` relation field renders as a
-box an operator types the target record's key into — there is no picker and no
-search-by-name. The form shows what the key currently points at, by the label
-the read view uses, for as long as the key is the one the record came with; a
-key that points at nothing is refused by the database and the refusal lands on
-that field. Where an operator could not reasonably know the key, the honest
-answer today is to leave the relation closed and set it from your application.
+**A relation is searched by its label, and only by its label.** An `editable`
+relation field renders as a box that searches the target resource by that
+resource's `labelField` and writes the key of the record that was chosen; the
+table's relation filter is the same control. What it cannot do is search by
+anything else — not a second column, not the key, not a description — because
+the label is the one column this admin already shows in place of a key
+everywhere else, and a picker that searched more would be probing columns
+nothing displays (DECISIONS #014, #060). A resource whose `labelField` is its
+primary key offers a list of keys. A key an operator already has is still
+accepted: when the search finds nothing, the list offers what was typed as a key
+of its own — which is also the only way to point at a row whose label is null.
 
 **No bulk edit, and no file or image fields.** A form writes one record, and
 every value it writes is JSON.

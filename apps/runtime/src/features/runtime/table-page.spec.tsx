@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app";
-import { adminDefinition, userRecords } from "./definition.fixture";
+import { adminDefinition, organizationOptions, userRecords } from "./definition.fixture";
 
 const ADA: UserDto = { id: "u_1", email: "ada@example.com", name: "Ada" };
 
@@ -174,6 +174,55 @@ describe("the table page", () => {
   });
 });
 
+describe("the relation filter", () => {
+  /** Same control, same list, same key: a filter is a relation being chosen. */
+  it("narrows the table to the record that was chosen by name", async () => {
+    renderAdmin("/a/acme/r/users");
+    const filter = await screen.findByRole("combobox", { name: /Organization/ });
+
+    fireEvent.keyDown(filter, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "Ridgeline" }));
+
+    await waitFor(() => expect(currentUrl()).toContain("filter%5Borganization_id%5D=o_2"));
+    expect((filter as HTMLInputElement).value).toBe("Ridgeline");
+  });
+
+  it("puts every record back when it is set to any", async () => {
+    renderAdmin("/a/acme/r/users?filter[organization_id]=o_2");
+    const filter = await screen.findByRole("combobox", { name: /Organization/ });
+
+    fireEvent.keyDown(filter, { key: "ArrowDown" });
+    // Scoped to the list this control opened: `Any` is also what every other
+    // filter on the bar calls its own unset value.
+    fireEvent.click(within(await screen.findByRole("listbox")).getByRole("option", { name: "Any" }));
+
+    await waitFor(() => expect(currentUrl()).not.toContain("organization_id"));
+  });
+
+  /** The address is the state, so the control has to follow it back. */
+  it("empties itself when `Clear all` speaks for the whole filter set", async () => {
+    renderAdmin("/a/acme/r/users?filter[organization_id]=o_2");
+    const filter = await screen.findByRole("combobox", { name: /Organization/ });
+    expect((filter as HTMLInputElement).value).toBe("o_2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+
+    await waitFor(() => expect((filter as HTMLInputElement).value).toBe(""));
+  });
+
+  it("asks the resource on the other side for what it offers, and nothing before", async () => {
+    const asked = renderAdmin("/a/acme/r/users");
+    await screen.findByRole("heading", { name: "Users" });
+    expect(asked().some((url) => url.includes("/options"))).toBe(false);
+
+    fireEvent.keyDown(screen.getByRole("combobox", { name: /Organization/ }), { key: "ArrowDown" });
+
+    await waitFor(() =>
+      expect(asked()).toContain("/api/runtime/acme/resources/organizations/options"),
+    );
+  });
+});
+
 describe("the shell", () => {
   it("navigates from the definition, in the groups it declares", async () => {
     renderAdmin("/a/acme/r/users");
@@ -208,6 +257,7 @@ function renderAdmin(path: string, options: AdminOptions = {}): () => string[] {
     const url = String(input);
     if (url.endsWith("/auth/me")) return json(ADA);
     if (url.endsWith("/definition")) return json(adminDefinition);
+    if (url.includes("/options")) return json(organizationOptions);
     if (url.includes("/records")) {
       if (options.recordsNeverArrive) return new Promise<Response>(() => {});
       if (options.recordsFail) {

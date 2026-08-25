@@ -1097,3 +1097,11 @@ attaches to running it; it matters only to whoever redistributes a build, and
 read, which cannot drift from each other the way thousands of copied header
 comments can. New packages need both; new files need neither. Stated in
 CONTRIBUTING so the rule is findable, not retrofitted into the tree.
+
+054 · 2026-08 · Security posture is published: docs/THREAT-MODEL.md
+states every guarantee with its enforcing mechanism and hands readers
+the verification commands (§7, each run before being quoted); residual
+risk names the direct-DSN trust assumption plainly with the connector as
+the structural answer. The document is maintained as a claim surface —
+a change that falsifies a stated claim must update the document in the
+same change.

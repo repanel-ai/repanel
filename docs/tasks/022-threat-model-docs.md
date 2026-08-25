@@ -10,14 +10,14 @@ we publish our answer first (research recommendation, pre-launch item).
     tokens, operator sessions; what each component can and cannot do)
   - the trifecta mapping: private data (read paths under #014/#024
     safety-by-construction — identifiers only from validated
-    definitions, bound values, sensitive containment #016/#032),
+    definitions, bound values, sensitive containment #014/#027),
     untrusted content (admin renders user data; why that cannot become
     instructions to our system), external communication (httpCall: the
     ONLY egress, HMAC-signed, URL templates validated, sensitive fields
     banned from templates) — and the residual risks stated honestly
     (compromised Cloud in direct-DSN mode; mitigations and the connector
     as the structural answer, forward-referenced)
-  - secrets-never-transit-the-agent (#0NN) as a design rule with the
+  - secrets-never-transit-the-agent (#023/#049) as a design rule with the
     console/CLI side-channels
   - what we ask customers to run and verify (SIGNING.md, self-tested)
 - docs/LICENSING.md: the approved split (#053) in plain language —

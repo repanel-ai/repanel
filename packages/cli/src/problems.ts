@@ -1,6 +1,7 @@
 import type { ValidationError } from "@repanel/contracts";
 import { AssemblyError } from "./assemble/errors.js";
 import { locate, type DefinitionSource } from "./assemble/sources.js";
+import type { Style } from "./terminal.js";
 
 /**
  * One problem with a definition, told where its author wrote it.
@@ -61,7 +62,46 @@ export function formatProblem(problem: Problem): string[] {
   ];
 }
 
+/**
+ * Every problem where its author wrote it, then how many there were. Both
+ * commands that report a definition's problems to a terminal — `validate` and
+ * `deploy` — print exactly this, because a problem found by submitting is the
+ * same problem found by checking, and reading two renderings of one thing is
+ * how a developer learns to distrust both.
+ */
+export function reportProblems(problems: readonly Problem[]): string[] {
+  const lines = problems.flatMap((problem) => [...formatProblem(problem), ""]);
+  lines.push(`${count(problems.length, "problem")} found.`);
+  return lines;
+}
+
 /** `1 resource`, `5 resources` — how a command counts what it read or refused. */
 export function count(total: number, noun: string): string {
   return `${total} ${noun}${total === 1 ? "" : "s"}`;
+}
+
+/**
+ * The same problems, said by a command that is still running.
+ *
+ * `validate` and `deploy` print `reportProblems` and stop, so the count is the
+ * last thing they say. `dev` is still serving the last definition that
+ * validated, so the count is the *first* thing it says and what is still on
+ * screen is said with it — then every problem underneath, indented to that
+ * line's own text column, so a save that broke two files reads as one event
+ * with two problems in it rather than as three separate messages.
+ */
+export function reportWhileServing(
+  style: Style,
+  problems: readonly Problem[],
+  directory: string,
+): string[] {
+  return [
+    `  ${style.bad}  ${count(problems.length, "problem")} in ${directory}/ — still serving the last definition that validated.`,
+    ...problems.flatMap((problem) => formatProblem(problem).map((line) => `     ${line}`)),
+  ];
+}
+
+/** A save that put it right, which is the whole of what there is to say. */
+export function reportReloaded(style: Style, resources: number): string {
+  return `  ${style.ok}  Definition reloaded — ${count(resources, "resource")}.`;
 }

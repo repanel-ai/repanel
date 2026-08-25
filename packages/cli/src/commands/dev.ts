@@ -14,11 +14,12 @@ import {
 import { DEFINITION_DIRECTORY } from "../assemble/assemble.js";
 import type { CommandResult } from "../command-result.js";
 import { createDevServer } from "../dev/dev-server.js";
-import { describeDatabase, findDatabaseUrl, maskDatabaseUrl } from "../dev/database-url.js";
+import { describeDatabase, findDatabaseUrl, maskDatabaseUrl } from "../database-url.js";
 import { WatchedDefinition, readDefinition } from "../dev/project.js";
 import { EMBEDDED_RUNTIME, hasRuntime } from "../dev/spa.js";
 import { watchDefinition } from "../dev/watch.js";
-import { count, formatProblem } from "../problems.js";
+import { count, formatProblem, reportReloaded, reportWhileServing } from "../problems.js";
+import { styling, type Style, type Terminal } from "../terminal.js";
 
 export const DEFAULT_PORT = 5170;
 
@@ -56,13 +57,6 @@ export interface DevOptions {
   readonly assets?: string;
 }
 
-/** How the command talks to whoever started it. */
-export interface DevIo {
-  write(line: string): void;
-  /** Asks a yes/no question, or absent when there is nobody at a terminal. */
-  confirm?: (question: string) => Promise<boolean>;
-}
-
 export type DevOutcome =
   | { readonly started: true; readonly url: string; readonly close: () => Promise<void> }
   | { readonly started: false; readonly result: CommandResult };
@@ -79,8 +73,9 @@ export type DevOutcome =
 export async function dev(
   projectRoot: string,
   options: DevOptions,
-  io: DevIo,
+  io: Terminal,
 ): Promise<DevOutcome> {
+  const style = styling(io.colors);
   const reading = await readDefinition(projectRoot);
   if (!reading.definition) {
     // There is no last good render to protect yet, so this is a `validate` run
@@ -115,13 +110,18 @@ export async function dev(
   }
 
   io.write(
-    `${definition.app.name} — ${count(definition.resources.length, "resource")} from ${DEFINITION_DIRECTORY}/, valid against definition schema ${SCHEMA_VERSION}.`,
+    `  ${style.ok}  ${definition.app.name} — ${count(definition.resources.length, "resource")} from ${DEFINITION_DIRECTORY}/, valid against definition schema ${SCHEMA_VERSION}.`,
   );
 
   if (!database.answered && !options.yes) {
     io.write("");
-    io.write(`Found DATABASE_URL in ${database.origin}`);
-    io.write(`  ${maskDatabaseUrl(database.url)}`);
+    for (const line of gutter(style, [
+      ["Database", maskDatabaseUrl(database.url)],
+      ["Found in", database.origin],
+    ])) {
+      io.write(line);
+    }
+    io.write("");
 
     if (!io.confirm) {
       return refuse([
@@ -129,7 +129,7 @@ export async function dev(
         "  hint: Re-run with `--yes` to accept the database above, or name one with `--database-url postgres://…`.",
       ]);
     }
-    if (!(await io.confirm("Use this database? [Y/n] "))) {
+    if (!(await io.confirm(`  Use this database? ${style.label("[Y/n]")} `))) {
       return refuse([
         "Stopped: no database was confirmed.",
         "  hint: Name the one you want with `repanel dev --database-url postgres://…`.",
@@ -140,7 +140,7 @@ export async function dev(
   const watched = new WatchedDefinition(projectRoot, definition);
   const pool = new CustomerPool({
     resolveDsn: () => Promise.resolve(database.url),
-    onError: (_key, message) => io.write(`Database connection dropped: ${message}`),
+    onError: (_key, message) => io.write(`  ${style.bad}  Database connection dropped: ${message}`),
   });
 
   const queries = new QueryBuilder();
@@ -164,7 +164,7 @@ export async function dev(
     // A failure nothing recognized reaches the browser as an opaque envelope,
     // exactly as it does hosted. Here there is also somebody at a terminal, and
     // telling them what it was is the whole reason to run this locally.
-    onUnexpected: (error) => io.write(`Unexpected failure: ${describe(error)}`),
+    onUnexpected: (error) => io.write(`  ${style.bad}  Unexpected failure: ${describe(error)}`),
     api: {
       projectKey: PROJECT_KEY,
       user: LOCAL_OPERATOR,
@@ -196,11 +196,12 @@ export async function dev(
   const unwatch = watchDefinition(path.join(projectRoot, DEFINITION_DIRECTORY), () => {
     void watched.reread().then((event) => {
       if (event.type === "reload") {
-        io.write(`Definition reloaded — ${count(watched.current.resources.length, "resource")}.`);
+        io.write(reportReloaded(style, watched.current.resources.length));
         return;
       }
-      io.write(`${count(event.problems.length, "problem")} in ${DEFINITION_DIRECTORY}/; still serving the last definition that validated.`);
-      for (const problem of event.problems) for (const line of formatProblem(problem)) io.write(line);
+      for (const line of reportWhileServing(style, event.problems, DEFINITION_DIRECTORY)) {
+        io.write(line);
+      }
     });
   });
 
@@ -210,7 +211,7 @@ export async function dev(
   const address = server.address();
   const port = typeof address === "object" && address !== null ? address.port : options.port;
   const url = `http://${HOST}:${port}/a/${PROJECT_KEY}/`;
-  for (const line of banner(url, database.origin, describeDatabase(database.url), actionSecret)) {
+  for (const line of banner(style, url, database.origin, describeDatabase(database.url), actionSecret)) {
     io.write(line);
   }
 
@@ -244,20 +245,56 @@ function describe(error: unknown): string {
   return error instanceof Error ? (error.stack ?? error.message) : String(error);
 }
 
-function banner(url: string, origin: string, database: string, actionSecret: string): string[] {
+/**
+ * A label and its value in one column.
+ *
+ * The label is padded before it is dimmed, because an escape code is not a
+ * character an eye can see but is very much a character `padEnd` counts. It is
+ * the reason the gutter is built here rather than written out line by line.
+ */
+function gutter(style: Style, rows: readonly (readonly [string, string])[]): string[] {
+  const width = Math.max(...rows.map(([label]) => label.length)) + 3;
+  return rows.map(([label, value]) => `  ${style.label(label.padEnd(width))}${value}`);
+}
+
+/**
+ * What is running, what it is reading, and the two things somebody has to know
+ * about it — in that order, because that is the order they are needed in.
+ *
+ * The address is the one loud line: it is why the command was run, and it is
+ * the thing to be clicked or copied. Everything else is a label and a value in
+ * the same gutter, and the two statements at the bottom are marked rather than
+ * written as prose — one wants an action, one is a promise being kept, and a
+ * glance should tell them apart before a word is read.
+ *
+ * The secret itself is left plain, with nothing before or after it on its line.
+ * It is going to be selected with a mouse and pasted into a file, and a colour
+ * code either side of it is a thing to accidentally take along.
+ */
+function banner(
+  style: Style,
+  url: string,
+  origin: string,
+  database: string,
+  actionSecret: string,
+): string[] {
   return [
     "",
-    `  Admin      ${url}`,
-    `  Database   ${database} (from ${origin})`,
-    `  Watching   ${DEFINITION_DIRECTORY}/`,
+    ...gutter(style, [
+      ["Admin", style.headline(url)],
+      ["Database", `${database} ${style.label(`(from ${origin})`)}`],
+      ["Watching", `${DEFINITION_DIRECTORY}/`],
+    ]),
     "",
-    "  Actions are signed with a secret generated for this run. Set it in your",
-    "  application's environment and restart it, or every signed action is refused:",
+    `  ${style.warn}  Actions are signed with a secret generated for this run. Set it`,
+    "     in your application's environment and restart it, or every signed",
+    "     action is refused:",
     "",
-    `    REPANEL_ACTION_SECRET=${actionSecret}`,
+    `     REPANEL_ACTION_SECRET=${actionSecret}`,
     "",
-    "  No account and no RePanel network calls: the only connections this process",
-    "  opens are the database above and the endpoints your actions declare.",
+    `  ${style.ok}  No account and no RePanel network calls: the only connections`,
+    "     this process opens are the database above and the endpoints your",
+    "     actions declare.",
     "",
   ];
 }

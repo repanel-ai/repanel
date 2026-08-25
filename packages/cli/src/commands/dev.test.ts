@@ -5,7 +5,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { multiFileLayout, removeProject, writeProject } from "../assemble/project.test-helpers.js";
 import { writeAssets } from "../dev/dev.test-helpers.js";
-import { dev, type DevIo, type DevOptions, type DevOutcome } from "./dev.js";
+import type { Terminal } from "../terminal.js";
+import { dev, type DevOptions, type DevOutcome } from "./dev.js";
 
 /** Stands in for the runtime this package embeds when it is built. */
 const assets = await writeAssets();
@@ -13,12 +14,16 @@ const assets = await writeAssets();
 const DSN = "postgres://crewbase:hunter2@localhost:5433/crewbase";
 
 /** A terminal that records what it was told, and answers what it was told to. */
-function terminal(answer?: boolean): DevIo & { written: string[]; asked: string[] } {
+function terminal(
+  answer?: boolean,
+  colors = false,
+): Terminal & { written: string[]; asked: string[] } {
   const written: string[] = [];
   const asked: string[] = [];
   return {
     written,
     asked,
+    colors,
     write: (line) => void written.push(line),
     ...(answer === undefined
       ? {}
@@ -195,5 +200,110 @@ test("a definition that does not validate opens no port and reads as `validate` 
     assert.match(said.at(-1) ?? "", /nothing to serve yet/);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+/** The start of any SGR sequence, which is the whole of what colour looks like. */
+const ESCAPE = /\[/;
+
+/** The line a gutter label introduces. */
+function lineFor(io: { written: string[] }, label: string): string {
+  return io.written.find((line) => line.trimStart().startsWith(label)) ?? "";
+}
+
+/** Where the value starts on a gutter line, which is what "aligned" means. */
+function valueColumn(line: string): number {
+  return line.length - line.replace(/^ {2}\S+ +/, "").length;
+}
+
+test("the boot output is one gutter, one loud line, and two marked statements", async () => {
+  const root = await project();
+  const io = terminal();
+  const outcome = await dev(root, options({ databaseUrl: DSN }), io);
+  try {
+    assert.equal(outcome.started, true);
+    if (!outcome.started) return;
+
+    const rows = ["Admin", "Database", "Watching"].map((label) => lineFor(io, label));
+    for (const row of rows) assert.match(row, /^ {2}\S/, `\`${row}\` is not in the gutter`);
+    assert.equal(new Set(rows.map(valueColumn)).size, 1, "the values do not line up");
+    assert.ok((rows[0] ?? "").includes(outcome.url), "the admin row is not the address");
+
+    // One mark on each of the two statements, and what follows each is indented
+    // to the mark's own text column.
+    const said = io.written.join("\n");
+    assert.match(said, /^ {2}⚠ {2}Actions are signed/m);
+    assert.match(said, /^ {5}in your application's environment/m);
+    assert.match(said, /^ {2}✓ {2}No account and no RePanel network calls/m);
+    assert.match(said, /^ {5}this process opens are the database above/m);
+
+    // The secret alone on its line, so it can be taken without taking anything
+    // else along with it.
+    assert.match(
+      io.written.find((line) => line.includes("REPANEL_ACTION_SECRET=")) ?? "",
+      /^ +REPANEL_ACTION_SECRET=[\w-]+$/,
+    );
+
+    // Blank lines between the groups rather than inside them.
+    assert.ok(io.written.filter((line) => line === "").length >= 4);
+  } finally {
+    await stop(outcome);
+    await removeProject(root);
+  }
+});
+
+test("nothing that cannot render a colour is sent one", async () => {
+  const root = await project();
+  const io = terminal();
+  const outcome = await dev(root, options({ databaseUrl: DSN }), io);
+  try {
+    for (const line of io.written) assert.doesNotMatch(line, ESCAPE, line);
+  } finally {
+    await stop(outcome);
+    await removeProject(root);
+  }
+});
+
+test("a terminal that can render one gets the address loud, over the same layout", async () => {
+  const root = await project();
+  const io = terminal(undefined, true);
+  const outcome = await dev(root, options({ databaseUrl: DSN }), io);
+  try {
+    assert.equal(outcome.started, true);
+    if (!outcome.started) return;
+
+    const admin = io.written.find((line) => line.includes(outcome.url)) ?? "";
+    assert.match(admin, ESCAPE, "the address is not the loud line");
+
+    // The layout is the same one either way: colour goes on top of it rather
+    // than instead of it.
+    const said = io.written.join("\n");
+    assert.ok(said.includes("Actions are signed for this run") || said.includes("Actions are signed"));
+    assert.match(said, /^ {5}in your application's environment/m);
+
+    // The secret stays bare, because it is going to be selected and pasted.
+    assert.doesNotMatch(
+      io.written.find((line) => line.includes("REPANEL_ACTION_SECRET=")) ?? "",
+      ESCAPE,
+    );
+  } finally {
+    await stop(outcome);
+    await removeProject(root);
+  }
+});
+
+test("the question about a database puts it in the banner's own gutter", async () => {
+  const root = await project(`DATABASE_URL=${DSN}`);
+  const io = terminal(true);
+  try {
+    const outcome = await dev(root, options(), io);
+
+    assert.match(lineFor(io, "Database"), /^ {2}Database {3}postgres:\/\/crewbase:\*+@localhost:5433/);
+    assert.match(lineFor(io, "Found in"), /^ {2}Found in {3}\.env$/);
+    assert.match(io.asked[0] ?? "", /^ {2}Use this database\? \[Y\/n\] $/);
+
+    await stop(outcome);
+  } finally {
+    await removeProject(root);
   }
 });

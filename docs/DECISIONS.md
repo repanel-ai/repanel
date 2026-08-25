@@ -821,3 +821,238 @@ engineering, and no task owns it: 021 excludes npm publishing by name, 024 is
 the README, and 025 is definition snapshots rather than package ones. It is
 deferred rather than improvised, and it needs a home before the CLI is
 published.
+
+049 · 2026-08 · `repanel link` and `repanel deploy` reach RePanel, and the
+connection string reaches it through them: environment → CLI → API, over a
+session a human authorized in their own browser. It passes through no agent, no
+log, no file and no argument, and `link` deliberately takes no `--database-url`
+— the flag `dev` has is a local convenience and would be a shell-history leak
+here.
+
+**The sign-in is a loopback callback against the console's session.** The CLI
+opens a port on `127.0.0.1`, generates a nonce, and sends the browser to
+`<console>/cli?port=…&state=…`. That page is behind the console's own guard, so
+a signed-out human signs in first and comes back to it — which is why
+`RequireAuth` now carries the address it was protecting to `/login`, a fix the
+MCP tools' project deep links needed too. The page asks for one press, mints a
+session against the one it already has (`POST /auth/cli`), and redirects to the
+loopback port with the token.
+
+The token is in that redirect's query, and that is the considered choice rather
+than an oversight. The alternatives each cost more than they save: a one-time
+code needs pending-authorization state in the API, PKCE needs the same plus a
+challenge, and a form POST to loopback is blocked as mixed content in at least
+one browser. What the redirect actually exposes is one entry in the visited-URL
+store of the browser that *already holds the session cookie that minted it* —
+strictly less than what is there. Against that: the nonce means a page that
+navigates to a guessed loopback port is refused and the wait continues, the
+listener takes exactly one callback and closes, the console builds the address
+from a fixed host and a parsed integer port (so a `port` naming a hostname
+delivers nothing anywhere), and the console page never pushes a history entry.
+
+**The CLI holds a session, not a token it minted.** It is an ordinary session
+row — same 30 days, same table, ended by the same logout — stored in
+`~/.repanel/session.json` at mode 0600 together with the API that issued it, so
+pointing the CLI at a second deployment never sends it the first one's
+credential. `.repanel/project` in the repository holds the project key and
+nothing else, which is what makes it committable, and it must be committed: it
+is how the next clone deploys to the same project.
+
+**Where RePanel is comes from the environment, not from the repository.**
+`REPANEL_API_URL` and `REPANEL_CONSOLE_URL`, defaulting to the development
+deployment. A committed file that named an API would deploy somebody's staging
+by accident on the next clone.
+
+**`deploy` submits over the user's own session, through a route that had to
+exist.** `PUT /projects/:id/definition` is the human's equivalent of the MCP
+`submit_definition`, and it answers with the verdict — the work list when
+invalid, the admin's address when valid. The address is answered rather than
+composed by the CLI: where the rendered admin lives is a fact about the
+deployment, and it saves the CLI a third address to be configured with. The
+errors come back as paths in the composed object and are moved into the file
+that supplied each one, so `deploy` and `validate` print the same four lines
+from the same function.
+
+**The zero-egress gate was re-derived, not deleted.** #048's gate read every
+file in the package and refused an outbound call anywhere in it. That statement
+stops being true the moment the package gains a cloud client, so the promise
+moved from a directory to a module graph: everything reachable from
+`commands/dev.ts` (plus the overlay the server hands the browser) is followed
+and gated. To keep a proof that can fail, it also asserts what must be *inside*
+the closure — nine modules `dev` is made of — and what must be *outside* it:
+`cloud/api.ts`, `link` and `deploy`. `bin.ts` and `cli.ts` are outside by
+necessity, since they import every command, and are checked separately for
+making no call of their own.
+
+**One spelling for a database.** `describeDatabase` now renders
+`localhost:5433/crewbase` rather than `crewbase@localhost:5433`, which is what
+the console's connection card already showed and what `link` asks about. `dev`'s
+banner changed with it: three surfaces naming one fact should name it once.
+
+050 · 2026-08 · The notice stack belongs to the app, not to the screen that
+raises one. `packages/ui` owns a `<Toaster>` — a provider and one fixed column —
+and anything under it raises a notice through `useToaster()`. Why: a notice is
+about something that has *already happened*, so it must outlive whatever caused
+it, and nothing that can be unmounted may be the thing holding it.
+
+**This is a regression fix, and the regression is worth writing down.** 012
+shipped confirm → pending → success toast → badge flip, and #038 (`visibleWhen`)
+broke the last two halves apart without touching either. `RecordHeader` had
+guarded the action row with `resource.actions.length > 0`, a fact about the
+definition; #038 made it `visibleActions(resource.actions, record.values)`, a
+fact about the record on screen. The notices were `RecordActions`' own `useState`.
+So a success invalidated the record, the refetch returned the state the action
+had just set, the last visible action stopped applying, and the header unmounted
+the component holding the notice about it — on the very refetch the success
+triggered. The account of a success was destroyed by the success.
+
+It survived review and its own test suite because the shared fixture's `users`
+declares three actions and only one of them says when it applies: there was
+always an unconditioned button left, so `RecordActions` never actually
+unmounted. The spec that would have caught it is the one that narrows the
+resource to a single conditioned action, and it is now there
+(`record-page.spec.tsx`, "goes on saying it is done when the success left
+nothing to do to the record").
+
+The lesson is not "check the guard". It is that ownership of a notice was wrong
+from 012 onward and the guard only made it visible: a component that can be
+taken off the screen by the outcome it is reporting cannot be the component
+storing the report.
+
+**Three tones, and they are the badge language's own (#029).** `positive`,
+`critical` and `neutral` — the same names on the same tints, so a state in a
+table and a notice about changing it are told apart the same way. `attention` is
+built for badges and unspent here; nothing raises one. Each tone also carries a
+16px mark — check, alert, info — so the tone is legible before the colour is
+(DESIGN.md §7).
+
+**Every notice clears itself, reversing 012's "a failure does not".** Success
+and neutral 4s, failure 8s. The stack is bounded at three and a notice with no
+clock holds one of those three against every notice after it. Pointing at the
+stack or tabbing into it stops every clock in it and resumes what was left
+rather than restarting, which is what makes the shorter failure honest — the
+eight seconds are eight seconds of nobody reading it. Dismiss stays on every
+notice, which is the promise 012 actually made.
+
+**The clock is a timer, not the end of an animation.** `prefers-reduced-motion`
+collapses the vocabulary to `0ms` (DESIGN.md §12) and a notice still goes when
+it is done. Reduced motion is reduced movement; it is not reduced function, and
+a corner that fills up for somebody who asked for less movement would be exactly
+that.
+
+**Top right, under the topbar — and the corner is an open question.** DESIGN.md
+§10 records the placement and its open item both. Both shells put chrome in that
+corner, so the stack clears `--spacing-top` rather than starting at the window's
+edge; but the record header's action row is right there too, and a notice covers
+the buttons it is about. Three corners are spoken for and bottom right — 012's —
+is the only free one. The shots are the evidence; the ruling is not made here.
+
+**The one sentence the runtime adds to an account it did not write.** A refusal
+naming 401 or 403 gains: *If running locally: set the dev action secret printed
+at repanel dev's boot.* RePanel signs every outbound action (#013), `repanel dev`
+generates that secret per run, and an application that has not been given it
+refuses in exactly this shape. The status is read back out of the engine's own
+sentence because it is the only place it survives — the four categories a
+browser is told are deliberately coarse and a customer's response body is never
+forwarded — and `http-call.spec.ts` now pins that sentence from the other end.
+It says *if* rather than checking, because #048 means there is nothing to check:
+`repanel dev` serves the same bundle the hosted product serves.
+
+**The console gets the stack and almost no notices.** Every console failure
+belongs beside the control that caused it and already has a place there —
+`FormError`, the connection test's own status line, `CopyButton`'s confirmation
+— and moving those into a corner would take the account away from the control it
+belongs to. The one outcome with nowhere to be said is creating a project: the
+dialog closes and the browser leaves for the new project before the result is
+known. That is the same shape as the regression above, which is the test of
+whether a notice is the right answer.
+
+051 · 2026-08 · `repanel dev` has a terminal voice, and it is five marks and two
+weights. `terminal.ts` owns it: `label` for a gutter's quieter half, `headline`
+for the one line that is the point of the screen, and `✓ ⚠ ✗` for a thing that
+went well, wants doing, or did not go. No dependency — an SGR code is five
+characters and a colour library is a supply chain (#045).
+
+**There is no palette and there will not be one.** A terminal is somebody else's
+theme: their background, their sixteen colours, their contrast. The only
+distinctions worth drawing on top of one are which text is a label, which line
+is the point, and which of three things happened — and every one of them is
+legible with the colour taken away, because the marks and the gutters are the
+design and the colour is emphasis on it.
+
+**Colour is decided once, at the edge, from two answers neither of which is
+ours.** `colorsAllowed(isTerminal, env)` — a terminal that can render it, and
+NO_COLOR (set and non-empty, whatever it is set to) asking that it not be —
+computed in `bin.ts` and carried as one boolean on `Terminal`. A command never
+reads `process`. Colour off is the identity function on every method, so the
+degraded output is the same layout with none of the codes in it rather than a
+second layout to maintain; both are tested, and so is the decision.
+
+**The secret is left bare on its own line.** It is going to be selected with a
+mouse and pasted into a file, and a colour code either side of it is a thing to
+accidentally take along. Same for the masked DSN in the confirmation, which
+keeps the masking it already had.
+
+**One gutter, and the label is padded before it is dimmed.** An escape code is
+not a character an eye can see but is very much a character `padEnd` counts,
+which is why the gutter is built by a function rather than written out line by
+line.
+
+**A save says one line, and its problems sit under it.** `reportWhileServing`
+counts first and lists after — the opposite of `validate`, which counts last —
+because what an operator needs to know while a server is up is that the screen
+in front of them is still the last good render. `reportReloaded` is its other
+half. Both live in `problems.ts` beside `reportProblems`, so the three
+renderings of one problem cannot drift.
+
+052 · 2026-08 · A notice is a card with a shadow, and it leaves. Three changes
+to #050's toast, and two of them reverse rules that were written as rules.
+
+**The tone is ink, not paint.** The tinted fills are gone: every notice is one
+surface — `--card`, a `--border` hairline — and what tells the tones apart is
+the 16px mark and the title's colour. A tinted block floating over a data panel
+reads as a coloured hole in the page rather than as a thing above it, and the
+fill was buying that at a real price: every contrast ratio in §10 improved when
+it went, because a tint is a step toward the ink standing on it. Measured, light
+/ dark: positive 4.74 / 4.94 → **5.41 / 5.61**, critical 5.12 / 4.79 → **6.09 /
+5.45**, description 16.56 / 12.78 → **19.71 / 14.54**. The mark is carrying more
+of the signal than it used to, which is the right thing to be carrying it — a
+shape is legible to a reader a colour is not (§7).
+
+**#026's no-drop-shadows rule gains one bounded exception, and it is this.**
+DESIGN.md §2 says elevation is stated by lightness and a hairline and that there
+are no shadows anywhere. That rule is about elevation *within* the page, where a
+rung of the ladder says it better than a blur does. A notice is not on the
+ladder — it is over the page, briefly, and then gone — and in light there is no
+lightness left to spend on it either: `--card` and the panel are both `#ffffff`,
+so a hairline is the whole of the edge and a white card on white reads as a
+rectangle drawn on the panel. `--shadow-lifted` is declared once in the colour
+contract, has a value per theme layer like every other paint, and the toast is
+the only thing that spends it. Anything on the ladder taking it is a regression.
+The radius goes with it: `--radius-lg` 7.2px → `--radius-xl` 10.08px, the
+dialog's and the panel's, because it is now the same kind of object as they are.
+
+**#041's "enters only" gains a notice, and only a notice.** §12 ruled that a
+dialog, a popover and a toast arrive and never leave, and called it a rule
+rather than a simplification. It stands for the dialog and the popover, for the
+reason it was made: they close because somebody closed them, and that person is
+already looking at what was behind.
+
+A notice is not that, and the difference is who ended it. A notice mostly ends
+**on its own clock, with nobody having asked** — and a thing that vanishes
+unbidden between two frames reads as a glitch rather than as an ending. The
+120ms it takes to go is not time spent waiting; it is the only signal that
+something finished rather than broke. It is bounded to keep it honest:
+`--motion-fast`, the shorter step, because leaving is quicker than arriving; the
+same single ease-out; and the exact reverse of the enter, so the pair is one
+gesture and its undo rather than two ideas. The stack does **not** animate
+closed — the notice holds its place until it has gone and the ones under it come
+up instantly, because that is layout, and layout stays banned from motion.
+
+**The exit is a timer, and it is asked about.** What removes the element is
+`setTimeout`, not `animationend`, for the reason the auto-dismiss already was:
+the end of an animation is not a thing that reliably happens. And
+`prefers-reduced-motion` is read rather than assumed — where it is set there is
+no 120ms to sit through, so a dismissed notice goes at once instead of holding a
+place for an animation that is not playing. §12's promise that reduced motion
+takes the movement and leaves the function now has two halves that keep it.

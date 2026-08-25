@@ -10,7 +10,7 @@
     ".": "./dist/index.js"
   },
   "bin": {
-    "repanel": "./dist/bin.js"
+    "repanel": "./bin/repanel.mjs"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/embed-runtime.mjs",

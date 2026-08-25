@@ -86,7 +86,7 @@ with a business rule behind it. From a cold clone:
 
 ```bash
 git clone https://github.com/repanel-ai/repanel.git && cd repanel
-pnpm install && pnpm -r build && pnpm install   # the second install links the `repanel` command
+pnpm install && pnpm -r build
 
 cp examples/crewbase/.env.example examples/crewbase/.env
 docker compose -f examples/crewbase/docker-compose.yml up -d

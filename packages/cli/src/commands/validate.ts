@@ -1,8 +1,8 @@
-import { SCHEMA_VERSION, validateDefinition, type ValidationError } from "@repanel/contracts";
+import { SCHEMA_VERSION, validateDefinition } from "@repanel/contracts";
 import { assembleDefinition, DEFINITION_DIRECTORY } from "../assemble/assemble.js";
 import { AssemblyError } from "../assemble/errors.js";
-import { locate, type DefinitionSource } from "../assemble/sources.js";
 import type { CommandResult } from "../command-result.js";
+import { count, formatProblem, problemsFrom, type Problem } from "../problems.js";
 
 /**
  * Assembles the definition and checks it, printing nothing a submission would
@@ -20,7 +20,7 @@ export async function validate(projectRoot: string): Promise<CommandResult> {
 
   const result = validateDefinition(assembled.definition);
   if (!result.valid) {
-    return { exitCode: 1, lines: report(result.errors, assembled.sources) };
+    return { exitCode: 1, lines: report(problemsFrom(result.errors, assembled.sources)) };
   }
 
   const { app, resources } = result.definition;
@@ -32,31 +32,9 @@ export async function validate(projectRoot: string): Promise<CommandResult> {
   };
 }
 
-/**
- * Each problem where its author wrote it: the file, then the path within that
- * file. The hint is printed as the validator wrote it, so it still names the
- * path in the composed definition — that is the object a submission is judged
- * as, and the two paths are the same one in a single-file layout.
- */
-function report(
-  errors: readonly ValidationError[],
-  sources: readonly DefinitionSource[],
-): string[] {
-  const lines: string[] = [];
-  for (const error of errors) {
-    const location = locate(sources, error.path);
-    lines.push(
-      `${location.file} · ${location.path}`,
-      `  ${error.message}`,
-      `  expected: ${error.expected}`,
-      `  hint: ${error.hint}`,
-      "",
-    );
-  }
-  lines.push(`${count(errors.length, "problem")} found.`);
+/** Each problem where its author wrote it, then how many there were. */
+function report(problems: readonly Problem[]): string[] {
+  const lines = problems.flatMap((problem) => [...formatProblem(problem), ""]);
+  lines.push(`${count(problems.length, "problem")} found.`);
   return lines;
-}
-
-function count(total: number, noun: string): string {
-  return `${total} ${noun}${total === 1 ? "" : "s"}`;
 }

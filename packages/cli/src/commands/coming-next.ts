@@ -1,8 +1,8 @@
 import type { CommandResult } from "../command-result.js";
 import { COMMANDS } from "../usage.js";
 
-/** The commands tasks 019 and 020 fill in. */
-export type PendingCommand = Exclude<keyof typeof COMMANDS, "validate">;
+/** The commands task 020 fills in. */
+export type PendingCommand = Exclude<keyof typeof COMMANDS, "validate" | "dev">;
 
 /**
  * Says what a command will do, and that it does not do it yet. Exits nonzero
@@ -14,7 +14,7 @@ export function comingNext(command: PendingCommand): CommandResult {
     exitCode: 1,
     lines: [
       `\`repanel ${command}\` is not implemented yet. ${COMMANDS[command].details[0]}`,
-      "Today the CLI can `repanel validate`.",
+      "Today the CLI can `repanel validate` and `repanel dev`.",
     ],
   };
 }

@@ -6,6 +6,9 @@ interface CommandDescription {
   readonly summary: string;
   /** What `repanel <command> --help` says, one line per element. */
   readonly details: readonly string[];
+  /** The options it takes, if it takes any. One fact, spent twice: the
+   *  synopsis says `[options]` exactly when this is here. */
+  readonly options?: readonly string[];
 }
 
 /** Every command, in the order the help lists them. */
@@ -22,8 +25,23 @@ export const COMMANDS = {
     ],
   },
   dev: {
-    summary: "run the admin locally against your own database (coming next)",
-    details: ["Runs the real admin on your machine, against your own database."],
+    summary: "run the admin locally against your own database",
+    details: [
+      "Serves the real admin on your machine, reading your own database. No",
+      "RePanel account and no RePanel network call: the definition comes off the",
+      "disk, the records come from the database you confirm, and the only other",
+      "address reached is one your own actions declare.",
+      "",
+      `Edits to ${DEFINITION_DIRECTORY}/ are picked up as you make them. A definition that`,
+      "does not validate is shown as an overlay in the browser, in the same",
+      "path-and-hint form `repanel validate` prints, over the admin drawn from the",
+      "last definition that did — so the screen you were on stays where it was.",
+    ],
+    options: [
+      "  --port <number>        listen on this port (default 5170)",
+      "  --database-url <dsn>   use this database instead of the one in .env",
+      "  -y, --yes              accept the database found in .env without asking",
+    ],
   },
   link: {
     summary: "connect this repository to a RePanel project (coming next)",
@@ -63,5 +81,12 @@ export function usage(): string[] {
 }
 
 export function commandHelp(command: Command): string[] {
-  return ["Usage", `  repanel ${command}`, "", ...COMMANDS[command].details];
+  const { details, options } = COMMANDS[command] as CommandDescription;
+  return [
+    "Usage",
+    `  repanel ${command}${options ? " [options]" : ""}`,
+    "",
+    ...details,
+    ...(options ? ["", "Options", ...options] : []),
+  ];
 }

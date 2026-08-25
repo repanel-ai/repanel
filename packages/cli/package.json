@@ -12,15 +12,18 @@
     "repanel": "./dist/bin.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/embed-runtime.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@repanel/contracts": "workspace:*"
+    "@repanel/contracts": "workspace:*",
+    "@repanel/engine": "workspace:*"
   },
   "devDependencies": {
+    "@repanel/runtime": "workspace:*",
     "@types/node": "^26.2.0",
+    "@types/pg": "^8.15.6",
     "tsx": "^4.23.12"
   }
 }

@@ -1,0 +1,53 @@
+{
+  "name": "@repanel/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./fixtures": "./dist/fixtures/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@repanel/contracts": "workspace:*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@types/pg": "^8.15.6",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "module": "commonjs"
+          }
+        }
+      ]
+    },
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@repanel/contracts$": "<rootDir>/../../contracts/src/index.ts",
+      "^@repanel/contracts/fixtures$": "<rootDir>/../../contracts/src/definition/fixtures/index.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
+  }
+}

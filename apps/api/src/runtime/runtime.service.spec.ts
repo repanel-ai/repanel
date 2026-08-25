@@ -1,12 +1,12 @@
 import { validateDefinition, type ProjectDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
+import { QueryBuilder, RecordReader } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { DefinitionDraft } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import { InvalidQueryError, NotFoundError, QueryTimeoutError } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
-import { QueryBuilderService } from "./query/query-builder.service";
 import { RuntimeService } from "./runtime.service";
 
 const PROJECT: ProjectDto = {
@@ -85,7 +85,7 @@ describe("RuntimeService", () => {
       projects as unknown as ProjectsService,
       definitions as unknown as DefinitionsService,
       pool as unknown as CustomerPoolService,
-      new QueryBuilderService(),
+      new RecordReader(new QueryBuilder()),
     );
   });
 

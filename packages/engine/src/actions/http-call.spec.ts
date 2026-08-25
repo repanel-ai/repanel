@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { ActionFailedError } from "../errors/domain-errors";
-import { signRequest } from "./action-signature";
-import { CALL_TIMEOUT_MS, HttpCallService } from "./http-call.service";
+import { ActionFailedError } from "../errors.js";
+import { signRequest } from "./action-signature.js";
+import { CALL_TIMEOUT_MS, HttpCall } from "./http-call.js";
 
 const SECRET = "0DkY6qKcqz3ThQ1lQ1yQmSTQ0Fq0MHQ9Q8oXwq3M2mA";
 
@@ -71,14 +71,14 @@ async function refusalFrom(call: Promise<unknown>): Promise<ActionFailedError> {
   throw new Error("expected the call to be refused");
 }
 
-describe("HttpCallService", () => {
+describe("HttpCall", () => {
   let application: FakeApplication;
-  let http: HttpCallService;
+  let http: HttpCall;
 
   beforeEach(async () => {
     application = new FakeApplication();
     await application.listen();
-    http = new HttpCallService();
+    http = new HttpCall();
   });
 
   afterEach(async () => {

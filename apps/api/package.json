@@ -18,6 +18,7 @@
     "@nestjs/core": "^11.2.1",
     "@nestjs/platform-express": "^11.2.1",
     "@repanel/contracts": "workspace:*",
+    "@repanel/engine": "workspace:*",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.44.7",
@@ -62,6 +63,8 @@
     "moduleNameMapper": {
       "^@repanel/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts",
       "^@repanel/contracts/fixtures$": "<rootDir>/../../../packages/contracts/src/definition/fixtures/index.ts",
+      "^@repanel/engine$": "<rootDir>/../../../packages/engine/src/index.ts",
+      "^@repanel/engine/fixtures$": "<rootDir>/../../../packages/engine/src/fixtures/index.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   }

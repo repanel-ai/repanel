@@ -1,5 +1,5 @@
 import type { Field, Resource } from "@repanel/contracts";
-import { UnservableResourceError } from "../../errors/domain-errors";
+import { UnservableResourceError } from "../errors.js";
 
 /** A resource's fields, by key. Referential validation has already run. */
 export function indexFields(resource: Resource): ReadonlyMap<string, Field> {

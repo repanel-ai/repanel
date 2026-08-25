@@ -17,6 +17,11 @@ build; this file defines **how**.
 - `packages/contracts` — shared wire contract: DTOs, shared enums/unions, zod
   schemas, the public definition schema. Drizzle schemas and all persistence
   live in `apps/api`.
+- `packages/engine` — the safety core: query builder, customer pool, record
+  mapping, read and action execution. ESM, Node-only, no framework; it is given
+  a validated definition, a way to reach a database and a secret to sign with,
+  and looks nothing up for itself. `apps/api` consumes it through thin
+  injectable adapters.
 - `packages/ui` — shared owned component system + design tokens (strictly
   presentational; no data logic, no API clients)
 

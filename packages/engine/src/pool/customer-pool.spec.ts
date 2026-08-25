@@ -1,8 +1,5 @@
-import type { ConfigService } from "../config/config.service";
-import { CryptoService } from "../crypto/crypto.service";
-import { NotFoundError } from "../errors/domain-errors";
-import { ConnectionsRepository, type ConnectionRow } from "./connections.repository";
-import { CustomerPoolService } from "./customer-pool.service";
+import { NotFoundError } from "../errors.js";
+import { CustomerPool } from "./customer-pool.js";
 
 const CREWBASE = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const LEDGER = "1d4e5f60-7a8b-49c0-b1d2-e3f4a5b60718";
@@ -10,25 +7,18 @@ const LEDGER = "1d4e5f60-7a8b-49c0-b1d2-e3f4a5b60718";
 const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 const REPLACEMENT = "postgres://admin:hunter3@replica.example.com:5432/crewbase";
 
-const crypto = new CryptoService({
-  appEncryptionKey: Buffer.alloc(32, 3).toString("base64"),
-} as unknown as ConfigService);
-
-/** Stands in for Postgres: whatever connection has been filed for a project. */
-class InMemoryConnectionsRepository implements Pick<ConnectionsRepository, "findByProjectId"> {
-  private readonly rows = new Map<string, ConnectionRow>();
+/**
+ * Stands in for whoever knows where a key's database is — a table and a
+ * decryption in the API, a map here. The pool is handed this and looks nothing
+ * up for itself, which is the whole of what the seam is for.
+ */
+class DsnSource {
+  private readonly dsns = new Map<string, string>();
   private parked: Promise<void> | undefined;
   private answer: (() => void) | undefined;
 
-  file(projectId: string, dsn: string): void {
-    this.rows.set(projectId, {
-      id: `connection-${projectId}`,
-      projectId,
-      kind: "postgres",
-      encryptedDsn: crypto.encrypt(dsn),
-      createdAt: new Date("2026-08-19T09:00:00.000Z"),
-      updatedAt: new Date("2026-08-19T09:00:00.000Z"),
-    });
+  file(key: string, dsn: string): void {
+    this.dsns.set(key, dsn);
   }
 
   /** Holds the next read open, so a test can decide what happens during it. */
@@ -42,19 +32,23 @@ class InMemoryConnectionsRepository implements Pick<ConnectionsRepository, "find
     this.answer?.();
   }
 
-  async findByProjectId(projectId: string): Promise<ConnectionRow | undefined> {
-    // The row as it stands when the read is made, not as it stands when the
-    // read answers. A database hands back what it was asked for, and an answer
+  /** Bound, because the pool is given this function and not this object. */
+  readonly resolve = async (key: string): Promise<string> => {
+    // The answer as it stands when the read is made, not as it stands when the
+    // read returns. A database hands back what it was asked for, and an answer
     // that has gone stale in flight is the whole of what is under test.
-    const row = this.rows.get(projectId);
+    const dsn = this.dsns.get(key);
 
     const parked = this.parked;
-    if (!parked) return row;
-    this.parked = undefined;
-    await parked;
+    if (parked) {
+      this.parked = undefined;
+      await parked;
+    }
 
-    return row;
-  }
+    // What the API's own resolver does for a project pointing at nothing.
+    if (dsn === undefined) throw new NotFoundError("This project has no database connection");
+    return dsn;
+  };
 }
 
 /** The error a call was refused with; fails the test if it was not refused. */
@@ -67,18 +61,18 @@ async function refusalFrom(call: Promise<unknown>): Promise<Error> {
   throw new Error("expected the call to be refused");
 }
 
-describe("CustomerPoolService", () => {
-  let repository: InMemoryConnectionsRepository;
-  let pools: CustomerPoolService;
+describe("CustomerPool", () => {
+  let dsns: DsnSource;
+  let pools: CustomerPool;
 
   beforeEach(() => {
-    repository = new InMemoryConnectionsRepository();
-    repository.file(CREWBASE, DSN);
-    pools = new CustomerPoolService(repository as unknown as ConnectionsRepository, crypto);
+    dsns = new DsnSource();
+    dsns.file(CREWBASE, DSN);
+    pools = new CustomerPool({ resolveDsn: dsns.resolve });
   });
 
   afterEach(async () => {
-    await pools.onModuleDestroy();
+    await pools.close();
   });
 
   describe("poolFor", () => {
@@ -114,7 +108,7 @@ describe("CustomerPoolService", () => {
     });
 
     it("keeps one project's pool apart from another's", async () => {
-      repository.file(LEDGER, REPLACEMENT);
+      dsns.file(LEDGER, REPLACEMENT);
 
       expect(await pools.poolFor(LEDGER)).not.toBe(await pools.poolFor(CREWBASE));
     });
@@ -138,7 +132,7 @@ describe("CustomerPoolService", () => {
 
     it("opens the next pool on the connection that replaced the old one", async () => {
       const stale = await pools.poolFor(CREWBASE);
-      repository.file(CREWBASE, REPLACEMENT);
+      dsns.file(CREWBASE, REPLACEMENT);
 
       await pools.release(CREWBASE);
       const fresh = await pools.poolFor(CREWBASE);
@@ -152,14 +146,14 @@ describe("CustomerPoolService", () => {
     });
 
     it("invalidates an open that is still reading the connection it replaced", async () => {
-      repository.parkNextRead();
+      dsns.parkNextRead();
       const opening = pools.poolFor(CREWBASE);
 
       // The replacement lands in the one moment `release` cannot see it: no
       // pool is filed yet, so there is nothing for it to close.
-      repository.file(CREWBASE, REPLACEMENT);
+      dsns.file(CREWBASE, REPLACEMENT);
       await pools.release(CREWBASE);
-      repository.answerParkedRead();
+      dsns.answerParkedRead();
 
       const pool = await opening;
 
@@ -169,13 +163,13 @@ describe("CustomerPoolService", () => {
     });
   });
 
-  describe("onModuleDestroy", () => {
+  describe("close", () => {
     it("gives every customer database its clients back", async () => {
-      repository.file(LEDGER, REPLACEMENT);
+      dsns.file(LEDGER, REPLACEMENT);
       const crewbase = await pools.poolFor(CREWBASE);
       const ledger = await pools.poolFor(LEDGER);
 
-      await pools.onModuleDestroy();
+      await pools.close();
 
       expect(crewbase.ended).toBe(true);
       expect(ledger.ended).toBe(true);

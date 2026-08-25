@@ -1,7 +1,7 @@
 import { validateDefinition, type HttpCallAction, type RecordValue, type Resource } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { InvalidQueryError, UnservableResourceError } from "../errors/domain-errors";
-import { resolveActionUrl } from "./action-url";
+import { InvalidQueryError, UnservableResourceError } from "../errors.js";
+import { resolveActionUrl } from "./action-url.js";
 
 /** The shared fixture as the API sees it: validated, defaults applied. */
 const result = validateDefinition(saasDefinition);

@@ -1,4 +1,4 @@
-import { Parameters } from "./parameters";
+import { Parameters } from "./parameters.js";
 
 describe("Parameters", () => {
   it("numbers values in the order they are bound", () => {

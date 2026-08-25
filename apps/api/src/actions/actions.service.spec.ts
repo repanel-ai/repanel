@@ -1,5 +1,6 @@
 import { validateDefinition, type DefinitionInput, type ProjectDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
+import { ActionRunner, HttpCall, QueryBuilder, RecordReader } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { DefinitionDraft } from "../definitions/definitions.mapper";
@@ -11,10 +12,8 @@ import {
   QueryTimeoutError,
 } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
-import { QueryBuilderService } from "../runtime/query/query-builder.service";
 import { RuntimeService } from "../runtime/runtime.service";
 import { ActionsService } from "./actions.service";
-import type { HttpCallService } from "./http-call.service";
 
 const PROJECT: ProjectDto = {
   id: "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11",
@@ -100,19 +99,18 @@ describe("ActionsService", () => {
     definitions = { getDraft: jest.fn().mockResolvedValue(draftOf(saasDefinition)) };
     http = { send: jest.fn().mockResolvedValue(undefined) };
 
-    const queries = new QueryBuilderService();
+    const queries = new QueryBuilder();
+    const reader = new RecordReader(queries);
     const runtime = new RuntimeService(
       projects as unknown as ProjectsService,
       definitions as unknown as DefinitionsService,
       pool as unknown as CustomerPoolService,
-      queries,
+      reader,
     );
     actions = new ActionsService(
       runtime,
       projects as unknown as ProjectsService,
-      queries,
-      pool as unknown as CustomerPoolService,
-      http as unknown as HttpCallService,
+      new ActionRunner(reader, queries, http as unknown as HttpCall),
     );
   });
 

@@ -6,11 +6,11 @@ import {
   type RecordFilterValue,
   type Resource,
 } from "@repanel/contracts";
-import { InvalidQueryError } from "../../errors/domain-errors";
-import { requireField } from "./fields";
-import { ROW_ALIAS } from "./columns";
-import { column } from "./identifier";
-import type { Parameters } from "./parameters";
+import { InvalidQueryError } from "../errors.js";
+import { requireField } from "./fields.js";
+import { ROW_ALIAS } from "./columns.js";
+import { column } from "./identifier.js";
+import type { Parameters } from "./parameters.js";
 
 /**
  * What narrows a record page: the search box and the filters the table view

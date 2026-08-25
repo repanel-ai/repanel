@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { HttpCallService } from "./http-call.service";
+import { HttpCall } from "./http-call.js";
 
 /**
  * docs/SIGNING.md is what every per-stack guide points at, and it is the only
@@ -77,7 +77,7 @@ async function capture(method: "POST" | "DELETE" = "POST"): Promise<Captured> {
   const { port } = server.address() as AddressInfo;
   const url = `http://127.0.0.1:${port}/repanel/users/u_1/resend-invite`;
 
-  await new HttpCallService().send({ method, url, secret: SECRET });
+  await new HttpCall().send({ method, url, secret: SECRET });
   await new Promise<void>((resolve) => server.close(() => resolve()));
 
   if (!received) throw new Error("the fake application received nothing");

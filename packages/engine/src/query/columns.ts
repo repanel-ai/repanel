@@ -1,7 +1,7 @@
 import { labelFieldOf, type Field, type Resource } from "@repanel/contracts";
-import { UnservableResourceError } from "../../errors/domain-errors";
-import { requireField } from "./fields";
-import { column, quoteIdentifier } from "./identifier";
+import { UnservableResourceError } from "../errors.js";
+import { requireField } from "./fields.js";
+import { column, quoteIdentifier } from "./identifier.js";
 
 /** The table every record query reads its own columns from. */
 export const ROW_ALIAS = "t";

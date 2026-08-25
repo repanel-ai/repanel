@@ -1,5 +1,5 @@
 import type { HttpCallAction, RecordValue, Resource } from "@repanel/contracts";
-import { InvalidQueryError, UnservableResourceError } from "../errors/domain-errors";
+import { InvalidQueryError, UnservableResourceError } from "../errors.js";
 
 /** `{field_key}` — the only thing a v0 URL template can say. */
 const PLACEHOLDER = /\{([^}]*)\}/g;

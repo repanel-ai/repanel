@@ -4,7 +4,7 @@ import {
   TIMESTAMP_HEADER,
   signRequest,
   signedPayload,
-} from "./action-signature";
+} from "./action-signature.js";
 
 const SECRET = "0DkY6qKcqz3ThQ1lQ1yQmSTQ0Fq0MHQ9Q8oXwq3M2mA";
 const REQUEST = {

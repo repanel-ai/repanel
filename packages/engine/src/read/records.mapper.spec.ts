@@ -1,7 +1,7 @@
 import type { Field } from "@repanel/contracts";
 import type { QueryResult } from "pg";
-import type { SelectEntry } from "./query/columns";
-import { toRecordDtos, toTotal } from "./records.mapper";
+import type { SelectEntry } from "../query/columns.js";
+import { toRecordDtos, toTotal } from "./records.mapper.js";
 
 /** The oids node-postgres reads each of the three date-ish types with. */
 const DATE = 1082;

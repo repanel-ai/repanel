@@ -8,9 +8,9 @@ import {
   type Resource,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { InvalidQueryError, UnservableResourceError } from "../../errors/domain-errors";
-import { prismaDefinition } from "../mixed-case.fixture";
-import { QueryBuilderService } from "./query-builder.service";
+import { InvalidQueryError, UnservableResourceError } from "../errors.js";
+import { prismaDefinition } from "../fixtures/mixed-case.js";
+import { QueryBuilder } from "./query-builder.js";
 
 function definitionFrom(input: DefinitionInput, mutate: (draft: DefinitionInput) => void = () => {}): Definition {
   const draft = structuredClone(input);
@@ -63,11 +63,11 @@ function refusalFrom(build: () => unknown): Error {
   throw new Error("expected the query builder to refuse");
 }
 
-describe("QueryBuilderService", () => {
-  let builder: QueryBuilderService;
+describe("QueryBuilder", () => {
+  let builder: QueryBuilder;
 
   beforeEach(() => {
-    builder = new QueryBuilderService();
+    builder = new QueryBuilder();
   });
 
   describe("records", () => {

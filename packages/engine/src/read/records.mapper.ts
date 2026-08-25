@@ -1,6 +1,6 @@
 import type { Field, RecordDto, RecordId, RecordValue, RelationValue } from "@repanel/contracts";
 import type { QueryResult } from "pg";
-import type { SelectEntry } from "./query/columns";
+import type { SelectEntry } from "../query/columns.js";
 
 /**
  * Postgres types whose text carries no time zone. The driver reads both by

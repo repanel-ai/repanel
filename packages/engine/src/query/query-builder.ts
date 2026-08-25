@@ -1,4 +1,3 @@
-import { Injectable } from "@nestjs/common";
 import {
   formatList,
   type ActionValue,
@@ -7,12 +6,12 @@ import {
   type RecordId,
   type Resource,
 } from "@repanel/contracts";
-import { InvalidQueryError, UnservableResourceError } from "../../errors/domain-errors";
-import { ROW_ALIAS, selectFields, type SelectEntry } from "./columns";
-import { filterConditions, searchCondition } from "./conditions";
-import { identityField, indexFields, listFields } from "./fields";
-import { column, quoteIdentifier } from "./identifier";
-import { Parameters } from "./parameters";
+import { InvalidQueryError, UnservableResourceError } from "../errors.js";
+import { ROW_ALIAS, selectFields, type SelectEntry } from "./columns.js";
+import { filterConditions, searchCondition } from "./conditions.js";
+import { identityField, indexFields, listFields } from "./fields.js";
+import { column, quoteIdentifier } from "./identifier.js";
+import { Parameters } from "./parameters.js";
 
 /** A statement, what to send with it, and how to read what comes back. */
 export interface Query {
@@ -48,8 +47,7 @@ export const LOOKUP_ALIAS = "c0";
  * `Parameters`. A request never contributes an identifier — it contributes a
  * key, which is looked up, and what gets written is the definition's own copy.
  */
-@Injectable()
-export class QueryBuilderService {
+export class QueryBuilder {
   /**
    * A page of a resource's records. `owner` narrows it to the records that
    * belong to one record elsewhere, which is the whole of what makes a related

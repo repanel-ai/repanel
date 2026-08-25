@@ -1,7 +1,6 @@
-import { Injectable } from "@nestjs/common";
 import type { HttpMethod } from "@repanel/contracts";
-import { ActionFailedError } from "../errors/domain-errors";
-import { signRequest } from "./action-signature";
+import { ActionFailedError } from "../errors.js";
+import { signRequest } from "./action-signature.js";
 
 /**
  * How long the customer's application has to answer. Long enough for an
@@ -27,8 +26,7 @@ export interface OutboundCall {
  * is in it — so it is cancelled unread, and the caller learns which of four
  * things happened.
  */
-@Injectable()
-export class HttpCallService {
+export class HttpCall {
   async send({ method, url, secret }: OutboundCall): Promise<void> {
     const timestamp = Math.floor(Date.now() / 1000);
 

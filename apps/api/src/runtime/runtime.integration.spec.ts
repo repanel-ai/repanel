@@ -6,6 +6,8 @@ import {
   type Resource,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
+import { QueryBuilder, RecordReader } from "@repanel/engine";
+import { prismaDefinition } from "@repanel/engine/fixtures";
 import { Client } from "pg";
 import type { ConfigService } from "../config/config.service";
 import { ConnectionProbeService } from "../connections/connection-probe.service";
@@ -15,8 +17,6 @@ import { CryptoService } from "../crypto/crypto.service";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import { InvalidQueryError, NotFoundError, QueryTimeoutError } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
-import { prismaDefinition } from "./mixed-case.fixture";
-import { QueryBuilderService } from "./query/query-builder.service";
 import { RuntimeService } from "./runtime.service";
 
 /**
@@ -221,7 +221,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
           Promise.resolve({ payload: draft, valid: true, errors: null, updatedAt: "2026-08-19T09:00:00.000Z" }),
       } as unknown as DefinitionsService,
       pools,
-      new QueryBuilderService(),
+      new RecordReader(new QueryBuilder()),
     );
   });
 
@@ -436,7 +436,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
   describe("a write", () => {
     const SUBJECT = "eeeeeeee-4444-4444-8444-eeeeeeeeeeee";
     const PRISMA_SUBJECT = "user-write";
-    const builder = new QueryBuilderService();
+    const builder = new QueryBuilder();
     const USERS = resourceIn(saasDefinition, "users");
     const PRISMA_USER = resourceIn(prismaDefinition, "User");
 

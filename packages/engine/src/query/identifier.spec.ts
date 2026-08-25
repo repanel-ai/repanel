@@ -1,4 +1,4 @@
-import { column, quoteIdentifier } from "./identifier";
+import { column, quoteIdentifier } from "./identifier.js";
 
 describe("quoteIdentifier", () => {
   it("quotes what a definition may legally name", () => {

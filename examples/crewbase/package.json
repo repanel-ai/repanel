@@ -2,6 +2,7 @@
   "name": "crewbase",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Reference customer application RePanel's acceptance run is performed against.",
   "scripts": {
     "build": "nest build",

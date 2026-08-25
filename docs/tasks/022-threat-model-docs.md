@@ -20,9 +20,18 @@ we publish our answer first (research recommendation, pre-launch item).
   - secrets-never-transit-the-agent (#0NN) as a design rule with the
     console/CLI side-channels
   - what we ask customers to run and verify (SIGNING.md, self-tested)
-- docs/LICENSING.md: the split in plain language, the "can my company
-  use this?" table (self-host internal use, hosted-competitor case,
-  embedding the MIT contracts), AGPL-ban orgs addressed directly.
+- docs/LICENSING.md: the approved split (#053) in plain language —
+  MIT `contracts`, Apache-2.0 `engine` and `cli`, AGPL-3.0-only for
+  the three apps, `ui` and the repository default, MIT `crewbase` —
+  expanding on the map in LICENSES.md rather than restating it. The
+  "can my company use this?" table (self-host internal use,
+  hosted-competitor case, embedding the permissive packages) and
+  AGPL-ban orgs addressed directly: what they integrate with and
+  embed is Apache-2.0 and MIT, and running an AGPL surface triggers
+  nothing at all. Say the one thing a scanner finds on its own —
+  a *built* `repanel` CLI carries the AGPL runtime inside it (#048,
+  #053), which binds whoever redistributes a build and nobody who
+  runs one.
 - Both linked from SECURITY.md and the README plan.
 
 ## Out of scope (binding)

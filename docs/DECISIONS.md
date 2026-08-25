@@ -1056,3 +1056,44 @@ the end of an animation is not a thing that reliably happens. And
 no 120ms to sit through, so a dismissed notice goes at once instead of holding a
 place for an animation that is not playing. §12's promise that reduced motion
 takes the movement and leaves the function now has two halves that keep it.
+
+053 · 2026-08 · The repository is multi-licensed by package, and the line is
+drawn between what customers build against and what RePanel operates. MIT for
+`packages/contracts`; Apache-2.0 for `packages/engine` and `packages/cli`;
+AGPL-3.0-only for `apps/api`, `apps/web`, `apps/runtime`, `packages/ui`, and as
+the repository's default for anything not otherwise marked; MIT for
+`examples/crewbase`. Every package states its identifier in `package.json` and
+carries the verbatim text; `LICENSES.md` at the root is the map, and
+`docs/LICENSING.md` (022) is the plain-language version. Contributions come in
+under a DCO sign-off, never a CLA — contributors keep their copyright.
+
+**The engine is Apache-2.0 rather than AGPL, and that is the ruling worth
+recording.** The first proposal had it copyleft on the reasoning that it is the
+runtime core. That reasoning is wrong about where the moat is: the engine has to
+be embeddable — `repanel dev` runs it on a developer's machine and the connector
+(031) will run it inside a customer's network — and those are the activation and
+enterprise-trust surfaces, the two places where an AGPL-policy conversation
+costs a customer we would otherwise have had. The moat is runtime quality and
+Cloud operations, never secret code. The MIT-contracts precedent already settled
+the principle for the surface a customer's agent writes against; the engine is
+the same argument one layer down.
+
+**The dependency-mixing question, and why it disappeared.** A permissive CLI
+that links an AGPL engine is a combined work distributed under AGPL, so the
+"maximally permissive CLI" and "protected engine" goals were in direct conflict
+while the engine was copyleft — flagged for sign-off rather than resolved
+quietly, and resolved by moving the engine. `packages/cli` imports
+`@repanel/engine` as values in five files; both are Apache-2.0 now, and the
+question does not arise.
+
+**One thing the map cannot say by itself.** `packages/cli`'s build copies the
+compiled `apps/runtime` into `dist/runtime` (#048: one bundle, not a sibling),
+so a *built* CLI carries AGPL code beside its own Apache-2.0 code. Nothing
+attaches to running it; it matters only to whoever redistributes a build, and
+`LICENSES.md` says so plainly rather than leaving a scanner to discover it.
+
+**No per-file SPDX headers.** The authority is the package's `LICENSE` plus its
+`package.json` `license` field — two places both a scanner and a human already
+read, which cannot drift from each other the way thousands of copied header
+comments can. New packages need both; new files need neither. Stated in
+CONTRIBUTING so the rule is findable, not retrofitted into the tree.

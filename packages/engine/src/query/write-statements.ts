@@ -8,9 +8,9 @@ import {
   type WriteMode,
 } from "@repanel/contracts";
 import { ValidationFailedError } from "../errors.js";
-import { ROW_ALIAS, selectFields, type SelectEntry } from "./columns.js";
+import { ROW_ALIAS, selectFields, selectValues, type SelectEntry } from "./columns.js";
 import { identityField } from "./fields.js";
-import { quoteIdentifier } from "./identifier.js";
+import { column, quoteIdentifier } from "./identifier.js";
 import { Parameters } from "./parameters.js";
 import type { Query } from "./query-builder.js";
 
@@ -21,10 +21,32 @@ export interface Assignment {
 }
 
 /** What the modifying half of the statement answers under. */
-const WRITTEN_ROW = "w";
+export const WRITTEN_ROW = "w";
+
+/**
+ * What the row as it stood answers under, and the space its columns are aliased
+ * in — `b0`, `b1`, … beside the write's own `c0`, `c1`, … so one row can carry
+ * both readings of the same record without either standing in for the other.
+ */
+export const BEFORE_ROW = "b";
 
 /** Said to a person, once, however many fields were wrong. */
 export const WRITE_REFUSED = "This record could not be saved.";
+
+/** A write's own row as it stood before it, read in the same snapshot. */
+interface BeforeRead {
+  /** The CTE's body. */
+  text: string;
+  /** What the outer select reads out of it. */
+  columns: string;
+  entries: SelectEntry[];
+}
+
+/** The modifying half of a statement, and — for an update — what it replaced. */
+interface Modification {
+  text: string;
+  before?: BeforeRead;
+}
 
 /**
  * A write and the record it leaves behind, in one statement.
@@ -50,10 +72,13 @@ export function insertStatement(
     const columns = assignments.map(({ field }) => quoteIdentifier(field.key)).join(", ");
     const values = assignments.map(({ value }) => parameters.bind(value)).join(", ");
 
-    return (
-      `insert into ${quoteIdentifier(resource.source.table)} (${columns})` +
-      ` values (${values}) returning ${returning}`
-    );
+    // A record that is being made held nothing a moment ago, so there is no
+    // reading of it to take and no CTE here to take one with.
+    return {
+      text:
+        `insert into ${quoteIdentifier(resource.source.table)} (${columns})` +
+        ` values (${values}) returning ${returning}`,
+    };
   });
 }
 
@@ -75,12 +100,60 @@ export function updateStatement(
     // `set` and `where` name bare columns: postgres refuses a table-qualified
     // target in `set`, which is why the modifying half carries no row alias.
     const identity = quoteIdentifier(identityField(resource).key);
+    // Bound once and named twice. The row the update matches and the row read
+    // beside it have to be the same row, and two placeholders would be two
+    // chances for them not to be.
+    const key = parameters.bind(id);
 
-    return (
-      `update ${quoteIdentifier(resource.source.table)} set ${sets}` +
-      ` where ${identity} = ${parameters.bind(id)} returning ${returning}`
-    );
+    return {
+      text:
+        `update ${quoteIdentifier(resource.source.table)} set ${sets}` +
+        ` where ${identity} = ${key} returning ${returning}`,
+      before: beforeRead(resource, assignments, key),
+    };
   });
+}
+
+/**
+ * The columns a write is about to set, as they still stand.
+ *
+ * A CTE beside the update rather than a read before it. Every part of one
+ * statement runs against one snapshot and none of them can see another's
+ * effects, so what this selects is exactly what the update replaced — with no
+ * second round trip, and no moment in between for somebody else's write to land
+ * in (DECISIONS #056). The outer select puts the two readings on one line with a
+ * `cross join`; when the key names no row both halves are empty and the
+ * statement answers with nothing, which is the answer an update that matched
+ * nothing already gave.
+ *
+ * It reads the columns the write names and no others. An audit record is about
+ * what changed, and a statement that read the whole row to file two of its
+ * columns would be selecting a customer's data to throw it away.
+ */
+function beforeRead(
+  resource: Resource,
+  assignments: readonly Assignment[],
+  key: string,
+): BeforeRead | undefined {
+  const selection = selectValues(
+    assignments.map(({ field }) => field),
+    BEFORE_ROW,
+  );
+  // Only reachable for a write of nothing but sensitive columns, which is
+  // refused above. A select list with no columns in it is not valid SQL, and
+  // this is the guard that keeps that from being the way we find out.
+  if (selection.entries.length === 0) return undefined;
+
+  return {
+    text:
+      `select ${selection.columns}` +
+      ` from ${quoteIdentifier(resource.source.table)} as ${quoteIdentifier(ROW_ALIAS)}` +
+      ` where ${column(ROW_ALIAS, identityField(resource).key)} = ${key}`,
+    columns: selection.entries
+      .map((entry) => `${column(BEFORE_ROW, entry.alias)} as ${quoteIdentifier(entry.alias)}`)
+      .join(", "),
+    entries: selection.entries,
+  };
 }
 
 function statement(
@@ -88,7 +161,7 @@ function statement(
   resource: Resource,
   assignments: readonly Assignment[],
   mode: WriteMode,
-  modify: (parameters: Parameters, returning: string) => string,
+  modify: (parameters: Parameters, returning: string) => Modification,
 ): Query {
   refuseUnwritable(resource, assignments, mode);
   // Refuses a sensitive primary key, which would leave the written row with no
@@ -99,13 +172,19 @@ function statement(
   const parameters = new Parameters();
   const modifying = modify(parameters, returningList(selection.entries));
   const joins = selection.joins === "" ? "" : ` ${selection.joins}`;
+  const { before } = modifying;
+
+  const read = before ? `${quoteIdentifier(BEFORE_ROW)} as (${before.text}), ` : "";
+  const columns = before ? `${selection.columns}, ${before.columns}` : selection.columns;
+  const paired = before ? ` cross join ${quoteIdentifier(BEFORE_ROW)}` : "";
 
   return {
     text:
-      `with ${quoteIdentifier(WRITTEN_ROW)} as (${modifying})` +
-      ` select ${selection.columns} from ${quoteIdentifier(WRITTEN_ROW)} as ${quoteIdentifier(ROW_ALIAS)}${joins}`,
+      `with ${read}${quoteIdentifier(WRITTEN_ROW)} as (${modifying.text})` +
+      ` select ${columns} from ${quoteIdentifier(WRITTEN_ROW)} as ${quoteIdentifier(ROW_ALIAS)}${joins}${paired}`,
     values: parameters.values(),
     select: selection.entries,
+    ...(before ? { before: before.entries } : {}),
   };
 }
 

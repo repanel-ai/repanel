@@ -28,6 +28,8 @@ export { QueryBuilder, type Query, type RecordsQuery, type Ownership } from "./q
 
 export { RecordReader, type ReadContext } from "./read/record-reader.js";
 
+export type { AuditEvent, AuditWriter, WriteContext } from "./audit/audit-event.js";
+
 export { RecordWriter } from "./write/record-writer.js";
 export { WRITE_REFUSED, type Assignment } from "./query/write-statements.js";
 

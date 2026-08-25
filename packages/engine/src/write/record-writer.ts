@@ -1,6 +1,7 @@
 import {
   checkRecordValues,
   formatList,
+  type AuditValues,
   type Field,
   type JsonValue,
   type RecordDto,
@@ -11,6 +12,8 @@ import {
   type WriteMode,
 } from "@repanel/contracts";
 import type { QueryResult } from "pg";
+import type { AuditEvent, WriteContext } from "../audit/audit-event.js";
+import { outcomeOf } from "../audit/outcome.js";
 import {
   ConflictError,
   NotFoundError,
@@ -20,8 +23,7 @@ import {
 } from "../errors.js";
 import { QueryBuilder, type Query } from "../query/query-builder.js";
 import { WRITE_REFUSED, type Assignment } from "../query/write-statements.js";
-import type { ReadContext } from "../read/record-reader.js";
-import { toRecordDtos } from "../read/records.mapper.js";
+import { toFieldValues, toRecordDtos } from "../read/records.mapper.js";
 import { requireResource } from "../resources.js";
 
 /** The customer's database ran out of the time the pool gave the statement. */
@@ -50,6 +52,14 @@ type WritePlan =
       id: RecordId;
     };
 
+/** A write that landed: the record it left, and both readings of what it set. */
+interface Written {
+  record: RecordDto;
+  /** What those same columns held. Null for a create, which replaced nothing. */
+  before: AuditValues | null;
+  after: AuditValues;
+}
+
 /**
  * Writes a customer's records on behalf of the admin a definition describes.
  *
@@ -60,14 +70,15 @@ type WritePlan =
  * just fetched.
  *
  * Creating and updating converge on `perform`, which is the only place in this
- * engine where a form's values reach a database. That is on purpose: one seam
- * to wrap when writes have to be recorded as well as made.
+ * engine where a form's values reach a database — and therefore the one place
+ * that has to account for them. Every write leaves an event behind it, whatever
+ * it came to (DECISIONS #061).
  */
 export class RecordWriter {
   constructor(private readonly queries: QueryBuilder) {}
 
   async createRecord(
-    context: ReadContext,
+    context: WriteContext,
     resourceKey: string,
     write: RecordWrite,
   ): Promise<RecordDto> {
@@ -77,7 +88,7 @@ export class RecordWriter {
   }
 
   async updateRecord(
-    context: ReadContext,
+    context: WriteContext,
     resourceKey: string,
     id: RecordId,
     write: RecordWrite,
@@ -88,12 +99,57 @@ export class RecordWriter {
   }
 
   /**
+   * The write, and the account of it.
+   *
+   * The event is built out of what the statement actually did, so there is no
+   * arrangement of failures under which one claims a success that did not
+   * happen: a write that throws reaches the second branch, and nothing else
+   * writes an event at all.
+   *
+   * The success is not returned until the event is filed, and a failure to file
+   * one is not swallowed. The two live in different databases — the record in
+   * the customer's, the event in RePanel's — so there is no transaction that
+   * could hold them together; what stands in for one is that an operator is
+   * never told a write succeeded before it has been accounted for (DECISIONS
+   * #061).
+   */
+  private async perform(context: WriteContext, plan: WritePlan): Promise<RecordDto> {
+    let written: Written;
+
+    try {
+      written = await this.write(context, plan);
+    } catch (error) {
+      // Best-effort, and deliberately so: nothing reached the customer's
+      // database, so nothing is unaccounted for — and a log that could not be
+      // written must not replace the answer the caller is owed about their own
+      // write. A host that cares logs it on its own side.
+      await context.audit(refusalOf(plan, error)).catch(() => undefined);
+      throw error;
+    }
+
+    await context.audit({
+      kind: plan.mode,
+      resourceKey: plan.resource.key,
+      recordId: written.record.id,
+      actionKey: null,
+      outcome: "ok",
+      reason: null,
+      before: written.before,
+      after: written.after,
+    });
+
+    return written.record;
+  }
+
+  /**
    * The one write. Everything that decides whether it may happen is above the
    * statement: the resource offers this write, the values are ones its fields
    * can hold, and the fields are ones the definition opened. What comes back is
-   * the record as it now stands, read out of the same statement that wrote it.
+   * the record as it now stands, read out of the same statement that wrote it —
+   * and, for an update, what the columns it set held a moment before, read out
+   * of the same statement's own snapshot.
    */
-  private async perform(context: ReadContext, plan: WritePlan): Promise<RecordDto> {
+  private async write(context: WriteContext, plan: WritePlan): Promise<Written> {
     const { resource, mode } = plan;
 
     if (!offers(resource, mode)) {
@@ -122,7 +178,16 @@ export class RecordWriter {
       throw new Error(`the insert into \`${resource.key}\` returned no row`);
     }
 
-    return record;
+    // The columns this write named, on both sides of it. A `sensitive` field is
+    // in neither: it could not have been assigned (`refuseWriteTo`), and the
+    // select lists that answer this statement drop one anyway (`columns.ts`).
+    const touched = new Set(assignments.map(({ field }) => field.key));
+
+    return {
+      record,
+      before: query.before ? toFieldValues(result, query.before, touched) : null,
+      after: toFieldValues(result, query.select, touched),
+    };
   }
 
   /**
@@ -132,7 +197,7 @@ export class RecordWriter {
    * hosts, constraints and the values that were sent.
    */
   private async execute(
-    context: ReadContext,
+    context: WriteContext,
     query: Query,
     assignments: readonly Assignment[],
   ): Promise<QueryResult> {
@@ -199,6 +264,28 @@ export class RecordWriter {
 
     return error;
   }
+}
+
+/**
+ * What a write that did not happen is recorded as. It carries no values on
+ * either side: nothing was replaced, and what was submitted and refused is what
+ * the caller was already told, one problem at a time.
+ */
+function refusalOf(plan: WritePlan, error: unknown): AuditEvent {
+  const { outcome, reason } = outcomeOf(error);
+
+  return {
+    kind: plan.mode,
+    resourceKey: plan.resource.key,
+    // A create that failed never got a key; an update names the one it was
+    // pointed at, whether or not a record turned out to be there.
+    recordId: plan.mode === "update" ? plan.id : null,
+    actionKey: null,
+    outcome,
+    reason,
+    before: null,
+    after: null,
+  };
 }
 
 function offers(resource: Resource, mode: WriteMode): boolean {

@@ -66,3 +66,19 @@ export const optionsQuerySchema = z.strictObject({
 });
 
 export type OptionsQuery = z.infer<typeof optionsQuerySchema>;
+
+/** As many events as a list read in passing shows at once. */
+export const ACTIVITY_PAGE_SIZE = 5;
+
+/**
+ * What a record's activity may be asked for: which page, and how big. There is
+ * nothing to search, sort or filter by — an audit log is read newest first and
+ * in no other order, and a caller that could reorder it could also hide the
+ * line it did not want read. Strict, like every other query this admin takes.
+ */
+export const activityQuerySchema = z.strictObject({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(ACTIVITY_PAGE_SIZE),
+});
+
+export type ActivityQuery = z.infer<typeof activityQuerySchema>;

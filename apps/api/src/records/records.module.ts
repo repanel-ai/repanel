@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { QueryBuilder, RecordWriter } from "@repanel/engine";
+import { ActivityModule } from "../activity/activity.module";
 import { AuthModule } from "../auth/auth.module";
 import { RuntimeModule } from "../runtime/runtime.module";
 import { RecordsController } from "./records.controller";
@@ -12,7 +13,7 @@ import { RecordsService } from "./records.service";
  * one place a statement is assembled (DECISIONS #024).
  */
 @Module({
-  imports: [AuthModule, RuntimeModule],
+  imports: [ActivityModule, AuthModule, RuntimeModule],
   controllers: [RecordsController],
   providers: [
     RecordsService,

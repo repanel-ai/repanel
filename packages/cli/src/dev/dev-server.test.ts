@@ -157,7 +157,43 @@ test("an action the definition declares runs against the record", async () => {
   // 201, because the hosted route is a bare `@Post` and Nest answers those 201.
   assert.equal(response.status, 201);
   assert.deepEqual(await response.json(), { ok: true, label: "Suspend" });
-  assert.match(api.pool.texts()[0] ?? "", /^update "users" set "status" = \$/);
+  assert.match(api.pool.texts()[0] ?? "", /update "users" set "status" = \$/);
+});
+
+test("an action's own account of itself is what the record's activity reads back", async () => {
+  // Its own record, because the log lives as long as the server does and the
+  // case above already acted on `u_1`.
+  await fetch(`${origin}/api/runtime/local/resources/users/records/u_logged/actions/suspend`, {
+    method: "POST",
+  });
+
+  const response = await get("/api/runtime/local/resources/users/records/u_logged/activity");
+  const page = (await response.json()) as {
+    events: Array<{ kind: string; actionKey: string; outcome: string; actorEmail: string }>;
+    total: number;
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(page.total, 1);
+  assert.partialDeepStrictEqual(page.events[0], {
+    kind: "action",
+    actionKey: "suspend",
+    outcome: "ok",
+    actorEmail: OPERATOR.email,
+  });
+});
+
+test("a record nothing has been done to has nothing to show", async () => {
+  const response = await get("/api/runtime/local/resources/users/records/u_untouched/activity");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { events: [], total: 0, page: 1, pageSize: 5 });
+});
+
+test("a parameter an audit log cannot be asked for is refused", async () => {
+  const response = await get("/api/runtime/local/resources/users/records/u_1/activity?sort=at");
+
+  assert.equal(response.status, 400);
 });
 
 test("an api path in another case is still an api path, as it is hosted", async () => {

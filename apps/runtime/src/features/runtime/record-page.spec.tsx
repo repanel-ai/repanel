@@ -1,4 +1,4 @@
-import type { Definition, RecordDto, UserDto } from "@repanel/contracts";
+import type { ActivityEventDto, Definition, RecordDto, UserDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -51,6 +51,11 @@ describe("the record page", () => {
     await loaded(renderAdmin("/a/acme/r/users/u_1"));
 
     const headings = await screen.findAllByRole("heading", { level: 2 });
+    // The definition's own sections and lists, in its order — then the
+    // runtime's own panel, last, because a record's history is read after its
+    // facts rather than instead of them. The fixture happens to call one of its
+    // sections "Activity" too; a customer's word for a group of their fields is
+    // theirs, and it does not move ours.
     expect(headings.map((heading) => heading.textContent)).toEqual([
       "Account",
       "Membership",
@@ -58,6 +63,7 @@ describe("the record page", () => {
       "Preferences",
       "Organization",
       "Orders",
+      "Activity",
     ]);
   });
 
@@ -265,6 +271,7 @@ describe("the record page", () => {
       expect(within(tabs).getAllByRole("link").map((tab) => tab.textContent)).toEqual([
         "Details",
         "Users",
+        "Activity",
       ]);
       expect(within(tabs).getByRole("link", { name: "Details" }).getAttribute("aria-current")).toBe(
         "page",
@@ -658,6 +665,8 @@ interface AdminOptions {
   actionFails?: { status: number; code: string; message: string };
   /** Holds the action open, so the pending state can be read. */
   actionNeverFinishes?: boolean;
+  /** What has been done to the record, newest first. */
+  activity?: ActivityEventDto[];
 }
 
 /**
@@ -705,6 +714,11 @@ function renderAdmin(path: string, options: AdminOptions = {}): () => string[] {
     if (url.includes("/related/")) {
       const records = options.related ?? orderRecords;
       return json(page(records, options.relatedTotal ?? records.length));
+    }
+
+    if (url.includes("/activity")) {
+      const events = options.activity ?? [];
+      return json({ events, total: events.length, page: 1, pageSize: 5 });
     }
 
     if (url.includes("/records/")) {

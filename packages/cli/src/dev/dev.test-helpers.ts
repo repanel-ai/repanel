@@ -13,9 +13,12 @@ import {
   indexResources,
   type ActionContext,
   type ReadContext,
+  type WriteContext,
 } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
+import { ActivityLog } from "./activity-log.js";
 import type { RuntimeApi } from "./api-routes.js";
+import { readActivityQuery } from "./query-params.js";
 
 export const PROJECT_KEY = "local";
 
@@ -55,10 +58,11 @@ export class FakePool {
 }
 
 function answerFor(text: string): QueryResult {
-  if (text.startsWith("update ")) return rows([], [], 1);
   if (text.includes("count(*)")) return rows(["total"], [["1"]]);
 
-  const aliases = [...text.matchAll(/as "(c\d+)"/g)].map((match) => match[1] ?? "");
+  // Both alias spaces: `c0`, `c1`, … is the row a statement produced, and `b0`,
+  // `b1`, … is what the columns it wrote held before it (DECISIONS #061).
+  const aliases = [...text.matchAll(/as "([cb]\d+)"/g)].map((match) => match[1] ?? "");
   return rows(aliases, [aliases.map((alias) => `value-${alias}`)]);
 }
 
@@ -73,6 +77,8 @@ function rows(names: string[], values: unknown[][], rowCount = values.length): Q
 
 export interface TestApi extends RuntimeApi {
   readonly pool: FakePool;
+  /** What the write path filed while a case was running. */
+  readonly log: ActivityLog;
 }
 
 export function testApi(definition: () => Definition, secret = "dev-secret"): TestApi {
@@ -82,13 +88,17 @@ export function testApi(definition: () => Definition, secret = "dev-secret"): Te
   const writer = new RecordWriter(queries);
   const runner = new ActionRunner(reader, queries, new HttpCall());
 
+  const log = new ActivityLog();
+
   const read = (): ReadContext => ({
     resources: indexResources(definition()),
     pool: () => Promise.resolve(pool.asPool()),
   });
+  const write = (): WriteContext => ({ ...read(), audit: (event) => log.record(OPERATOR, event) });
 
   return {
     pool,
+    log,
     projectKey: PROJECT_KEY,
     user: OPERATOR,
     reader,
@@ -96,7 +106,9 @@ export function testApi(definition: () => Definition, secret = "dev-secret"): Te
     runner,
     definition,
     read,
-    act: (): ActionContext => ({ ...read(), secret: () => Promise.resolve(secret) }),
+    write,
+    act: (): ActionContext => ({ ...write(), secret: () => Promise.resolve(secret) }),
+    activity: (resourceKey, id, params) => log.forRecord(resourceKey, id, readActivityQuery(params)),
   };
 }
 

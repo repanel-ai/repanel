@@ -1,7 +1,8 @@
-import type { ProjectDto } from "@repanel/contracts";
+import type { ProjectDto, UserDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { QueryBuilder, RecordReader, RecordWriter } from "@repanel/engine";
+import { QueryBuilder, RecordReader, RecordWriter, type AuditEvent } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
+import type { ActivityService } from "../activity/activity.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { PublishedDefinition } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
@@ -16,7 +17,12 @@ const PROJECT: ProjectDto = {
   key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
-const OWNER = "0f1e2d3c-4b5a-4988-9776-6655443322aa";
+/** The operator every write here is made by, and recorded against. */
+const OPERATOR: UserDto = {
+  id: "0f1e2d3c-4b5a-4988-9776-6655443322aa",
+  email: "ada@repanel.test",
+  name: "Ada",
+};
 
 interface Statement {
   text: string;
@@ -60,7 +66,13 @@ describe("RecordsService", () => {
   let pool: FakePool;
   let projects: { requireOwnedByKey: jest.Mock };
   let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
+  let activity: { record: jest.Mock };
   let records: RecordsService;
+
+  /** Every event the write path filed, in the order it filed them. */
+  function filed(): AuditEvent[] {
+    return activity.record.mock.calls.map(([, , event]: [unknown, unknown, AuditEvent]) => event);
+  }
 
   beforeEach(() => {
     pool = new FakePool();
@@ -69,6 +81,7 @@ describe("RecordsService", () => {
       getPublished: jest.fn().mockResolvedValue(publishedOf(saasDefinition)),
       getValidationResult: jest.fn().mockResolvedValue(null),
     };
+    activity = { record: jest.fn().mockResolvedValue(undefined) };
 
     const queries = new QueryBuilder();
     const runtime = new RuntimeService(
@@ -77,7 +90,11 @@ describe("RecordsService", () => {
       pool as unknown as CustomerPoolService,
       new RecordReader(queries),
     );
-    records = new RecordsService(runtime, new RecordWriter(queries));
+    records = new RecordsService(
+      runtime,
+      activity as unknown as ActivityService,
+      new RecordWriter(queries),
+    );
   });
 
   async function refusalFrom(call: Promise<unknown>): Promise<Error> {
@@ -90,7 +107,7 @@ describe("RecordsService", () => {
   }
 
   it("writes the record and answers with what the write returned", async () => {
-    const record = await records.createRecord(OWNER, PROJECT.key, "users", {
+    const record = await records.createRecord(OPERATOR, PROJECT.key, "users", {
       values: { email: "ada@acme.test", name: "Ada" },
     });
 
@@ -103,7 +120,7 @@ describe("RecordsService", () => {
   });
 
   it("updates only the fields the request named", async () => {
-    await records.updateRecord(OWNER, PROJECT.key, "users", "u_1", { values: { notes: "hi" } });
+    await records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", { values: { notes: "hi" } });
 
     expect(pool.statements[0]?.text).toContain('update "users" set "notes" = $1 where "id" = $2');
     expect(pool.statements[0]?.values).toEqual(["hi", "u_1"]);
@@ -113,7 +130,7 @@ describe("RecordsService", () => {
     projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
     const refusal = await refusalFrom(
-      records.createRecord(OWNER, PROJECT.key, "users", { values: { email: "a@b.test", name: "A" } }),
+      records.createRecord(OPERATOR, PROJECT.key, "users", { values: { email: "a@b.test", name: "A" } }),
     );
 
     expect(refusal).toBeInstanceOf(NotFoundError);
@@ -129,7 +146,7 @@ describe("RecordsService", () => {
     definitions.getPublished.mockResolvedValue(null);
 
     const refusal = await refusalFrom(
-      records.createRecord(OWNER, PROJECT.key, "users", { values: { email: "a@b.test", name: "A" } }),
+      records.createRecord(OPERATOR, PROJECT.key, "users", { values: { email: "a@b.test", name: "A" } }),
     );
 
     expect(refusal).toBeInstanceOf(NotFoundError);
@@ -140,7 +157,7 @@ describe("RecordsService", () => {
     definitions.getPublished.mockResolvedValue(publishedOf({ schemaVersion: "0.1" }));
 
     const refusal = await refusalFrom(
-      records.updateRecord(OWNER, PROJECT.key, "users", "u_1", { values: { name: "Ada" } }),
+      records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", { values: { name: "Ada" } }),
     );
 
     expect(refusal).toBeInstanceOf(NotFoundError);
@@ -149,7 +166,7 @@ describe("RecordsService", () => {
 
   it("refuses a write the definition does not offer, before any statement", async () => {
     const refusal = await refusalFrom(
-      records.createRecord(OWNER, PROJECT.key, "orders", { values: { reference: "AC-2" } }),
+      records.createRecord(OPERATOR, PROJECT.key, "orders", { values: { reference: "AC-2" } }),
     );
 
     expect(refusal).toBeInstanceOf(WriteRefusedError);
@@ -158,7 +175,7 @@ describe("RecordsService", () => {
 
   it("carries the field-level refusals out where the form can read them", async () => {
     const refusal = (await refusalFrom(
-      records.updateRecord(OWNER, PROJECT.key, "users", "u_1", {
+      records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", {
         values: { email: "not-an-address", password_hash: "x" },
       }),
     )) as ValidationFailedError;
@@ -169,5 +186,81 @@ describe("RecordsService", () => {
       "values.password_hash",
     ]);
     expect(pool.statements).toEqual([]);
+  });
+
+  /**
+   * The engine says what happened; this service says who it happened for. The
+   * two halves meet here, and this is where the operator's own address reaches
+   * the log (DECISIONS #061).
+   */
+  describe("what it records", () => {
+    it("files the write against the operator who made it, and their project", async () => {
+      await records.createRecord(OPERATOR, PROJECT.key, "users", {
+        values: { email: "ada@acme.test", name: "Ada" },
+      });
+
+      expect(activity.record).toHaveBeenCalledWith(
+        OPERATOR,
+        PROJECT.id,
+        expect.objectContaining({ kind: "create", resourceKey: "users", outcome: "ok" }),
+      );
+    });
+
+    it("files an edit with the values on both sides of it", async () => {
+      await records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", {
+        values: { name: "Ada Lovelace" },
+      });
+
+      expect(filed()[0]).toMatchObject({
+        kind: "update",
+        recordId: "u_1",
+        outcome: "ok",
+        after: { name: "Ada" },
+      });
+    });
+
+    /**
+     * The one rule this feature may not bend (DECISIONS #014, #027). A
+     * sensitive field cannot be written, so it cannot be one of the columns a
+     * write names — and the log is built out of the columns a write names.
+     */
+    it("puts no sensitive field in the log, on either side of a write", async () => {
+      await records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", {
+        values: { name: "Ada Lovelace" },
+      });
+
+      const [event] = filed();
+      expect(Object.keys(event?.after ?? {})).toEqual(["name"]);
+      expect(JSON.stringify(event)).not.toContain("password_hash");
+    });
+
+    it("files a refusal, and none of the values that were refused", async () => {
+      await refusalFrom(
+        records.updateRecord(OPERATOR, PROJECT.key, "users", "u_1", {
+          values: { password_hash: "scrypt$do-not-leak" },
+        }),
+      );
+
+      expect(filed()).toEqual([
+        expect.objectContaining({ outcome: "refused", reason: "validation_failed", after: null }),
+      ]);
+      expect(JSON.stringify(filed())).not.toContain("do-not-leak");
+    });
+
+    /**
+     * There is no transaction across two databases, so what stands in for one
+     * is this: the write is not reported until it has been accounted for.
+     */
+    it("does not answer a write it could not account for", async () => {
+      activity.record.mockRejectedValue(new Error("the log is down"));
+
+      const refusal = await refusalFrom(
+        records.createRecord(OPERATOR, PROJECT.key, "users", {
+          values: { email: "ada@acme.test", name: "Ada" },
+        }),
+      );
+
+      expect(refusal.message).toBe("the log is down");
+    });
   });
 });

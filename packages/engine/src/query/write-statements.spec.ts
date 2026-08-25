@@ -181,11 +181,13 @@ describe("updateStatement", () => {
     const query = updateStatement(RESOURCES, ORDERS, set(ORDERS, { reference: "AC-2" }), "ord_1");
 
     expect(query.text).toBe(
-      'with "w" as (update "orders" set "reference" = $1 where "id" = $2' +
+      'with "b" as (select "t"."reference" as "b0" from "orders" as "t" where "t"."id" = $2),' +
+        ' "w" as (update "orders" set "reference" = $1 where "id" = $2' +
         ' returning "id", "reference", "user_id", "status", "total_cents", "metadata", "placed_at")' +
         ' select "t"."id" as "c0", "t"."reference" as "c1", "t"."user_id" as "c2", "j0"."email" as "c3",' +
-        ' "t"."status" as "c4", "t"."total_cents" as "c5", "t"."metadata" as "c6", "t"."placed_at" as "c7"' +
-        ' from "w" as "t" left join "users" as "j0" on "j0"."id" = "t"."user_id"',
+        ' "t"."status" as "c4", "t"."total_cents" as "c5", "t"."metadata" as "c6", "t"."placed_at" as "c7",' +
+        ' "b"."b0" as "b0"' +
+        ' from "w" as "t" left join "users" as "j0" on "j0"."id" = "t"."user_id" cross join "b"',
     );
     expect(query.values).toEqual(["AC-2", "ord_1"]);
   });
@@ -200,6 +202,57 @@ describe("updateStatement", () => {
 
     expect(query.text).toContain('set "name" = $1, "notes" = $2 where "id" = $3');
     expect(query.values).toEqual(["Ada", "hello", "user-9"]);
+  });
+});
+
+/**
+ * What the update replaced, read beside it rather than before it. The two
+ * halves are one statement, so they are one snapshot — there is no round trip
+ * between them for another write to land in (DECISIONS #056, #061).
+ */
+describe("what an update replaced", () => {
+  it("reads the columns it is about to set, in the resource's own order", () => {
+    const query = updateStatement(
+      RESOURCES,
+      USERS,
+      set(USERS, { name: "Ada", notes: "hello" }),
+      "user-9",
+    );
+
+    expect(query.text).toContain(
+      'with "b" as (select "t"."name" as "b0", "t"."notes" as "b1" from "users" as "t"',
+    );
+    expect(query.before?.map((entry) => entry.key)).toEqual(["name", "notes"]);
+  });
+
+  /**
+   * A statement that read the whole row to file two of its columns would be
+   * selecting a customer's data in order to throw it away — and every column it
+   * did not need is a column an audit record could leak.
+   */
+  it("reads no column the write did not name", () => {
+    const query = updateStatement(RESOURCES, USERS, set(USERS, { name: "Ada" }), "user-1");
+    const before = /with "b" as \(([^)]+)\)/.exec(query.text)?.[1] ?? "";
+
+    expect(query.before?.map((entry) => entry.key)).toEqual(["name"]);
+    expect(before).not.toContain("password_hash");
+    expect(before).not.toContain("email");
+  });
+
+  it("points both halves at the same row with the same placeholder", () => {
+    const query = updateStatement(RESOURCES, USERS, set(USERS, { name: "Ada" }), "user-1");
+
+    expect(query.text).toContain('where "t"."id" = $2');
+    expect(query.text).toContain('where "id" = $2 returning');
+    expect(query.values).toEqual(["Ada", "user-1"]);
+  });
+
+  /** A record being made replaced nothing, so there is nothing to have read. */
+  it("is absent from an insert", () => {
+    const query = insertStatement(RESOURCES, USERS, set(USERS, { email: "a@b.test", name: "Ada" }));
+
+    expect(query.before).toBeUndefined();
+    expect(query.text.startsWith('with "w" as (insert')).toBe(true);
   });
 });
 

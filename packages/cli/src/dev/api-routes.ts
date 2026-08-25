@@ -1,4 +1,11 @@
-import { recordWriteSchema, type Definition, type RecordWrite, type UserDto } from "@repanel/contracts";
+import {
+  recordWriteSchema,
+  type ActivityListDto,
+  type Definition,
+  type RecordId,
+  type RecordWrite,
+  type UserDto,
+} from "@repanel/contracts";
 import {
   NotFoundError,
   type ActionContext,
@@ -6,8 +13,9 @@ import {
   type ReadContext,
   type RecordReader,
   type RecordWriter,
+  type WriteContext,
 } from "@repanel/engine";
-import { readListQuery, readOptionsQuery } from "./query-params.js";
+import { readActivityQuery, readListQuery, readOptionsQuery } from "./query-params.js";
 import { UnreadableBodyError } from "./request-body.js";
 
 /**
@@ -29,7 +37,11 @@ export interface RuntimeApi {
   readonly runner: ActionRunner;
   definition(): Definition;
   read(): ReadContext;
+  /** Reading's context, plus somewhere to account for what a write did. */
+  write(): WriteContext;
   act(): ActionContext;
+  /** What has been done to one record during this run of the server. */
+  activity(resourceKey: string, id: RecordId, params: URLSearchParams): ActivityListDto;
 }
 
 /** A request this server recognized, and what it answers with. */
@@ -109,7 +121,7 @@ export async function handleApi(
     // answers a bare `@Post` with.
     return {
       status: 201,
-      body: await api.writer.createRecord(api.read(), resourceKey, await write(readBody)),
+      body: await api.writer.createRecord(api.write(), resourceKey, await write(readBody)),
     };
   }
 
@@ -122,8 +134,12 @@ export async function handleApi(
   if (method === "PATCH" && rest.length === 4) {
     return {
       status: 200,
-      body: await api.writer.updateRecord(api.read(), resourceKey, id, await write(readBody)),
+      body: await api.writer.updateRecord(api.write(), resourceKey, id, await write(readBody)),
     };
+  }
+
+  if (method === "GET" && rest.length === 5 && rest[4] === "activity") {
+    return { status: 200, body: api.activity(resourceKey, id, url.searchParams) };
   }
 
   if (method === "GET" && rest.length === 6 && rest[4] === "related") {

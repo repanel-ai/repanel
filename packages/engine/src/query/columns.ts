@@ -26,13 +26,17 @@ export interface Selection {
   entries: SelectEntry[];
 }
 
+/** The space a record's own columns are aliased in: `c0`, `c1`, … */
+const VALUE_PREFIX = "c";
+
 /**
  * The select list for a set of fields, and the joins that give a relation
  * column something readable in place of a key.
  *
- * This is the only place a select list is built, which is what makes "a
- * sensitive field is never selected" a property of the code rather than a rule
- * to remember: a sensitive field is dropped here, and there is no other door.
+ * This file is the only place a record's columns are put into a select list,
+ * which is what makes "a sensitive field is never selected" a property of the
+ * code rather than a rule to remember: a sensitive field is dropped here and in
+ * `selectValues` below, and there is no third door.
  *
  * Every output column is named by us — `c0`, `c1`, … — rather than by the
  * customer's column names. Postgres allows two output columns to share a name
@@ -50,8 +54,13 @@ export function selectFields(
   for (const field of fields) {
     if (field.sensitive) continue;
 
-    columns.push(select(column(ROW_ALIAS, field.key), entries.length));
-    entries.push({ alias: aliasFor(entries.length), key: field.key, kind: "value", field });
+    columns.push(select(column(ROW_ALIAS, field.key), VALUE_PREFIX, entries.length));
+    entries.push({
+      alias: aliasFor(VALUE_PREFIX, entries.length),
+      key: field.key,
+      kind: "value",
+      field,
+    });
 
     // A relation field names its target itself, and nothing requires a matching
     // relationship to be declared alongside it — so the join is keyed off the
@@ -75,17 +84,56 @@ export function selectFields(
       `left join ${quoteIdentifier(target.source.table)} as ${quoteIdentifier(joinAlias)}` +
         ` on ${column(joinAlias, target.primaryKey)} = ${column(ROW_ALIAS, field.key)}`,
     );
-    columns.push(select(column(joinAlias, label.key), entries.length));
-    entries.push({ alias: aliasFor(entries.length), key: field.key, kind: "label", field: label });
+    columns.push(select(column(joinAlias, label.key), VALUE_PREFIX, entries.length));
+    entries.push({
+      alias: aliasFor(VALUE_PREFIX, entries.length),
+      key: field.key,
+      kind: "label",
+      field: label,
+    });
   }
 
   return { columns: columns.join(", "), joins: joins.join(" "), entries };
 }
 
-function aliasFor(position: number): string {
-  return `c${position}`;
+/** A select list with no joins in it, and what to read each column back as. */
+export interface ValueSelection {
+  columns: string;
+  entries: SelectEntry[];
 }
 
-function select(expression: string, position: number): string {
-  return `${expression} as ${quoteIdentifier(aliasFor(position))}`;
+/**
+ * The columns themselves, and nothing around them: no joins, no labels, and an
+ * alias space of the caller's choosing so the list can sit beside another one
+ * in the same statement.
+ *
+ * It is here rather than beside its caller because this file is where "a
+ * sensitive field is never selected" is true. A second list of a record's
+ * columns built anywhere else would be a second place to remember the rule, and
+ * the rule survives precisely by not having to be remembered.
+ *
+ * A relation reads as the key it holds. What the record on the other end is
+ * *called* is a fact about that record now, and a list built to say what a
+ * column held a moment ago has no business answering it.
+ */
+export function selectValues(fields: readonly Field[], prefix: string): ValueSelection {
+  const entries: SelectEntry[] = [];
+  const columns: string[] = [];
+
+  for (const field of fields) {
+    if (field.sensitive) continue;
+
+    columns.push(select(column(ROW_ALIAS, field.key), prefix, entries.length));
+    entries.push({ alias: aliasFor(prefix, entries.length), key: field.key, kind: "value", field });
+  }
+
+  return { columns: columns.join(", "), entries };
+}
+
+function aliasFor(prefix: string, position: number): string {
+  return `${prefix}${position}`;
+}
+
+function select(expression: string, prefix: string, position: number): string {
+  return `${expression} as ${quoteIdentifier(aliasFor(prefix, position))}`;
 }

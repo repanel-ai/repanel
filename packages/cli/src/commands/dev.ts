@@ -11,12 +11,15 @@ import {
   indexResources,
   type ActionContext,
   type ReadContext,
+  type WriteContext,
 } from "@repanel/engine";
 import { DEFINITION_DIRECTORY } from "../assemble/assemble.js";
 import type { CommandResult } from "../command-result.js";
+import { ActivityLog } from "../dev/activity-log.js";
 import { createDevServer } from "../dev/dev-server.js";
 import { describeDatabase, findDatabaseUrl, maskDatabaseUrl } from "../database-url.js";
 import { WatchedDefinition, readDefinition } from "../dev/project.js";
+import { readActivityQuery } from "../dev/query-params.js";
 import { EMBEDDED_RUNTIME, hasRuntime } from "../dev/spa.js";
 import { watchDefinition } from "../dev/watch.js";
 import { count, formatProblem, reportReloaded, reportWhileServing } from "../problems.js";
@@ -154,11 +157,20 @@ export async function dev(
   // somebody eventually ships.
   const actionSecret = randomBytes(32).toString("base64url");
 
+  // What this run has done, kept in memory: there is no control-plane database
+  // here to file it in, and the panel that reads it is the same panel the
+  // hosted product draws (DECISIONS #048, #061).
+  const activity = new ActivityLog();
+
   const read = (): ReadContext => ({
     resources: indexResources(watched.current),
     pool: () => pool.poolFor(DATABASE),
   });
-  const act = (): ActionContext => ({ ...read(), secret: () => Promise.resolve(actionSecret) });
+  const write = (): WriteContext => ({
+    ...read(),
+    audit: (event) => activity.record(LOCAL_OPERATOR, event),
+  });
+  const act = (): ActionContext => ({ ...write(), secret: () => Promise.resolve(actionSecret) });
 
   const server = createDevServer({
     watched,
@@ -175,7 +187,10 @@ export async function dev(
       runner,
       definition: () => watched.current,
       read,
+      write,
       act,
+      activity: (resourceKey, id, params) =>
+        activity.forRecord(resourceKey, id, readActivityQuery(params)),
     },
   });
 

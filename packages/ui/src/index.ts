@@ -40,6 +40,7 @@ export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./gly
 export { Section, type SectionProps } from "./section";
 export { FormSelect, Select, type FormSelectProps, type SelectProps } from "./select";
 export { TabBar, tabClasses } from "./tab-bar";
+export { TONE_INK } from "./tone-ink";
 export { Textarea, type TextareaProps } from "./textarea";
 export { Toaster, useToaster, type Notices, type ToastMessage, type ToastTone } from "./toast";
 export { Skeleton } from "./skeleton";

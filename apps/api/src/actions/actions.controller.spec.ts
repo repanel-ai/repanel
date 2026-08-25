@@ -18,7 +18,7 @@ describe("ActionsController", () => {
     ).resolves.toEqual({ ok: true, label: "Suspend" });
 
     expect(actions.run).toHaveBeenCalledWith(
-      USER.id,
+      USER,
       "crewbase-a3k9x2",
       "users",
       "user-1",

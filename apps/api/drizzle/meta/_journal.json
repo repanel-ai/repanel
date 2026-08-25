@@ -50,6 +50,13 @@
       "when": 1787674715304,
       "tag": "0006_gigantic_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787697672137,
+      "tag": "0007_lovely_captain_cross",
+      "breakpoints": true
     }
   ]
 }

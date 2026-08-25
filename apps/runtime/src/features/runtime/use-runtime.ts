@@ -1,5 +1,6 @@
 import type {
   ActionResultDto,
+  ActivityListDto,
   Definition,
   RecordDto,
   RecordId,
@@ -58,6 +59,13 @@ export const runtimeKeys = {
    */
   related: (projectKey: string, resourceKey: string, id: RecordId, relationshipKey: string, query: string) =>
     [...runtimeKeys.record(projectKey, resourceKey, id), "related", relationshipKey, query] as const,
+  /**
+   * Filed under the record it is about, like the related lists — so a write
+   * that invalidates the record puts its own account of itself on screen
+   * without anything here having to know that a write happened.
+   */
+  activity: (projectKey: string, resourceKey: string, id: RecordId, query: string) =>
+    [...runtimeKeys.record(projectKey, resourceKey, id), "activity", query] as const,
 };
 
 /** Every value in these paths came out of a definition or an address bar. */
@@ -143,6 +151,24 @@ export function useRelatedRecords(
           query,
         ),
       ),
+  });
+}
+
+/**
+ * What has been done to one record, newest first. It is a read like any other
+ * here, and it is the one read in this admin whose subject is RePanel rather
+ * than the customer's database.
+ */
+export function useActivity(
+  projectKey: string,
+  resourceKey: string,
+  id: RecordId,
+  query: string,
+) {
+  return useQuery({
+    queryKey: runtimeKeys.activity(projectKey, resourceKey, id, query),
+    queryFn: () =>
+      api.get<ActivityListDto>(asked(`${recordPath(projectKey, resourceKey, id)}/activity`, query)),
   });
 }
 

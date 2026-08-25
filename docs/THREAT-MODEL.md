@@ -420,12 +420,35 @@ so there is no operator who can use the admin without being able to use the
 console, and no separation between the person who configures RePanel and the
 person who runs actions. Roles are task [029](tasks/029-operator-roles.md).
 
-### 8.3 There is no audit log
+### 8.3 The audit log is append-only, and spans two databases
 
-An action is executed and its outcome is reported to the operator who ran it;
-nothing durable records who did what. That is task
-[028](tasks/028-audit-log.md), which will capture before/after values and never
-capture sensitive fields.
+Every write RePanel makes — an action, a create, an edit — is recorded in
+`audit_events` with the operator's id and the email they were called by at the
+time, the record, the outcome, and the values on both sides of it. Sensitive
+fields are never captured: the columns recorded are the columns the write named,
+and a sensitive column can be neither written nor selected (§8.4, DECISIONS
+#061). Refusals and failures are recorded too, under the same category the
+request itself was answered with.
+
+Two limits are worth stating plainly.
+
+**There is no transaction across the two databases.** The record lands in the
+customer's database and the event in RePanel's; nothing joins them atomically.
+What holds instead is one-directional: the event is built from the outcome of
+the statement, so a failed write cannot produce an event claiming success, and
+an operator is not told a write succeeded until the event is filed. The residue
+is a write that lands and then cannot be recorded, which is answered as a
+failure — being told "we could not account for this" is the safer half of the
+trade. An `httpCall` action is the deliberate exception: its effect already
+landed inside the customer's application, so its record is best-effort and a log
+that is down never turns a success into a reported failure.
+
+**There is no retention policy, and no way to correct the log.** Rows are
+written once: no update, no delete, no ageing-out. A log an operator can edit
+answers "who did this" with whatever the last person to touch it wanted it to
+say. Events are removed only when the project is, along with everything else
+that hangs off it. There is also no console-wide browse and no export yet — the
+log is read on the record it is about — and read access is not itself audited.
 
 ### 8.4 A definition is trusted after validation, not while it runs
 

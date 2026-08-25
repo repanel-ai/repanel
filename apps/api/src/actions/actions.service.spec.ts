@@ -1,7 +1,19 @@
-import { validateDefinition, type DefinitionInput, type ProjectDto } from "@repanel/contracts";
+import {
+  validateDefinition,
+  type DefinitionInput,
+  type ProjectDto,
+  type UserDto,
+} from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { ActionRunner, HttpCall, QueryBuilder, RecordReader } from "@repanel/engine";
+import {
+  ActionRunner,
+  HttpCall,
+  QueryBuilder,
+  RecordReader,
+  type AuditEvent,
+} from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
+import type { ActivityService } from "../activity/activity.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { PublishedDefinition } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
@@ -21,7 +33,12 @@ const PROJECT: ProjectDto = {
   key: "crewbase-a3k9x2",
   createdAt: "2026-08-18T12:00:00.000Z",
 };
-const OWNER = "0f1e2d3c-4b5a-4988-9776-6655443322aa";
+/** The operator every action here is run by, and recorded against. */
+const OPERATOR: UserDto = {
+  id: "0f1e2d3c-4b5a-4988-9776-6655443322aa",
+  email: "ada@repanel.test",
+  name: "Ada",
+};
 const SECRET = "0DkY6qKcqz3ThQ1lQ1yQmSTQ0Fq0MHQ9Q8oXwq3M2mA";
 
 /** A statement the service sent, and what came back for it. */
@@ -53,8 +70,18 @@ class FakePool {
   }
 }
 
-function updated(rowCount: number): QueryResult {
-  return { rows: [], fields: [], rowCount, command: "UPDATE" } as unknown as QueryResult;
+/**
+ * What a `dbUpdate` answers with: the column on both sides of the write, under
+ * the aliases the statement gave them. `rowCount` is what says whether a row
+ * was there at all.
+ */
+function updated(rowCount: number, before: unknown = null, after: unknown = null): QueryResult {
+  return {
+    rows: rowCount === 0 ? [] : [{ c0: after, b0: before }],
+    fields: [],
+    rowCount,
+    command: "SELECT",
+  } as unknown as QueryResult;
 }
 
 /**
@@ -88,7 +115,13 @@ describe("ActionsService", () => {
   let projects: { requireOwnedByKey: jest.Mock; actionSecret: jest.Mock };
   let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let http: { send: jest.Mock };
+  let activity: { record: jest.Mock };
   let actions: ActionsService;
+
+  /** Every event the action path filed, in the order it filed them. */
+  function filed(): AuditEvent[] {
+    return activity.record.mock.calls.map(([, , event]: [unknown, unknown, AuditEvent]) => event);
+  }
 
   beforeEach(() => {
     pool = new FakePool();
@@ -101,6 +134,7 @@ describe("ActionsService", () => {
       getValidationResult: jest.fn().mockResolvedValue(null),
     };
     http = { send: jest.fn().mockResolvedValue(undefined) };
+    activity = { record: jest.fn().mockResolvedValue(undefined) };
 
     const queries = new QueryBuilder();
     const reader = new RecordReader(queries);
@@ -113,6 +147,7 @@ describe("ActionsService", () => {
     actions = new ActionsService(
       runtime,
       projects as unknown as ProjectsService,
+      activity as unknown as ActivityService,
       new ActionRunner(reader, queries, http as unknown as HttpCall),
     );
   });
@@ -129,23 +164,25 @@ describe("ActionsService", () => {
 
   describe("dbUpdate", () => {
     it("sets the field the definition names to the literal it names", async () => {
-      const result = await actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend");
+      const result = await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend");
 
       expect(result).toEqual({ ok: true, label: "Suspend" });
-      expect(pool.texts()).toEqual([`update "users" set "status" = $1 where "id" = $2`]);
+      // One statement: the write, and both readings of the column it wrote.
+      expect(pool.texts()).toHaveLength(1);
+      expect(pool.texts()[0]).toContain(`update "users" set "status" = $1 where "id" = $2`);
       expect(pool.statements[0]?.values).toEqual(["suspended", "u_1"]);
     });
 
     it("writes a boolean literal as a boolean", async () => {
-      await actions.run(OWNER, PROJECT.key, "users", "u_1", "deactivate");
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "deactivate");
 
       expect(pool.statements[0]?.values).toEqual([false, "u_1"]);
     });
 
     it("quotes the identifiers, so a mixed-case table survives", async () => {
-      await actions.run(OWNER, PROJECT.key, "organizations", "o_1", "upgrade_to_pro");
+      await actions.run(OPERATOR, PROJECT.key, "organizations", "o_1", "upgrade_to_pro");
 
-      expect(pool.texts()[0]).toBe(`update "organizations" set "plan" = $1 where "id" = $2`);
+      expect(pool.texts()[0]).toContain(`update "organizations" set "plan" = $1 where "id" = $2`);
       expect(pool.statements[0]?.values).toEqual(["pro", "o_1"]);
     });
 
@@ -156,7 +193,7 @@ describe("ActionsService", () => {
     it("says a record is missing when nothing was updated", async () => {
       pool.respond = () => updated(0);
 
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_9", "suspend"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_9", "suspend"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(refusal.message).toBe("Record not found");
@@ -169,7 +206,7 @@ describe("ActionsService", () => {
       pool.respond = () => failure(code);
 
       const refusal = await refusalFrom(
-        actions.run(OWNER, PROJECT.key, "users", "not-a-uuid", "suspend"),
+        actions.run(OPERATOR, PROJECT.key, "users", "not-a-uuid", "suspend"),
       );
 
       expect(refusal).toBeInstanceOf(NotFoundError);
@@ -178,14 +215,14 @@ describe("ActionsService", () => {
     it("reports a database that ran out of time as one", async () => {
       pool.respond = () => failure("57014");
 
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend"));
 
       expect(refusal).toBeInstanceOf(QueryTimeoutError);
       expect(refusal.message).not.toContain("driver said");
     });
 
     it("calls nothing out while it writes", async () => {
-      await actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend");
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend");
 
       expect(http.send).not.toHaveBeenCalled();
       expect(projects.actionSecret).not.toHaveBeenCalled();
@@ -221,7 +258,7 @@ describe("ActionsService", () => {
     });
 
     it("calls the address the definition named, filled from the record it read", async () => {
-      const result = await actions.run(OWNER, PROJECT.key, "users", "u_1", "resend_invite");
+      const result = await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
 
       expect(result).toEqual({ ok: true, label: "Resend invite" });
       expect(http.send).toHaveBeenCalledWith({
@@ -237,7 +274,7 @@ describe("ActionsService", () => {
      * at the moment the action runs.
      */
     it("reads the record itself rather than trusting anything sent to it", async () => {
-      await actions.run(OWNER, PROJECT.key, "users", "u_1", "resend_invite");
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
 
       expect(pool.texts()[0]).toContain('from "users" as "t"');
       expect(pool.texts()[0]).toContain('where "t"."id" = $1');
@@ -247,13 +284,13 @@ describe("ActionsService", () => {
     });
 
     it("signs with the project's own secret", async () => {
-      await actions.run(OWNER, PROJECT.key, "users", "u_1", "resend_invite");
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
 
       expect(projects.actionSecret).toHaveBeenCalledWith(PROJECT.id);
     });
 
     it("writes nothing to the database", async () => {
-      await actions.run(OWNER, PROJECT.key, "users", "u_1", "resend_invite");
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
 
       expect(pool.texts().some((text) => text.startsWith("update"))).toBe(false);
     });
@@ -263,7 +300,7 @@ describe("ActionsService", () => {
         ({ rows: [], fields: [], rowCount: 0, command: "SELECT" }) as unknown as QueryResult;
 
       const refusal = await refusalFrom(
-        actions.run(OWNER, PROJECT.key, "users", "u_9", "resend_invite"),
+        actions.run(OPERATOR, PROJECT.key, "users", "u_9", "resend_invite"),
       );
 
       expect(refusal).toBeInstanceOf(NotFoundError);
@@ -281,7 +318,7 @@ describe("ActionsService", () => {
         }) as unknown as QueryResult;
 
       const refusal = await refusalFrom(
-        actions.run(OWNER, PROJECT.key, "orders", "o_1001", "refund"),
+        actions.run(OPERATOR, PROJECT.key, "orders", "o_1001", "refund"),
       );
 
       expect(refusal).toBeInstanceOf(InvalidQueryError);
@@ -294,7 +331,7 @@ describe("ActionsService", () => {
       http.send.mockRejectedValue(refused);
 
       const refusal = await refusalFrom(
-        actions.run(OWNER, PROJECT.key, "users", "u_1", "resend_invite"),
+        actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite"),
       );
 
       expect(refusal).toBe(refused);
@@ -303,7 +340,7 @@ describe("ActionsService", () => {
 
   describe("what it will not run", () => {
     it("has no action a resource does not declare, and says which it has", async () => {
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_1", "delete"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "delete"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(refusal.message).toBe(
@@ -313,7 +350,7 @@ describe("ActionsService", () => {
     });
 
     it("has no resource this admin does not declare", async () => {
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "invoices", "i_1", "void"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "invoices", "i_1", "void"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(refusal.message).toContain("has no resource `invoices`");
@@ -322,7 +359,7 @@ describe("ActionsService", () => {
     it("asks whether this owner has the project before anything else", async () => {
       projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(refusal.message).toBe("Project not found");
@@ -333,10 +370,115 @@ describe("ActionsService", () => {
     it("runs nothing against a project whose published definition does not validate", async () => {
       definitions.getPublished.mockResolvedValue(publishedOf({ schemaVersion: "0.1" }));
 
-      const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend"));
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(pool.statements).toEqual([]);
+    });
+  });
+
+  /**
+   * From the moment an action is named, its outcome is recorded — the one that
+   * succeeded, the one the application refused, and the one that never got as
+   * far as leaving. An admin whose log holds only the successes answers "did
+   * anyone try" with silence (DECISIONS #061).
+   */
+  describe("what it records", () => {
+    it("files a dbUpdate against the operator, with the column on both sides", async () => {
+      pool.respond = () => updated(1, "active", "suspended");
+
+      await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend");
+
+      expect(activity.record).toHaveBeenCalledWith(OPERATOR, PROJECT.id, {
+        kind: "action",
+        resourceKey: "users",
+        recordId: "u_1",
+        actionKey: "suspend",
+        outcome: "ok",
+        reason: null,
+        before: { status: "active" },
+        after: { status: "suspended" },
+      });
+    });
+
+    it("files a record that was not there as a refusal, and not as a success", async () => {
+      pool.respond = () => updated(0);
+
+      await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_9", "suspend"));
+
+      expect(filed()).toEqual([
+        expect.objectContaining({ outcome: "refused", reason: "not_found", after: null }),
+      ]);
+    });
+
+    /**
+     * A `dbUpdate` is RePanel's own write, so it is not reported as done until
+     * it has been accounted for.
+     */
+    it("does not report a dbUpdate it could not account for", async () => {
+      activity.record.mockRejectedValue(new Error("the log is down"));
+
+      const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend"));
+
+      expect(refusal.message).toBe("the log is down");
+    });
+
+    describe("an httpCall", () => {
+      beforeEach(() => {
+        pool.respond = () => userRow();
+      });
+
+      it("files the attempt with no field values, because it changed no column of ours", async () => {
+        await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
+
+        expect(filed()).toEqual([
+          expect.objectContaining({
+            kind: "action",
+            actionKey: "resend_invite",
+            outcome: "ok",
+            before: null,
+            after: null,
+          }),
+        ]);
+      });
+
+      /**
+       * The shape Crewbase's `Approve` takes when the airline is no longer
+       * pending: the application answers 409, the engine calls that
+       * `action_rejected`, and the log calls it a refusal.
+       */
+      it("files an application that said no as a refusal, in its own category", async () => {
+        http.send.mockRejectedValue(
+          new ActionFailedError("action_rejected", "The application answered 409."),
+        );
+
+        await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite"));
+
+        expect(filed()[0]).toMatchObject({ outcome: "refused", reason: "action_rejected" });
+      });
+
+      it("files an application nothing could reach as a failure, not a refusal", async () => {
+        http.send.mockRejectedValue(
+          new ActionFailedError("action_unreachable", "The application could not be reached."),
+        );
+
+        await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite"));
+
+        expect(filed()[0]).toMatchObject({ outcome: "failed", reason: "action_unreachable" });
+      });
+
+      /**
+       * The call already landed inside the customer's application and cannot be
+       * taken back. Answering "it failed" because a row could not be filed
+       * would report something that did not happen.
+       */
+      it("still reports the call that succeeded when the event cannot be filed", async () => {
+        activity.record.mockRejectedValue(new Error("the log is down"));
+
+        const result = await actions.run(OPERATOR, PROJECT.key, "users", "u_1", "resend_invite");
+
+        expect(result).toEqual({ ok: true, label: "Resend invite" });
+      });
     });
   });
 });

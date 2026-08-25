@@ -478,7 +478,13 @@ describe("QueryBuilder", () => {
     it("sets one column of one record, with both values bound", () => {
       const query = builder.setField(USERS, fieldOf(USERS, "status"), "suspended", "user-1");
 
-      expect(query.text).toBe('update "users" set "status" = $1 where "id" = $2');
+      expect(query.text).toBe(
+        'with "b" as (select "status" as "b0" from "users" where "id" = $2),' +
+          ' "w" as (update "users" set "status" = $1 where "id" = $2 returning "status" as "c0")' +
+          ' select "w"."c0" as "c0", "b"."b0" as "b0" from "w" cross join "b"',
+      );
+      // The id is bound once and named twice: the row the update matches and
+      // the row read beside it have to be the same row.
       expect(query.values).toEqual(["suspended", "user-1"]);
     });
 
@@ -504,7 +510,8 @@ describe("QueryBuilder", () => {
 
       const query = builder.setField(user, fieldOf(user, "avatarUrl"), "https://x.test/a.png", "u1");
 
-      expect(query.text).toBe('update "User" set "avatarUrl" = $1 where "id" = $2');
+      expect(query.text).toContain('update "User" set "avatarUrl" = $1 where "id" = $2');
+      expect(query.text).toContain('select "avatarUrl" as "b0" from "User" where "id" = $2');
     });
 
     /**
@@ -525,7 +532,7 @@ describe("QueryBuilder", () => {
     it("still writes a hidden column, because hidden is only about display", () => {
       const query = builder.setField(USERS, fieldOf(USERS, "preferences"), null, "user-1");
 
-      expect(query.text).toBe('update "users" set "preferences" = $1 where "id" = $2');
+      expect(query.text).toContain('update "users" set "preferences" = $1 where "id" = $2');
     });
 
     it("refuses to address a record whose key the resource has made a secret of", () => {

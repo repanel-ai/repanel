@@ -20,6 +20,7 @@ export * from "./errors/envelope.js";
 export * from "./projects/project.js";
 export * from "./projects/requests.js";
 export * from "./runtime/actions.js";
+export * from "./runtime/activity.js";
 export * from "./runtime/records.js";
 export * from "./runtime/requests.js";
 export * from "./runtime/values.js";

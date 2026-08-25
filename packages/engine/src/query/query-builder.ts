@@ -13,13 +13,25 @@ import { identityField, indexFields, listFields } from "./fields.js";
 import { column, quoteIdentifier } from "./identifier.js";
 import { optionsStatement } from "./options.js";
 import { Parameters } from "./parameters.js";
-import { insertStatement, updateStatement, type Assignment } from "./write-statements.js";
+import {
+  BEFORE_ROW,
+  WRITTEN_ROW,
+  insertStatement,
+  updateStatement,
+  type Assignment,
+} from "./write-statements.js";
 
 /** A statement, what to send with it, and how to read what comes back. */
 export interface Query {
   text: string;
   values: unknown[];
   select: SelectEntry[];
+  /**
+   * How to read the same row as it stood before the statement changed it, out
+   * of the same result. Only a statement that overwrites something has one — an
+   * insert has nothing to have replaced.
+   */
+  before?: SelectEntry[];
 }
 
 /** A page of records, and the count that says how many there are to page. */
@@ -206,7 +218,15 @@ export class QueryBuilder {
    * that went around it would be a write nothing had checked.
    *
    * `set` names a bare column: Postgres refuses a table-qualified target there,
-   * which is why this statement has no row alias.
+   * which is why the modifying half of this statement has no row alias.
+   *
+   * It answers with the column on both sides of the write — what it held, read
+   * in the same snapshot, and what it holds now, read out of `RETURNING`. That
+   * is what an audit record of a `dbUpdate` is made of, and taking it here
+   * rather than in a read before and a read after is what makes the pair a fact
+   * about one moment (DECISIONS #056, #061). When the key names no row both
+   * halves are empty and nothing comes back, which is the same way this
+   * statement has always said a record is not there.
    */
   setField(resource: Resource, field: Field, value: ActionValue, id: RecordId): Query {
     // Validation refuses a `dbUpdate` on a sensitive field; this is that rule
@@ -220,15 +240,31 @@ export class QueryBuilder {
       );
     }
 
-    const identity = identityField(resource);
     const parameters = new Parameters();
+    const written = parameters.bind(value);
+    // One placeholder for both halves: they have to name the same row.
+    const key = parameters.bind(id);
+
+    const table = quoteIdentifier(resource.source.table);
+    const target = quoteIdentifier(field.key);
+    const identity = quoteIdentifier(identityField(resource).key);
+
+    const after: SelectEntry = { alias: "c0", key: field.key, kind: "value", field };
+    const before: SelectEntry = { alias: `${BEFORE_ROW}0`, key: field.key, kind: "value", field };
 
     return {
       text:
-        `update ${quoteIdentifier(resource.source.table)} set ${quoteIdentifier(field.key)} = ${parameters.bind(value)}` +
-        ` where ${quoteIdentifier(identity.key)} = ${parameters.bind(id)}`,
+        `with ${quoteIdentifier(BEFORE_ROW)} as (` +
+        `select ${target} as ${quoteIdentifier(before.alias)} from ${table} where ${identity} = ${key}` +
+        `), ${quoteIdentifier(WRITTEN_ROW)} as (` +
+        `update ${table} set ${target} = ${written} where ${identity} = ${key}` +
+        ` returning ${target} as ${quoteIdentifier(after.alias)}` +
+        `) select ${column(WRITTEN_ROW, after.alias)} as ${quoteIdentifier(after.alias)},` +
+        ` ${column(BEFORE_ROW, before.alias)} as ${quoteIdentifier(before.alias)}` +
+        ` from ${quoteIdentifier(WRITTEN_ROW)} cross join ${quoteIdentifier(BEFORE_ROW)}`,
       values: parameters.values(),
-      select: [],
+      select: [after],
+      before: [before],
     };
   }
 }

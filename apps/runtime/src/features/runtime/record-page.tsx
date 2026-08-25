@@ -4,13 +4,14 @@ import { ArrowLeftIcon, Badge, CopyButton, FieldRow, Fields, Section, buttonClas
 import { Link, useLocation, useParams, type To } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { visibleActions } from "./action-visibility";
+import { ActivityList } from "./activity-list";
 import { DetailValue } from "./detail-value";
 import { headerStatusField, relatedListsOf, sectionFields, type RelatedList as Related } from "./detail-layout";
 import { ErrorState } from "./error-state";
 import { RecordActions } from "./record-actions";
 import { RecordNotFound } from "./record-not-found";
 import { RecordSkeleton } from "./record-skeleton";
-import { DETAILS_TAB, RecordTabs, currentTab } from "./record-tabs";
+import { ACTIVITY_TAB, DETAILS_TAB, RecordTabs, currentTab } from "./record-tabs";
 import { RelatedList } from "./related-list";
 import { runtimeRoutes } from "./routes";
 import { Screen } from "./screen";
@@ -142,6 +143,17 @@ function RecordScreen({
               titled={!tabbed}
             />
           ))}
+
+          {/* What has been done to the record, last on the page and last in the
+              bar: a record's history is read after its facts, not instead. */}
+          {(!tabbed || tab === ACTIVITY_TAB) && (
+            <ActivityList
+              projectKey={projectKey}
+              resource={resource}
+              recordId={record.data.id}
+              titled={!tabbed}
+            />
+          )}
         </>
       )}
     </Screen>

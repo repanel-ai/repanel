@@ -21,6 +21,6 @@ export class ActionsController {
     @Param("id") id: string,
     @Param("actionKey") actionKey: string,
   ): Promise<ActionResultDto> {
-    return this.actions.run(user.id, projectKey, resourceKey, id, actionKey);
+    return this.actions.run(user, projectKey, resourceKey, id, actionKey);
   }
 }

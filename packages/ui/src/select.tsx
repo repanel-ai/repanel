@@ -3,6 +3,7 @@ import type { BadgeTone } from "./badge";
 import { cn } from "./class-names";
 import { ControlShell } from "./control-shell";
 import { ChevronDownIcon } from "./icons";
+import { TONE_INK } from "./tone-ink";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   /** What the control is asking about. It names the select, and it is shown. */
@@ -49,19 +50,6 @@ export interface FormSelectProps extends SelectHTMLAttributes<HTMLSelectElement>
   children: ReactNode;
   className?: string;
 }
-
-/**
- * The tone, as ink. A control the height of a form row wearing a badge's fill
- * would be a coloured block on a white panel — which is the thing a notice
- * stopped doing, and for the same reason (DECISIONS #052). The word itself is
- * still the first signal; the colour is the second (DESIGN.md §7).
- */
-const TONE_INK: Record<BadgeTone, string> = {
-  neutral: "text-foreground",
-  positive: "text-positive-text",
-  attention: "text-attention-text",
-  critical: "text-destructive-text",
-};
 
 /**
  * A choice out of a fixed set, on a form. It is `Select`'s sibling and not its

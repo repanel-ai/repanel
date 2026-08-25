@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { listRecordsQuerySchema, optionsQuerySchema } from "./requests.js";
+import { activityQuerySchema, listRecordsQuerySchema, optionsQuerySchema } from "./requests.js";
 
 /**
  * Every value here arrives the way express hands a query string over: as text,
@@ -72,4 +72,30 @@ test("options treats an empty box as no search at all", () => {
 test("options refuses a parameter it does not recognize", () => {
   const result = optionsQuerySchema.safeParse({ q: "acme", limit: "500" });
   assert.equal(result.success, false);
+});
+
+test("activity reads a page off a query string", () => {
+  assert.deepEqual(activityQuerySchema.parse({ page: "3", pageSize: "10" }), {
+    page: 3,
+    pageSize: 10,
+  });
+});
+
+test("activity answers an empty query with the newest few", () => {
+  assert.deepEqual(activityQuerySchema.parse({}), { page: 1, pageSize: 5 });
+});
+
+/**
+ * There is nothing to search, sort or filter an audit log by: it is read newest
+ * first and in no other order, and a caller that could reorder it could also
+ * hide the line it did not want read.
+ */
+test("activity refuses anything but a page", () => {
+  assert.equal(activityQuerySchema.safeParse({ page: "1", sort: "at" }).success, false);
+  assert.equal(activityQuerySchema.safeParse({ page: "1", filter: { outcome: "ok" } }).success, false);
+});
+
+test("activity refuses a page nobody could be on", () => {
+  assert.equal(activityQuerySchema.safeParse({ page: "0" }).success, false);
+  assert.equal(activityQuerySchema.safeParse({ pageSize: "5000" }).success, false);
 });

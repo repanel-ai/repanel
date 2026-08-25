@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import type { RecordDto, RecordId, RecordWrite } from "@repanel/contracts";
-import { RecordWriter } from "@repanel/engine";
+import type { RecordDto, RecordId, RecordWrite, UserDto } from "@repanel/contracts";
+import { RecordWriter, type AuditWriter } from "@repanel/engine";
+import { ActivityService } from "../activity/activity.service";
 import { RuntimeService } from "../runtime/runtime.service";
 
 /**
@@ -11,34 +12,53 @@ import { RuntimeService } from "../runtime/runtime.service";
  *
  * There is no authorization of its own here, and that is the point: "may this
  * caller reach this admin" has one answer, and it is `RuntimeService`'s.
+ *
+ * What it adds to the engine's writer is the one thing the engine cannot know:
+ * who is writing. It takes the whole operator rather than their id, because an
+ * audit event carries the address they were called by at the time.
  */
 @Injectable()
 export class RecordsService {
   constructor(
     private readonly runtime: RuntimeService,
+    private readonly activity: ActivityService,
     private readonly writer: RecordWriter,
   ) {}
 
   async createRecord(
-    ownerId: string,
+    actor: UserDto,
     projectKey: string,
     resourceKey: string,
     write: RecordWrite,
   ): Promise<RecordDto> {
-    const context = await this.runtime.readContext(ownerId, projectKey);
+    const context = await this.runtime.readContext(actor.id, projectKey);
 
-    return this.writer.createRecord(context, resourceKey, write);
+    return this.writer.createRecord(
+      { ...context, audit: this.auditFor(actor, context.projectId) },
+      resourceKey,
+      write,
+    );
   }
 
   async updateRecord(
-    ownerId: string,
+    actor: UserDto,
     projectKey: string,
     resourceKey: string,
     id: RecordId,
     write: RecordWrite,
   ): Promise<RecordDto> {
-    const context = await this.runtime.readContext(ownerId, projectKey);
+    const context = await this.runtime.readContext(actor.id, projectKey);
 
-    return this.writer.updateRecord(context, resourceKey, id, write);
+    return this.writer.updateRecord(
+      { ...context, audit: this.auditFor(actor, context.projectId) },
+      resourceKey,
+      id,
+      write,
+    );
+  }
+
+  /** Where this operator's writes to this project are accounted for. */
+  private auditFor(actor: UserDto, projectId: string): AuditWriter {
+    return (event) => this.activity.record(actor, projectId, event);
   }
 }

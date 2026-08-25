@@ -1328,3 +1328,78 @@ combobox itself, which is a keyboard and an `aria-activedescendant` and is not
 something a library can be trusted to have got right for us. The panel arrives
 with the enter every other surface gets, which is the row DESIGN.md §12 has been
 holding open for "a dropdown, when RePanel owns one".
+
+061 · 2026-08 · Every write RePanel makes leaves an event behind it, and the
+event is built out of what the statement actually did. There are two choke
+points and they are the only two — `RecordWriter.perform` and `ActionRunner.run`
+— so "a write nothing recorded" is a thing the code cannot express rather than a
+rule to remember. The engine says what happened; the host says who it happened
+for. `audit` joins `pool` and `secret` in the context a write is given, because
+the operator and the project are facts about a request and a package that looks
+nothing up for itself must not learn them.
+
+**There is no transaction, and pretending otherwise would be the lie.** The
+record lands in the customer's database and the event in RePanel's control
+plane; two databases, no two-phase commit, and #056 already refused to hold a
+customer connection open across a second round trip. What stands in its place is
+one-directional and testable: the event is derived from the outcome of the
+statement, so **a failed write cannot produce an event claiming success**, and
+the operator is not told a write succeeded until the event is filed. The residue
+is stated rather than hidden — a write that lands and then cannot be filed is
+answered as a failure, which is the right way round for an audit log: being told
+"we could not account for this" beats a change nobody can find.
+
+**An `httpCall` is best-effort after, and it is not the same case.** Its effect
+already landed inside the customer's application and cannot be taken back, so
+answering "it failed" because a row could not be written would report something
+that did not happen — the worse of the two lies. A `dbUpdate` is our own write
+and is held to the stricter standard. On the failure path both are best-effort:
+nothing reached the customer's database, so nothing is unaccounted for, and a
+log that is down must not replace the answer the caller is owed about their own
+write.
+
+**Before and after come out of the write's own snapshot.** An update carries a
+`before` CTE selecting the columns it is about to set, beside the data-modifying
+CTE that sets them; all of a statement's parts run against one snapshot and none
+can see another's effects, so what the CTE reads is exactly what the update
+replaced — no extra round trip, and no moment in between for somebody else's
+write to land in. A `dbUpdate` action gets the same treatment for its one
+column. An insert has no `before`, because a record being made replaced nothing.
+
+**Sensitive fields are never captured, and it is a property rather than a
+promise.** The columns read are the columns the write named; a `sensitive` field
+can be neither written (#055) nor selected (`columns.ts`), and the second select
+list this adds lives in that same file so there is no third door. Asserted by
+test at the statement, at the writer, and against a real Postgres — not by
+review (#014, #027).
+
+**Refusals are recorded, and told apart from failures.** `ok`, `refused`,
+`failed`, and the category is the code the request itself was answered with —
+`conflict`, `action_rejected`, `query_timeout` — rather than a second vocabulary
+invented for the log. So the line in the panel and the line in the network tab
+say the same word about the same event. A refusal carries no values: nothing was
+replaced, and recording what was submitted and rejected would be recording data
+the write refused to take.
+
+**Append-only, with no retention in v1.** No update, no delete, no ageing-out.
+A log an operator can edit answers "who did this" with whatever the last person
+to touch it wanted it to say, and the column that would age rows out is the
+column that would quietly remove the evidence. Events go when the project does,
+because everything else about a project does. What that costs is written down in
+THREAT-MODEL §8.3 rather than left to be discovered.
+
+**The panel is the record's own, and it does not wear the dotted rule.** #005's
+signature means "this belongs to a different record" and it means it everywhere;
+a record's own history is not that, so `Activity` is drawn like `Details` — last
+on the page and last in the tab bar, because a history is read after the facts
+rather than instead of them. Its tab is `-activity`, a name no definition
+identifier may take, so a relationship called `activity` and the runtime's own
+panel can never be the same address. Values render in the data face and are left
+alone, except an enum, which wears its definition's tone as ink — the treatment
+#057 already gives it in a form row, and for the same reason.
+
+**`repanel dev` files to memory.** There is no control-plane database on a
+developer's machine, and writing a log into their repository would be RePanel
+putting a file there that nothing asked for (#058). It goes when the process
+does, and the panel above it is the same panel — one product, not a sibling
+(#048).

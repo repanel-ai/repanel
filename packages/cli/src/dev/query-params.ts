@@ -1,6 +1,8 @@
 import {
+  activityQuerySchema,
   listRecordsQuerySchema,
   optionsQuerySchema,
+  type ActivityQuery,
   type ListRecordsQuery,
   type OptionsQuery,
 } from "@repanel/contracts";
@@ -81,6 +83,25 @@ export function readOptionsQuery(params: URLSearchParams): OptionsQuery {
   for (const [key, value] of params) asked[key] = repeated(asked[key], value);
 
   const parsed = optionsQuerySchema.safeParse(asked);
+  if (!parsed.success) {
+    throw new UnreadableQueryError(
+      parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
+    );
+  }
+  return parsed.data;
+}
+
+/**
+ * Which page of a record's history is being asked for. It is `readOptionsQuery`'
+ * s sibling and reads the same way: the schema, and the same refusal, said the
+ * same way. There is nothing else to read — an audit log is ordered newest
+ * first and by nothing else.
+ */
+export function readActivityQuery(params: URLSearchParams): ActivityQuery {
+  const asked: Record<string, unknown> = {};
+  for (const [key, value] of params) asked[key] = repeated(asked[key], value);
+
+  const parsed = activityQuerySchema.safeParse(asked);
   if (!parsed.success) {
     throw new UnreadableQueryError(
       parsed.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),

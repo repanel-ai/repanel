@@ -4,7 +4,9 @@ import {
   type Field,
   type ProjectDto,
   type Resource,
+  type UserDto,
 } from "@repanel/contracts";
+import type { AuditEvent } from "@repanel/engine";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import { QueryBuilder, RecordReader, RecordWriter } from "@repanel/engine";
 import { prismaDefinition } from "@repanel/engine/fixtures";
@@ -23,6 +25,7 @@ import {
   ValidationFailedError,
   WriteRefusedError,
 } from "../errors/domain-errors";
+import type { ActivityService } from "../activity/activity.service";
 import { RecordsService } from "../records/records.service";
 import type { ProjectsService } from "../projects/projects.service";
 import { RuntimeService } from "./runtime.service";
@@ -59,6 +62,9 @@ const PROJECT: ProjectDto = {
   createdAt: "2026-08-18T12:00:00.000Z",
 };
 const OWNER = "0f1e2d3c-4b5a-4988-9776-6655443322aa";
+
+/** The operator every write here is made by, and recorded against. */
+const OPERATOR: UserDto = { id: OWNER, email: "operator@repanel.test", name: "Ops" };
 
 const ACME = "11111111-1111-4111-8111-111111111111";
 const BETA = "22222222-2222-4222-8222-222222222222";
@@ -211,6 +217,8 @@ describeAgainstPostgres("the query engine against Postgres", () => {
   let runtime: RuntimeService;
   let records: RecordsService;
   let draft: unknown = saasDefinition;
+  /** Every event the write path filed, in the order it filed them. */
+  const filed: AuditEvent[] = [];
 
   beforeAll(async () => {
     admin = new Client({ connectionString: dsn });
@@ -236,7 +244,16 @@ describeAgainstPostgres("the query engine against Postgres", () => {
       pools,
       new RecordReader(queries),
     );
-    records = new RecordsService(runtime, new RecordWriter(queries));
+    records = new RecordsService(
+      runtime,
+      {
+        record: (_actor: UserDto, _projectId: string, event: AuditEvent) => {
+          filed.push(event);
+          return Promise.resolve();
+        },
+      } as unknown as ActivityService,
+      new RecordWriter(queries),
+    );
   });
 
   afterAll(async () => {
@@ -247,6 +264,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
   beforeEach(() => {
     draft = saasDefinition;
+    filed.length = 0;
   });
 
   describe("a list", () => {
@@ -602,7 +620,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("creates the record and answers with it, read back through the same statement", async () => {
-      const record = await records.createRecord(OWNER, PROJECT.key, "users", {
+      const record = await records.createRecord(OPERATOR, PROJECT.key, "users", {
         values: { email: "new@acme.test", name: "Nia", organization_id: ACME },
       });
 
@@ -617,7 +635,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("is the same record the read path answers with a moment later", async () => {
-      const written = await records.createRecord(OWNER, PROJECT.key, "users", {
+      const written = await records.createRecord(OPERATOR, PROJECT.key, "users", {
         values: { email: "twice@acme.test", name: "Twice" },
       });
 
@@ -627,7 +645,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("puts no sensitive value on the wire, in either direction", async () => {
-      const record = await records.createRecord(OWNER, PROJECT.key, "users", {
+      const record = await records.createRecord(OPERATOR, PROJECT.key, "users", {
         values: { email: "quiet@acme.test", name: "Quiet" },
       });
 
@@ -637,7 +655,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
         "scrypt$do-not-leak",
       ]);
 
-      const updated = await records.updateRecord(OWNER, PROJECT.key, "users", record.id, {
+      const updated = await records.updateRecord(OPERATOR, PROJECT.key, "users", record.id, {
         values: { name: "Still quiet" },
       });
 
@@ -645,7 +663,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("changes the fields it names and leaves the rest of the row alone", async () => {
-      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+      const record = await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
         values: { notes: "edited" },
       });
 
@@ -658,7 +676,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("clears a field that is asked to hold nothing", async () => {
-      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+      const record = await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
         values: { notes: null, organization_id: null },
       });
 
@@ -667,7 +685,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("writes the types the definition declares as the column's own", async () => {
-      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+      const record = await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
         values: { trial_ends_on: "2027-01-31", login_count: 5, avatar_url: "https://cdn.acme.test/x.png" },
       });
 
@@ -680,9 +698,84 @@ describeAgainstPostgres("the query engine against Postgres", () => {
      * first operator is not told. It is written down here because it is a real
      * property of the product rather than an accident of this suite.
      */
+    /**
+     * What the update replaced, read in the same statement rather than in a
+     * round trip before it. This is asserted against the real server because
+     * the guarantee is the server's: every part of one statement runs against
+     * one snapshot, and none of them can see another's effects (DECISIONS
+     * #056, #061).
+     */
+    it("records what an update replaced, out of the update's own snapshot", async () => {
+      await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
+        values: { notes: "second" },
+      });
+
+      expect(filed).toEqual([
+        expect.objectContaining({
+          kind: "update",
+          resourceKey: "users",
+          recordId: ADA,
+          outcome: "ok",
+          before: { notes: "founding user" },
+          after: { notes: "second" },
+        }),
+      ]);
+    });
+
+    it("records a create with what it wrote and nothing before it", async () => {
+      const record = await records.createRecord(OPERATOR, PROJECT.key, "users", {
+        values: { email: "logged@acme.test", name: "Logged" },
+      });
+
+      expect(filed[0]).toMatchObject({
+        kind: "create",
+        recordId: record.id,
+        before: null,
+        after: { email: "logged@acme.test", name: "Logged" },
+      });
+    });
+
+    it("records a write the database refused as a refusal, in its own category", async () => {
+      await refusalFrom(
+        records.createRecord(OPERATOR, PROJECT.key, "users", {
+          values: { email: "ada@acme.test", name: "Impostor" },
+        }),
+      );
+
+      expect(filed).toEqual([
+        expect.objectContaining({ outcome: "refused", reason: "conflict", after: null }),
+      ]);
+      expect(filed.some((event) => event.outcome === "ok")).toBe(false);
+    });
+
+    /**
+     * The one rule this feature may not bend (DECISIONS #014, #027). The
+     * column holds a secret and the log never learns it: the before-read names
+     * the columns the write named, and a sensitive column can be neither
+     * written nor selected.
+     */
+    it("never puts a sensitive column in the log, however the write is made", async () => {
+      const record = await records.createRecord(OPERATOR, PROJECT.key, "users", {
+        values: { email: "secretive@acme.test", name: "Quiet" },
+      });
+      await admin.query(`update ${SCHEMA}.users set password_hash = $2 where id = $1`, [
+        record.id,
+        "scrypt$do-not-leak",
+      ]);
+      filed.length = 0;
+
+      await records.updateRecord(OPERATOR, PROJECT.key, "users", record.id, {
+        values: { name: "Still quiet" },
+      });
+
+      expect(JSON.stringify(filed)).not.toContain("do-not-leak");
+      expect(Object.keys(filed[0]?.before ?? {})).toEqual(["name"]);
+      expect(Object.keys(filed[0]?.after ?? {})).toEqual(["name"]);
+    });
+
     it("lets the last write win", async () => {
-      await records.updateRecord(OWNER, PROJECT.key, "users", ADA, { values: { name: "First" } });
-      const second = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+      await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, { values: { name: "First" } });
+      const second = await records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
         values: { name: "Second" },
       });
 
@@ -692,7 +785,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     it("writes through a mixed-case table and column", async () => {
       draft = prismaDefinition;
 
-      const record = await records.updateRecord(OWNER, PROJECT.key, "User", PRISMA_SUBJECT, {
+      const record = await records.updateRecord(OPERATOR, PROJECT.key, "User", PRISMA_SUBJECT, {
         values: { avatarUrl: "https://cdn.acme.test/new.png" },
       });
 
@@ -701,7 +794,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
     it("says a record that is not there is not there, and writes nothing", async () => {
       await expect(
-        records.updateRecord(OWNER, PROJECT.key, "users", "99999999-9999-4999-8999-999999999999", {
+        records.updateRecord(OPERATOR, PROJECT.key, "users", "99999999-9999-4999-8999-999999999999", {
           values: { name: "Ghost" },
         }),
       ).rejects.toBeInstanceOf(NotFoundError);
@@ -709,14 +802,14 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
     it("refuses a resource that offers no create, before it reaches the database", async () => {
       await expect(
-        records.createRecord(OWNER, PROJECT.key, "orders", { values: { reference: "REF-9" } }),
+        records.createRecord(OPERATOR, PROJECT.key, "orders", { values: { reference: "REF-9" } }),
       ).rejects.toBeInstanceOf(WriteRefusedError);
     });
 
     describe("what the database itself refuses", () => {
       it("answers a unique violation as a conflict", async () => {
         await expect(
-          records.createRecord(OWNER, PROJECT.key, "users", {
+          records.createRecord(OPERATOR, PROJECT.key, "users", {
             values: { email: "ada@acme.test", name: "Impostor" },
           }),
         ).rejects.toBeInstanceOf(ConflictError);
@@ -724,7 +817,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
       it("points a not-null violation at the column the database named", async () => {
         const refusal = await refusalFrom(
-          records.updateRecord(OWNER, PROJECT.key, "users", ADA, { values: { login_count: null } }),
+          records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, { values: { login_count: null } }),
         );
 
         expect(refusal).toBeInstanceOf(ValidationFailedError);
@@ -733,7 +826,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
       it("points a foreign key violation at the relation that was written", async () => {
         const refusal = await refusalFrom(
-          records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+          records.updateRecord(OPERATOR, PROJECT.key, "users", ADA, {
             values: { organization_id: "99999999-9999-4999-8999-999999999999" },
           }),
         );
@@ -744,7 +837,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
       it("never repeats the driver's words", async () => {
         const refusal = await refusalFrom(
-          records.createRecord(OWNER, PROJECT.key, "users", {
+          records.createRecord(OPERATOR, PROJECT.key, "users", {
             values: { email: "ada@acme.test", name: "Impostor" },
           }),
         );

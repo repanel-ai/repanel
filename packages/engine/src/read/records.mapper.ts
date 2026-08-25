@@ -1,5 +1,6 @@
 import type {
   Field,
+  JsonValue,
   RecordDto,
   RecordId,
   RecordOptionDto,
@@ -77,6 +78,35 @@ export function toOptionDtos(result: QueryResult, label: Field): RecordOptionDto
   });
 }
 
+/**
+ * Some of one row's columns, keyed by field. It is what an audit record is made
+ * of: the values a write set, and the values it replaced, read out of the one
+ * result that carried both.
+ *
+ * Every value goes through the same `toValue` a record does, so a day, a
+ * `numeric` and a `timestamp` read in the log exactly as they read on the
+ * record's own page. A relation reads as the key it holds: this takes no
+ * labels, because it is given no join to take one from.
+ */
+export function toFieldValues(
+  result: QueryResult,
+  entries: readonly SelectEntry[],
+  keys: ReadonlySet<string>,
+): Record<string, JsonValue> {
+  const [row] = result.rows as Array<Record<string, unknown>>;
+  if (!row) return {};
+
+  const types = new Map(result.fields.map((field) => [field.name, field.dataTypeID]));
+  const values: Record<string, JsonValue> = {};
+
+  for (const entry of entries) {
+    if (entry.kind !== "value" || !keys.has(entry.key)) continue;
+    values[entry.key] = toValue(entry.field, row[entry.alias], types.get(entry.alias));
+  }
+
+  return values;
+}
+
 /** What `count(*)` meant. It arrives as text, because `int8` always does. */
 export function toTotal(raw: unknown): number {
   const total = Number(raw);
@@ -84,7 +114,7 @@ export function toTotal(raw: unknown): number {
   return total;
 }
 
-function toValue(field: Field, raw: unknown, oid: number | undefined): RecordValue {
+function toValue(field: Field, raw: unknown, oid: number | undefined): JsonValue {
   if (raw === null || raw === undefined) return null;
 
   switch (field.type) {
@@ -92,9 +122,9 @@ function toValue(field: Field, raw: unknown, oid: number | undefined): RecordVal
     case "dateTime":
       return raw instanceof Date ? toIsoString(raw, oid) : String(raw);
     case "number":
-      return typeof raw === "string" ? toNumber(raw) : (raw as RecordValue);
+      return typeof raw === "string" ? toNumber(raw) : (raw as JsonValue);
     default:
-      return raw as RecordValue;
+      return raw as JsonValue;
   }
 }
 

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ActionRunner, HttpCall, QueryBuilder, RecordReader } from "@repanel/engine";
+import { ActivityModule } from "../activity/activity.module";
 import { AuthModule } from "../auth/auth.module";
 import { ProjectsModule } from "../projects/projects.module";
 import { RuntimeModule } from "../runtime/runtime.module";
@@ -13,7 +14,7 @@ import { ActionsService } from "./actions.service";
  * uses.
  */
 @Module({
-  imports: [AuthModule, ProjectsModule, RuntimeModule],
+  imports: [ActivityModule, AuthModule, ProjectsModule, RuntimeModule],
   controllers: [ActionsController],
   providers: [
     ActionsService,

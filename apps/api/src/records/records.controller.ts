@@ -24,7 +24,7 @@ export class RecordsController {
     @Param("resourceKey") resourceKey: string,
     @Body() write: RecordWriteDto,
   ): Promise<RecordDto> {
-    return this.records.createRecord(user.id, projectKey, resourceKey, write);
+    return this.records.createRecord(user, projectKey, resourceKey, write);
   }
 
   @Patch(":id")
@@ -35,6 +35,6 @@ export class RecordsController {
     @Param("id") id: string,
     @Body() write: RecordWriteDto,
   ): Promise<RecordDto> {
-    return this.records.updateRecord(user.id, projectKey, resourceKey, id, write);
+    return this.records.updateRecord(user, projectKey, resourceKey, id, write);
   }
 }

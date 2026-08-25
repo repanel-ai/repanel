@@ -14,8 +14,8 @@ import {
   ValidationFailedError,
   WriteRefusedError,
 } from "../errors.js";
+import type { AuditEvent, WriteContext } from "../audit/audit-event.js";
 import { QueryBuilder } from "../query/query-builder.js";
-import type { ReadContext } from "../read/record-reader.js";
 import { RecordWriter } from "./record-writer.js";
 
 function definitionFrom(input: DefinitionInput): Definition {
@@ -82,6 +82,19 @@ function usersRow(values: Partial<Record<(typeof USERS_ALIASES)[number], unknown
 
 const NO_ROWS = { rows: [], fields: [], rowCount: 0, command: "SELECT", oid: 0 } as unknown as QueryResult;
 
+/**
+ * The same row, carrying what the columns a write named held before it. They
+ * answer under `b0`, `b1`, … in the order the resource declares the fields the
+ * write set — the alias space the before-read is built in.
+ */
+function replacing(result: QueryResult, ...before: unknown[]): QueryResult {
+  const [row] = result.rows as Array<Record<string, unknown>>;
+  before.forEach((value, index) => {
+    if (row) row[`b${index}`] = value;
+  });
+  return result;
+}
+
 /** What the fake pool was asked, so a spec can read the statement it produced. */
 interface Asked {
   text: string;
@@ -92,7 +105,8 @@ function contextThat(
   answer: QueryResult | Error,
   asked: Asked[] = [],
   resources: ReadonlyMap<string, Resource> = RESOURCES,
-): ReadContext & { asked: Asked[] } {
+  file: (event: AuditEvent) => Promise<void> = () => Promise.resolve(),
+): WriteContext & { asked: Asked[]; events: AuditEvent[] } {
   const pool = {
     query(query: { text: string; values: unknown[] }): Promise<QueryResult> {
       asked.push({ text: query.text, values: query.values });
@@ -100,7 +114,18 @@ function contextThat(
     },
   } as unknown as Pool;
 
-  return { resources, pool: () => Promise.resolve(pool), asked };
+  const events: AuditEvent[] = [];
+
+  return {
+    resources,
+    pool: () => Promise.resolve(pool),
+    asked,
+    events,
+    audit: (event) => {
+      events.push(event);
+      return file(event);
+    },
+  };
 }
 
 function write(values: RecordWrite["values"]): RecordWrite {
@@ -412,6 +437,163 @@ describe("RecordWriter", () => {
       );
 
       expect(refusal).toBe(unknown);
+    });
+  });
+  /**
+   * Every write leaves an account of itself, and the account is built out of
+   * what the statement actually did — which is what makes "a failed write
+   * cannot produce an event claiming success" a property of the code rather
+   * than a promise (DECISIONS #061).
+   */
+  describe("what it records", () => {
+    it("records a create with the values it wrote, and nothing before them", async () => {
+      const context = contextThat(usersRow({ id: "u1", email: "ada@b.test", name: "Ada" }));
+
+      await writer.createRecord(context, "users", write({ email: "ada@b.test", name: "Ada" }));
+
+      expect(context.events).toEqual([
+        {
+          kind: "create",
+          resourceKey: "users",
+          recordId: "u1",
+          actionKey: null,
+          outcome: "ok",
+          reason: null,
+          before: null,
+          after: { email: "ada@b.test", name: "Ada" },
+        },
+      ]);
+    });
+
+    it("records what an update replaced, beside what it put there", async () => {
+      const context = contextThat(replacing(usersRow({ id: "u1", notes: "after" }), "before"));
+
+      await writer.updateRecord(context, "users", "u1", write({ notes: "after" }));
+
+      expect(context.events[0]).toMatchObject({
+        kind: "update",
+        recordId: "u1",
+        outcome: "ok",
+        before: { notes: "before" },
+        after: { notes: "after" },
+      });
+    });
+
+    /**
+     * A read before the write would be a second round trip with a gap in it,
+     * and the gap is exactly where somebody else's write lands. One statement's
+     * parts all run against one snapshot, so what the CTE reads is what the
+     * update replaced (DECISIONS #056).
+     */
+    it("reads what it replaced in the same statement, not in one before it", async () => {
+      const context = contextThat(replacing(usersRow({ id: "u1" }), "before"));
+
+      await writer.updateRecord(context, "users", "u1", write({ notes: "after" }));
+
+      expect(context.asked).toHaveLength(1);
+      expect(context.asked[0]?.text).toContain('"b" as (select "t"."notes" as "b0"');
+      // Both halves are pointed at the same row by the same placeholder.
+      expect(context.asked[0]?.values).toEqual(["after", "u1"]);
+    });
+
+    /**
+     * The one rule this feature may not bend (DECISIONS #014, #027). It holds
+     * because the before-read is built from the columns the write named, and a
+     * sensitive column can be neither written nor selected — two walls, and the
+     * event is downstream of both.
+     */
+    it("never names a sensitive column, in the statement or in the event", async () => {
+      const context = contextThat(replacing(usersRow({ id: "u1", name: "Ada" }), "Ada senior"));
+
+      await writer.updateRecord(context, "users", "u1", write({ name: "Ada" }));
+
+      expect(context.asked[0]?.text).not.toContain("password_hash");
+      expect(Object.keys(context.events[0]?.before ?? {})).toEqual(["name"]);
+      expect(Object.keys(context.events[0]?.after ?? {})).toEqual(["name"]);
+    });
+
+    it("records the refusal a value was met with, and no values with it", async () => {
+      const context = contextThat(NO_ROWS);
+
+      await refusalFrom(() =>
+        writer.updateRecord(context, "users", "u1", write({ password_hash: "x" })),
+      );
+
+      expect(context.events).toEqual([
+        {
+          kind: "update",
+          resourceKey: "users",
+          recordId: "u1",
+          actionKey: null,
+          outcome: "refused",
+          reason: "validation_failed",
+          before: null,
+          after: null,
+        },
+      ]);
+    });
+
+    it("records a database that refused the write as a refusal, in its own category", async () => {
+      const context = contextThat(pgError("23505"));
+
+      await refusalFrom(() =>
+        writer.createRecord(context, "users", write({ email: "taken@b.test", name: "Ada" })),
+      );
+
+      expect(context.events[0]).toMatchObject({ outcome: "refused", reason: "conflict" });
+    });
+
+    it("records a database that ran out of time as a failure, not a refusal", async () => {
+      const context = contextThat(pgError("57014"));
+
+      await refusalFrom(() => writer.updateRecord(context, "users", "u1", write({ name: "Ada" })));
+
+      expect(context.events[0]).toMatchObject({ outcome: "failed", reason: "query_timeout" });
+    });
+
+    it("files no event claiming success for a write that failed", async () => {
+      const context = contextThat(pgError("23505"));
+
+      await refusalFrom(() =>
+        writer.createRecord(context, "users", write({ email: "taken@b.test", name: "Ada" })),
+      );
+
+      expect(context.events.some((event) => event.outcome === "ok")).toBe(false);
+    });
+
+    /**
+     * The two live in different databases, so there is no transaction holding
+     * them together. What stands in for one is this: the caller is not told the
+     * write succeeded until the account of it has been filed.
+     */
+    it("does not answer a successful write until the event is filed", async () => {
+      const unfiled = new Error("the log is down");
+      const context = contextThat(usersRow({ id: "u1" }), [], RESOURCES, () =>
+        Promise.reject(unfiled),
+      );
+
+      const refusal = await refusalFrom(() =>
+        writer.createRecord(context, "users", write({ email: "a@b.test", name: "Ada" })),
+      );
+
+      expect(refusal).toBe(unfiled);
+    });
+
+    /**
+     * The other way round, nothing reached the customer's database — so nothing
+     * is unaccounted for, and the answer the caller is owed is about their
+     * write rather than about our log.
+     */
+    it("still answers with the write's own failure when the event cannot be filed", async () => {
+      const context = contextThat(pgError("23505"), [], RESOURCES, () =>
+        Promise.reject(new Error("the log is down")),
+      );
+
+      const refusal = await refusalFrom(() =>
+        writer.createRecord(context, "users", write({ email: "taken@b.test", name: "Ada" })),
+      );
+
+      expect(refusal).toBeInstanceOf(ConflictError);
     });
   });
 });

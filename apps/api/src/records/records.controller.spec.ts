@@ -22,7 +22,7 @@ describe("RecordsController", () => {
       controller.create(USER, "crewbase-a3k9x2", "users", { values: { name: "Ada" } }),
     ).resolves.toBe(RECORD);
 
-    expect(records.createRecord).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "users", {
+    expect(records.createRecord).toHaveBeenCalledWith(USER, "crewbase-a3k9x2", "users", {
       values: { name: "Ada" },
     });
   });
@@ -32,7 +32,7 @@ describe("RecordsController", () => {
       controller.update(USER, "crewbase-a3k9x2", "users", "u_1", { values: { name: "Ada" } }),
     ).resolves.toBe(RECORD);
 
-    expect(records.updateRecord).toHaveBeenCalledWith(USER.id, "crewbase-a3k9x2", "users", "u_1", {
+    expect(records.updateRecord).toHaveBeenCalledWith(USER, "crewbase-a3k9x2", "users", "u_1", {
       values: { name: "Ada" },
     });
   });

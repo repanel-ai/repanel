@@ -592,3 +592,108 @@ reset stays for whatever never asked the vocabulary for a number. That rule had
 been in the file since #028 with almost nothing to collapse; it has something to
 collapse now, which is why it was checked rather than assumed.
 
+
+042 · 2026-08 · The chrome is light, flat and achromatic — `#f3f3f3` in light,
+on both theme layers. Four chrome tokens and the two sidebar text tokens move
+with it: `--sidebar-accent` `#f3f4f7` → `#ffffff`, `--sidebar-border` `#cfd1d4`
+→ `#dcdcdc`, `--sidebar-foreground` `#434548` → `#454545`, `--sidebar-muted`
+`#5e5f63` → `#5f5f5f`. The top-to-bottom fall is gone: both stops hold the same
+value. Dark is untouched.
+
+Why: #037 closed the hue question by finding that the lightness step and the
+hairline, not the temperature, are what tell the chrome from the content. Taken
+seriously that is also a claim about *weight* — the chrome only has to be a step
+below the panel, and `#e2e4e6` was a mid grey framing white, the second-loudest
+thing on a screen whose loudest thing should be the data. `#f3f3f3` is six
+lightness points lighter, which halves the step (.7737 → .8963 against the
+panel's 1.0000), so `--sidebar-border` is re-derived deeper (−6.7 → −8.0 L* off
+the chrome) to carry what the step no longer does alone. `--sidebar-accent` was
+always the lighter-than-chrome token; the lightest value available is the
+panel's own `#ffffff`, so the selected resource now lifts to the surface its
+content is on. The fall is dropped because 2.8 lightness points on a 90.5 ground
+is a third of a step on a 95.8 one — invisible, and one more value a customer
+layer would have to answer. `--sidebar-top` and `--sidebar-bottom` stay two
+tokens and the shells still paint a gradient, so a layer that wants the fall has
+it for a value.
+
+The two sidebar text tokens are re-derived at their predecessors' own lightness
+(L* 29.2 → 29.3, 40.4 → 40.3), so the ladder's steps are unchanged and only the
+family is: at this lightness the content's hue family is indistinguishable from
+none, which is why the flat grey is not a reversal of #037. Both layers move
+together for the reason they were converged in the first place — one product,
+one chrome (#036, #037). The AA gate was re-derived and every affected ratio
+improved, because the ground got lighter and the text on it did not:
+`--sidebar-foreground` 7.44 → 8.64:1, `--sidebar-muted` 4.88 → 5.75:1. Nothing
+inside the panel changed, so §4's ratios stand.
+
+043 · 2026-08 · The sidebar's ladder is re-derived against a measured reference,
+and the reference is a screenshot the customer of this design pointed at. Ground
+`#f3f3f3` (already ours, to the digit). Pill `--sidebar-accent` `#e9e9e9`, which
+is *darker* than the chrome. Three text rungs: `--sidebar-muted` `#6b6b6b`,
+`--sidebar-foreground` `#5a5a5a`, and a new `--sidebar-strong` `#111111` for the
+current item, the app name and the account name. The current item also takes
+`font-semibold`. Icons take their own label's ink rather than 70% of it. Dark
+mirrors all of it: `#7e8084`, `#9fa1a5`, `#f2f3f3`, pill unchanged at `#161719`.
+
+Why, and what it corrects: the reference was sampled rather than eyeballed, and
+it contradicted three things this record believed.
+
+**The pill goes darker, not lighter.** #042 reasoned that `--sidebar-accent` had
+always been the lighter-than-chrome token and so should become `#ffffff`. On a
+`#f3f3f3` chrome that is spending the scarce direction — there are 4.2 lightness
+points of headroom above the ground and 95.8 below it. The reference spends the
+plentiful one, at −3.5. Dark already did this correctly and is untouched.
+
+**The current item is near-black, and that is not the chrome competing with the
+data.** The first draft of this entry set `--sidebar-strong` to a dark grey on
+the rule that the chrome's darkest ink must stay lighter than the panel's. The
+reference measures `#0c0c0e` — the panel's ink, near enough. The rule was right
+about the risk and wrong about the mechanism: what would make a sidebar compete
+is the *quantity* of dark ink, not its value. One black label among five greys
+is a focal point; five would be a second table. So the constraint moves off the
+colour and onto how many things may wear it — the current item, the app's name,
+the account name, and nothing else.
+
+**The rest of the list sits further back than it did.** At-rest ink measures
+L\* 38.1 in the reference against our `#454545`'s 29.3. Pushing the four
+unselected items back is what buys the selected one its black; the two changes
+are the same decision. `--sidebar-muted` follows to `#6b6b6b` (L\* 45.2) to keep
+a step under it — the reference uses *no* colour step there at all, setting the
+group label in the same ink as the items and separating them by size alone, but
+DESIGN.md §3 records that exact arrangement being built here and read as another
+destination, so the step is kept.
+
+**Three signals, so each can be quiet.** The current item is carried by the pill,
+the ink and the weight together, which is why none has to shout. The weight is
+stated once per branch rather than overridden, because the runtime's sidebar
+joins its class list instead of merging it and `font-medium font-semibold`
+would otherwise leave stylesheet order to decide. Hover takes the pill and the
+ink but *not* the weight: a route change may reflow a label, a pointer crossing
+one may not.
+
+**Icons stop being dimmed.** `opacity-70` put the resting glyph at an effective
+`#797979` — lighter than the group label that outranks it, and 3.92:1. The
+reference sets each glyph in its own label's ink, which is also the right answer
+to "the glyph is how the eye finds the word": a mark that is harder to see than
+its word is not helping. The account chip drops the hairline #042 gave it, since
+`--sidebar-accent` now has a fill with presence of its own.
+
+Ratios, light: `--sidebar-muted` 4.80:1, `--sidebar-foreground` 6.22:1 on the
+chrome and 5.68:1 on the pill, `--sidebar-strong` 17.02:1 and 15.55:1. Dark:
+5.12:1, 7.82:1 / 6.93:1, 18.21:1 / 16.14:1. Floor is 4.5.
+
+**And the rhythm, measured from the same screenshot.** Its pill is 159px against
+a 174px row pitch — it holds its label at 1.9 ems where this design ran 2.2, and
+spends the difference as a 15px gutter between rows where this design had one
+pixel. So the air moves out of the rows and in between them: `--t-nav` 14px (new,
+was `--t-body` 13.5), `--t-brand` 15px (was 14, so the app's name stays a step
+above a nav item), `--h-nav` 32px (was 30), `--h-nav-gap` 3px (new, was
+`gap-px`), and 8px under a group label instead of 4. A list of five destinations
+should read as five items rather than as a block, and a gutter says that where a
+taller row does not.
+
+`--t-nav` is its own size rather than a bumped `--t-body` because the two answer
+different questions: a table cell's size is set by how much of a record fits on
+a screen, a nav item's by how fast a destination can be found. They were the same
+number by coincidence. It joins `--t-brand` and `--t-nav-meta` as the sidebar's
+own three, outside the five that §3 fixes.

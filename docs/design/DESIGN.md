@@ -43,15 +43,15 @@ because no component knows which layer it is standing on.
 
 | token | light | dark |
 |---|---|---|
-| `--sidebar-top` | `#e2e4e6` | `#060608` |
-| `--sidebar-bottom` | `#dadcde` | `#030304` |
+| `--sidebar-top` | `#f3f3f3` | `#060608` |
+| `--sidebar-bottom` | `#f3f3f3` | `#030304` |
 | `--page` (the ground) | = `--sidebar-top` | = `--sidebar-top` |
 | `--background` (panel) | `#ffffff` | `#1a1a1b` |
 | `--card` | `#ffffff` | `#222324` |
 | `--muted` (row hover) | `#f2f3f3` | `#2b2b2d` |
 | `--accent` | `#eff0f1` | `#2b2b2d` |
 | `--secondary` | `#ecedee` | `#2d2e2f` |
-| `--sidebar-accent` (active nav) | `#f3f4f7` | `#161719` |
+| `--sidebar-accent` (active nav) | `#e9e9e9` | `#161719` |
 
 ### Text
 
@@ -61,8 +61,9 @@ because no component knows which layer it is standing on.
 | `--muted-foreground` | `#64666a` | `#95979b` |
 | `--accent-foreground` | `#191a1b` | `#f5f6f6` |
 | `--secondary-foreground` | `#1c1d1e` | `#f3f3f4` |
-| `--sidebar-foreground` | `#434548` | `#b6b8bc` |
-| `--sidebar-muted` | `#5e5f63` | `#84868a` |
+| `--sidebar-foreground` | `#5a5a5a` | `#9fa1a5` |
+| `--sidebar-muted` | `#6b6b6b` | `#7e8084` |
+| `--sidebar-strong` | `#111111` | `#f2f3f3` |
 | `--utility-foreground` | `var(--foreground)` | `var(--muted-foreground)` |
 
 ### Accent, state, edges
@@ -84,7 +85,7 @@ because no component knows which layer it is standing on.
 | `--border` | `#e0e1e3` | `#353537` |
 | `--input` | `#dbdcde` | `#3b3c3d` |
 | `--ring` | `#a4a5a8` | `#7f8083` |
-| `--sidebar-border` | `#cfd1d4` | `#262729` |
+| `--sidebar-border` | `#dcdcdc` | `#262729` |
 
 **One colour family, and the correction that got there.** This section ran two
 for most of the design's life: a warm chrome at hue 78, following ref-1, against
@@ -107,6 +108,46 @@ record is now one family. Lightness values throughout are unchanged, which is
 what let the correction be made without re-deciding §2. `--primary` `#bb4d00` is
 untouched and is the better for it: it is now the only warm object anywhere in
 RePanel, which is what an accent is for.
+
+**Light chrome, flat and achromatic — the second correction. DECISIONS #042.**
+The paragraph above closed the *hue* question by finding that the lightness step
+and the hairline were doing the work. Taken at its word, that is also an argument
+about how much chrome a screen needs: if the step is what separates chrome from
+content, the chrome only has to be *a* step below the panel, not a heavy one.
+`#e2e4e6` was heavier than it needed to be — a mid grey framing white, with the
+chrome reading as the second-loudest thing on the screen after the data.
+
+The chrome in light is now `#f3f3f3`: **one flat value, achromatic, six lightness
+points lighter.** Three consequences were priced rather than assumed:
+
+| | before | after |
+|---|---|---|
+| chrome → panel step | .7737 → 1.0000 | .8963 → 1.0000 |
+| `--sidebar-border` | `#cfd1d4`, −6.7 L\* off the chrome | `#dcdcdc`, −8.0 L\* off the chrome |
+| `--sidebar-accent` | `#f3f4f7`, +5.7 L\* — lighter than the chrome | `#e9e9e9`, −3.5 L\* — see #043 |
+
+1. **The hairline takes up the slack.** The lightness step halves, so
+   `--sidebar-border` is re-derived to sit *further* below the chrome than it did
+   — the frame is the half of the pair that still has room to work, and the two
+   together carry what the step carried alone.
+2. **The active nav item changes direction — see §3 and DECISIONS #043.** This
+   first read `#ffffff`, on the argument that `--sidebar-accent` had always been
+   the *lighter*-than-chrome token. That was the wrong direction to spend: a
+   `#f3f3f3` ground has 4.2 lightness points of headroom above it and 95.8 below,
+   and a measured reference spends the plentiful one. The pill is `#e9e9e9`.
+3. **The chrome is flat.** The top-to-bottom fall was 2.8 lightness points on a
+   90.5 ground; at 95.8 the same proportion is a third of a step, which is a
+   gradient nobody can see and one more value a customer layer has to answer.
+   `--sidebar-top` and `--sidebar-bottom` stay two tokens and the shells still
+   paint a gradient — the fall is available for a value, and this record declines
+   it.
+
+**The hue went with it.** `#e2e4e6` carried hue 265 at chroma .004; `#f3f3f3` is
+flat grey. That is not a reversal of the paragraph above — that decision moved
+the chrome onto the *content's* family, and at this lightness the content's
+family is indistinguishable from none. The panel's own neutrals keep their
+whisper of cool, because they are read against white rather than against the
+chrome. `--primary` is still the only warm object in RePanel.
 
 `--radius: 0.45rem` (the preset's), with the preset's ramp: `sm .6x`, `md .8x`,
 `lg 1x`, `xl 1.4x`.
@@ -141,7 +182,7 @@ way, and the panel shadow was dropped for muddying the edge once the step was re
 
 | # | surface | dark | light |
 |---|---|---|---|
-| 1 | the chrome: sidebar **and** the ground the panel floats in | `#060608 → #030304` | `#e2e4e6 → #dadcde` |
+| 1 | the chrome: sidebar **and** the ground the panel floats in | `#060608 → #030304` | `#f3f3f3` (flat) |
 | 2 | raised content panel | `#1a1a1b` | `#ffffff` |
 | 3 | row under the cursor | `#2b2b2d` | `#f2f3f3` |
 
@@ -165,15 +206,17 @@ corrected here.
 
 ## 3. Type
 
-**Geist** throughout, one family, five sizes.
+**Geist** throughout, one family, five sizes — and the sidebar's own three
+outside them.
 
 | token | value | used by |
 |---|---|---|
-| `--t-micro` | `11.5px` | counts, badges, the `/` hint, the project line |
+| `--t-micro` | `11.5px` | counts, badges, the `/` hint, group labels |
 | `--t-small` | `12.5px` | column headers, page meta, pagination, breadcrumb |
-| `--t-body` | `13.5px` | table cells, controls, buttons, account name |
+| `--t-body` | `13.5px` | table cells, controls, buttons, the account name |
 | `--t-title` | `20px` | the page title, and nothing else |
-| `--t-brand` | `14px` | the app's name in the sidebar head, and nothing else |
+| `--t-nav` | `14px` | a nav item, and nothing else |
+| `--t-brand` | `15px` | the app's name in the sidebar head, and nothing else |
 | `--t-nav-meta` | `12px` | the project line, the account mail |
 
 **The sidebar's ladder — corrected.** This section first ran nav labels at 14px
@@ -188,10 +231,12 @@ The ladder now has three steps and moves in two dimensions, not one:
 
 | | size / weight | colour |
 |---|---|---|
-| brand | `--t-brand` 14 / 600 | `--foreground` |
-| nav item, at rest | `--t-body` 13.5 / 500 | `--sidebar-foreground` |
-| nav item, current | `--t-body` 13.5 / 500 | `--accent-foreground` on `--sidebar-accent` |
-| group label | `--t-micro` 11.5 / 600, `+0.02em` | `--sidebar-muted` |
+| brand | `--t-brand` 15 / 600 | `--sidebar-strong` |
+| account name | `--t-body` 13.5 / 500 | `--sidebar-strong` |
+| nav item, current | `--t-nav` 14 / **600** | `--sidebar-strong` on `--sidebar-accent` |
+| nav item, hovered | `--t-nav` 14 / 500 | `--sidebar-strong` on `--sidebar-accent` |
+| nav item, at rest | `--t-nav` 14 / 500 | `--sidebar-foreground` |
+| group label, project key, account mail | `--t-micro` 11.5 / 600, `+0.02em` | `--sidebar-muted` |
 
 A nav item is set at data size because five resource names are something to
 scan, not to announce — which also means the type scale is back to five sizes
@@ -199,6 +244,76 @@ with the brand above them, rather than six. The group label is smaller *and*
 dimmer than what it names, which is the whole of what makes it read as a label.
 `--sidebar-foreground` is the token that change needed: the sidebar had one
 text colour and two jobs for it.
+
+**And a third rung, because it had two colours and three jobs. DECISIONS #043.**
+The table above once ended the ladder on `--foreground` for the brand and
+`--accent-foreground` for the current item — *panel* ink, borrowed, because the
+chrome had no value of its own that dark. Both are near-black, so the loudest
+text on a screen full of records was in the sidebar. The account name was worse
+than borrowed: it had no colour class at all and inherited `--foreground` from
+`body`, which is how a decision gets made by nobody.
+
+`--sidebar-strong` is that rung, and **it is near-black**:
+
+| | light | L\* | on the chrome |
+|---|---|---|---|
+| `--sidebar-muted` | `#6b6b6b` | 45.2 | 4.80:1 |
+| `--sidebar-foreground` | `#5a5a5a` | 38.2 | 6.22:1 |
+| `--sidebar-strong` | `#111111` | 5.1 | 17.02:1 |
+| *(the panel's `--foreground`, for scale)* | `#0a0b0b` | 3.0 | — |
+
+**Its first draft was a dark grey, and a measured reference refuted it.** The
+rule was that the chrome's darkest ink must stay lighter than the panel's, or
+the sidebar competes with the records. The reference sets its current item at
+`#0c0c0e` — the panel's ink, near enough — and does not read as competing at
+all. The rule was right about the risk and wrong about where it lives: what
+would make a sidebar shout is the **quantity** of dark ink, not its value. One
+black label among five greys is a focal point; five would be a second table. So
+the constraint moves off the colour and onto how many things may wear it — the
+current item, the app's name, the account name, and nothing else.
+
+**Pushing the rest of the list back is the other half of the same decision.**
+At-rest ink measures L\* 38.1 in the reference against the 29.3 this record had.
+Four quieter items are what buy the fifth its black; neither change works alone.
+`--sidebar-muted` follows to keep a step under it — the reference uses *no*
+colour step there, setting the group label in the same ink as the items and
+separating them by size alone, but that is the exact arrangement the paragraph
+above records being built here and read as another destination. The step stays.
+
+**Three signals, so each can be quiet.** The current item is carried by the pill,
+the ink *and* the weight together. Hover takes the pill and the ink but not the
+weight: a route change may reflow a label, a pointer crossing one may not. The
+weight is stated once per branch rather than layered as an override, because the
+runtime's sidebar joins its class list where the console merges it, and
+`font-medium font-semibold` would otherwise leave stylesheet order to decide.
+
+**The glyph is set in its own label's ink.** It was dimmed to 70% on the rule
+that the word is what is read and the mark is how the eye finds it. Measured,
+that put the resting glyph at an effective `#797979` — *lighter than the group
+label that outranks it*, and 3.92:1. A mark harder to see than its word is not
+helping anyone find it. The reference dims nothing, and neither does this.
+
+**And the air moved out of the rows and in between them.** The same reference
+was measured for rhythm, not just colour: its pill is 159px against a row pitch
+of 174, so it holds its label closely — 1.9 ems tall where this record ran 2.2 —
+and spends the difference as a **15px gutter between rows**, where this record
+had one pixel. A list of five destinations wants to read as five items rather
+than as a block, and a gutter says that where a taller row does not.
+
+| | before | after |
+|---|---|---|
+| nav label | `--t-body` 13.5 | `--t-nav` **14** |
+| brand | `--t-brand` 14 | `--t-brand` **15** — it stays a step above the nav |
+| row height | `--h-nav` 30 | `--h-nav` **32** |
+| between rows | `gap-px`, 1 | `--h-nav-gap` **3** |
+| under a group label | `pb-1`, 4 | `pb-2`, **8** |
+
+Half a pixel over the table's is what lets a nav item be picked out at a glance
+from the far side of the screen; the sidebar is the one place with the room to
+spend it. `--t-nav` is a size of its own rather than a bumped `--t-body` because
+the two are answering different questions — a table cell's size is set by how
+much of a record fits on a screen, and a nav item's by how fast a destination
+can be found. They were the same number by coincidence, not by rule.
 
 ### Tabular numerals — measured, and required
 
@@ -376,6 +491,38 @@ change reached nothing it should not have. No horizontal overflow at either
 width. The two sidebar text tokens were re-derived at their own lightness for
 the same reason the surfaces were: `--sidebar-foreground` measures 7.44:1 on the
 new chrome and `--sidebar-muted` 4.88:1.
+
+**Re-run for the light chrome (DECISIONS #042).** Four chrome tokens and the two
+sidebar text tokens moved again, and every one of them moved *toward* the floor
+rather than away from it: the ground lightened, so text on it gained. Derived on
+`#f3f3f3`, `--sidebar-foreground` `#454545` measures **8.64:1** and
+`--sidebar-muted` `#5f5f5f` **5.75:1** — up from 7.44 and 4.88. The active nav
+label (`--accent-foreground` `#191a1b` on `#ffffff`) measures 17.43:1, and
+`--muted-foreground` on the ground, which is what the shell's loading and error
+states are set in, gains for the same reason. Nothing inside the panel changed:
+the panel is still `#ffffff` and every ratio §4 records is measured against it.
+The two tokens were re-derived at their predecessors' own lightness (L\* 29.2 →
+29.3, 40.4 → 40.3) so the ladder's *steps* are untouched and only their family
+is.
+
+**Re-run for the sidebar's re-derived ladder (DECISIONS #043).** Every rung
+moved and one is new, and two of the three moved *toward* the floor rather than
+away from it — the rest of the list was pushed back deliberately — so nothing
+here is assumed. Each is checked on the chrome **and** on `--sidebar-accent`,
+because a nav item sits on the pill and the group label does not.
+
+| | light, on chrome | light, on pill | dark, on chrome | dark, on pill |
+|---|---|---|---|---|
+| `--sidebar-muted` | 4.80:1 | — | 5.12:1 | — |
+| `--sidebar-foreground` | 6.22:1 | 5.68:1 | 7.82:1 | 6.93:1 |
+| `--sidebar-strong` | 17.02:1 | 15.55:1 | 18.21:1 | 16.14:1 |
+
+Floor is 4.5 and the tightest pair is `--sidebar-muted` at 4.80:1, which is the
+one to watch if it is ever pushed further back. The icons were the real finding:
+un-dimmed they now carry their label's own ratio instead of the effective
+3.92:1 that `opacity-70` was producing at rest. `--t-nav` at 14px raises every
+nav item above the 13.5 the ratios above were measured at, which only helps.
+Nothing inside the panel changed.
 
 ---
 
@@ -577,6 +724,9 @@ at half its chroma (hue 74 → 265, chroma .008 → .004) and changed nothing el
 | `--sidebar-border` | `#d5d0ca` | `#cfd1d4` | .6352 → .6362 |
 | `--sidebar-foreground` | `#4a443b` | `#434548` | .0591 → .0592 |
 | `--sidebar-muted` | `#665e53` | `#5e5f63` | .1145 → .1146 |
+
+Those are the values as of #037. All six moved again under #042 — the light
+chrome — on both layers at once; §1 carries the current numbers.
 | `--sidebar-top` (dark) | `#080605` | `#060608` | .0019 → .0019 |
 | `--sidebar-bottom` (dark) | `#040302` | `#030304` | .0010 → .0009 |
 | `--sidebar-accent` (dark) | `#191714` | `#161719` | .0087 → .0085 |

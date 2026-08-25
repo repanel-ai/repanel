@@ -28,7 +28,7 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
           {appName.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-brand leading-tight font-semibold tracking-[-0.01em]">
+          <div className="truncate text-brand leading-tight font-semibold tracking-[-0.01em] text-sidebar-strong">
             {appName}
           </div>
           <div className="truncate text-nav-meta leading-snug text-sidebar-muted">{projectKey}</div>
@@ -42,29 +42,31 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
           <div key={group.label}>
             {/* It names the list; it is not in it, so it is smaller and sits
                 a step behind what it names. */}
-            <div className="px-2 pt-3.5 pb-1 text-micro font-semibold tracking-[0.02em] text-sidebar-muted">
+            <div className="px-2 pt-4 pb-2 text-micro font-semibold tracking-[0.02em] text-sidebar-muted">
               {group.label}
             </div>
-            <ul className="flex list-none flex-col gap-px p-0">
+            <ul className="flex list-none flex-col gap-nav-gap p-0">
               {group.resources.map((key) => (
                 <li key={key}>
                   <NavLink
                     to={runtimeRoutes.resource(projectKey, key)}
                     className={({ isActive }) =>
                       [
-                        "flex h-nav items-center gap-2 rounded-md px-2 text-body font-medium outline-none",
+                        "flex h-nav items-center gap-2 rounded-md px-2 text-nav outline-none",
                         "transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
+                        // The weight is stated once per branch rather than
+                        // overridden: these are joined, not merged.
                         isActive
-                          ? "bg-sidebar-accent text-accent-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
+                          ? "bg-sidebar-accent font-semibold text-sidebar-strong"
+                          : "font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-strong",
                       ].join(" ")
                     }
                   >
                     <ResourceIcon
                       name={resources.get(key)?.icon ?? "table"}
-                      // A step behind the name it marks: the word is what is
-                      // being read, and the glyph is how the eye finds it.
-                      className="size-4 flex-none opacity-70"
+                      // The glyph is set in its own label's ink: it is how the
+                      // eye finds the word, and a dimmed mark is harder to find.
+                      className="size-4 flex-none"
                     />
                     <span className="truncate">{resources.get(key)?.label.plural ?? key}</span>
                   </NavLink>
@@ -78,11 +80,13 @@ export function Sidebar({ appName, projectKey, navigation, resources, user }: Si
       <Rule />
 
       <div className="flex h-11 items-center gap-2.5 rounded-md px-2">
-        <div className="grid size-[26px] flex-none place-items-center rounded-lg bg-secondary text-micro font-semibold text-secondary-foreground">
+        <div className="grid size-[26px] flex-none place-items-center rounded-lg bg-sidebar-accent text-micro font-semibold text-sidebar-strong">
           {initials(user)}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-body leading-tight font-medium">{user?.name ?? "Signed in"}</div>
+          <div className="truncate text-body leading-tight font-medium text-sidebar-strong">
+            {user?.name ?? "Signed in"}
+          </div>
           <div className="truncate text-nav-meta leading-snug text-sidebar-muted">{user?.email}</div>
         </div>
       </div>

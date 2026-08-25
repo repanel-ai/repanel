@@ -13,11 +13,12 @@ const PAGES = [
 
 /** One row of the sidebar's list, whether it is a link, a button or off. */
 const ROW = [
-  "flex h-nav items-center gap-2 rounded-md px-2 text-body font-medium outline-none",
+  "flex h-nav items-center gap-2 rounded-md px-2 text-nav outline-none",
   "transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
 ].join(" ");
 
-const AT_REST = "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground";
+const AT_REST =
+  "font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-strong";
 
 export interface ProjectNavProps {
   project: ProjectDto | undefined;
@@ -46,12 +47,12 @@ export function ProjectNav({ project, user }: ProjectNavProps) {
               <NavLink
                 to={page.to}
                 className={({ isActive }) =>
-                  cn(ROW, isActive ? "bg-sidebar-accent text-accent-foreground" : AT_REST)
+                  cn(ROW, isActive ? "bg-sidebar-accent font-semibold text-sidebar-strong" : AT_REST)
                 }
               >
-                {/* A step behind the word it marks: the word is what is read,
-                    and the glyph is how the eye finds it. */}
-                <ResourceIcon name={page.icon} className="size-4 flex-none opacity-70" />
+                {/* The glyph is set in its own label's ink: it is how the eye
+                    finds the word, and a dimmed mark is harder to find. */}
+                <ResourceIcon name={page.icon} className="size-4 flex-none" />
                 <span className="truncate">{page.label}</span>
               </NavLink>
             </li>
@@ -66,15 +67,15 @@ export function ProjectNav({ project, user }: ProjectNavProps) {
              * exist yet teaches the wrong shape of the product; one that shows
              * it off says "later", which is true.
              */}
-            <span aria-disabled className={cn(ROW, "text-sidebar-muted")}>
-              <ResourceIcon name="settings" className="size-4 flex-none opacity-50" />
+            <span aria-disabled className={cn(ROW, "font-medium text-sidebar-muted")}>
+              <ResourceIcon name="settings" className="size-4 flex-none" />
               <span className="truncate">Settings</span>
               <span className="ml-auto text-micro font-medium">Soon</span>
             </span>
           </li>
           <li>
             <SignOutButton className={cn(ROW, AT_REST, "w-full justify-start px-2")}>
-              <SignOutIcon className="size-4 flex-none opacity-70" />
+              <SignOutIcon className="size-4 flex-none" />
               <span className="truncate">Sign out</span>
             </SignOutButton>
           </li>
@@ -84,11 +85,11 @@ export function ProjectNav({ project, user }: ProjectNavProps) {
       <Rule />
 
       <div className="flex h-11 items-center gap-2.5 rounded-md px-2">
-        <div className="grid size-[26px] flex-none place-items-center rounded-lg bg-secondary text-micro font-semibold text-secondary-foreground">
+        <div className="grid size-[26px] flex-none place-items-center rounded-lg bg-sidebar-accent text-micro font-semibold text-sidebar-strong">
           {initials(user)}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-body leading-tight font-medium">
+          <div className="truncate text-body leading-tight font-medium text-sidebar-strong">
             {user?.name ?? "Signed in"}
           </div>
           <div className="truncate text-nav-meta leading-snug text-sidebar-muted">{user?.email}</div>
@@ -116,7 +117,7 @@ function ProjectSwitcher({ project }: { project: ProjectDto | undefined }) {
       <div className="min-w-0 flex-1">
         {project ? (
           <>
-            <div className="truncate text-brand leading-tight font-semibold tracking-[-0.01em]">
+            <div className="truncate text-brand leading-tight font-semibold tracking-[-0.01em] text-sidebar-strong">
               {project.name}
             </div>
             <div className="truncate font-data text-nav-meta leading-snug text-sidebar-muted">
@@ -140,10 +141,10 @@ function ProjectSwitcher({ project }: { project: ProjectDto | undefined }) {
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="px-2 pt-3.5 pb-1 text-micro font-semibold tracking-[0.02em] text-sidebar-muted">
+      <div className="px-2 pt-4 pb-2 text-micro font-semibold tracking-[0.02em] text-sidebar-muted">
         {label}
       </div>
-      <ul className="flex list-none flex-col gap-px p-0">{children}</ul>
+      <ul className="flex list-none flex-col gap-nav-gap p-0">{children}</ul>
     </div>
   );
 }

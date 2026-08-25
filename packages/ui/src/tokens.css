@@ -97,17 +97,27 @@
   --text-title: 20px; /* the page title, and nothing else                   */
 
   /*
-   * The sidebar's own two. The app's name is a title and sits above the scale;
-   * a nav item is set at data size, because a list of five resource names is
-   * something to scan rather than something to announce. Group labels take
-   * `--text-micro` — they name the list, they are not in it.
+   * The sidebar's own three, all of them outside the five. A nav item was set
+   * at data size on the argument that a list of five resource names is
+   * something to scan rather than something to announce; it still is, but half
+   * a pixel over the table's is what lets it be scanned at a glance from the
+   * far side of the screen, and the sidebar is the one place on screen with the
+   * room to spend it. The app's name stays a step above it, and group labels
+   * take `--text-micro` — they name the list, they are not in it.
    */
-  --text-brand: 14px;
+  --text-nav: 14px;
+  --text-brand: 15px;
   --text-nav-meta: 12px; /* the project line and the account mail */
 
   /* ---- rhythm ---------------------------------------------------------- */
-  /* One step under a control: the nav is a list to run an eye down. */
-  --spacing-nav: 30px;
+  /*
+   * One step under a control: the nav is a list to run an eye down. The row
+   * holds its label closely and the air goes *between* the rows rather than
+   * inside them — `--spacing-nav-gap` is that air, and it is what a list of
+   * five destinations reads as separate items rather than as a block.
+   */
+  --spacing-nav: 32px;
+  --spacing-nav-gap: 3px;
   --spacing-control: 32px;
   --spacing-row: 36px;
   --spacing-head: 34px;
@@ -213,6 +223,7 @@
   --color-secondary-foreground: var(--paint-secondary-foreground);
   --color-sidebar-foreground: var(--paint-sidebar-foreground);
   --color-sidebar-muted: var(--paint-sidebar-muted);
+  --color-sidebar-strong: var(--paint-sidebar-strong);
   --color-utility-foreground: var(--paint-utility-foreground);
 
   /* accent, state, edges */
@@ -247,18 +258,22 @@
 .theme-runtime {
   /*
    * The chrome is one continuous surface: the sidebar and the ground the panel
-   * floats in are the same gradient, falling slightly top to bottom across the
-   * whole screen. They were two tones once, and the seam that left down the
-   * panel's margin read as a mistake rather than as a step.
+   * floats in are the same paint, across the whole screen. They were two tones
+   * once, and the seam that left down the panel's margin read as a mistake
+   * rather than as a step.
    *
-   * It is cool, and it used to be warm. The warmth was there to keep the chrome
-   * from reading as more table; built and shot beside a cool one, what actually
-   * carries that distinction is the lightness step and the hairline, and the
-   * hue was only making the chrome the loudest thing on a quiet screen
-   * (DECISIONS #037, DESIGN.md §1). Both layers now share one temperature.
+   * It is a light, flat, achromatic grey, and it has been three things. It was
+   * warm, to keep the chrome from reading as more table; shot beside a cool one
+   * that turned out to be carried by the lightness step and the hairline rather
+   * than by the hue (DECISIONS #037). It then fell top to bottom, and it is now
+   * one value — the fall was a third of a lightness step, invisible at this
+   * altitude and one more thing for a customer layer to answer (DECISIONS #042).
+   *
+   * The two stops stay two tokens. A gradient is what the shells paint, so a
+   * layer that wants the fall back has it for a value; this one declines it.
    */
-  --paint-sidebar-top: #e2e4e6;
-  --paint-sidebar-bottom: #dadcde;
+  --paint-sidebar-top: #f3f3f3;
+  --paint-sidebar-bottom: #f3f3f3;
   /* The ground, which is the chrome — never a colour of its own. */
   --paint-page: var(--paint-sidebar-top);
   --paint-background: #ffffff;
@@ -266,7 +281,7 @@
   --paint-muted: #f2f3f3; /* the row under the cursor */
   --paint-accent: #eff0f1;
   --paint-secondary: #ecedee;
-  --paint-sidebar-accent: #f3f4f7;
+  --paint-sidebar-accent: #e9e9e9;
 
   --paint-foreground: #0a0b0b;
   --paint-card-foreground: #0a0b0b;
@@ -274,12 +289,22 @@
   --paint-accent-foreground: #191a1b;
   --paint-secondary-foreground: #1c1d1e;
   /*
-   * The sidebar has its own two-step text ladder, because everything in it is
-   * chrome and the panel's would flatten it: a resource name at rest, and the
-   * group label naming a list of them, which must sit behind what it names.
+   * The sidebar has its own three-step text ladder, because everything in it is
+   * chrome and the panel's would flatten it: a resource name at rest, the group
+   * label naming a list of them, which must sit behind what it names, and the
+   * one the operator is on, which must sit in front of both.
+   *
+   * The rest of the list is set well back — L* 38, a mid grey rather than the
+   * near-black these labels used to inherit — and `strong` is where the ladder
+   * ends, at ink as dark as the panel's. The quantity is what makes that safe:
+   * one item in a list of five is a focal point, and five would be a second
+   * table. `strong` also carries the app's name and the account name, which
+   * inherited `--foreground` from `body` and so were never anyone's decision
+   * (DECISIONS #043).
    */
-  --paint-sidebar-foreground: #434548;
-  --paint-sidebar-muted: #5e5f63;
+  --paint-sidebar-foreground: #5a5a5a;
+  --paint-sidebar-muted: #6b6b6b;
+  --paint-sidebar-strong: #111111;
   /* Utility chrome sits one step behind the data it frames — in dark only,
      where it would otherwise outshine it. */
   --paint-utility-foreground: var(--paint-foreground);
@@ -308,7 +333,7 @@
   --paint-border: #e0e1e3;
   --paint-input: #dbdcde;
   --paint-ring: #a4a5a8;
-  --paint-sidebar-border: #cfd1d4;
+  --paint-sidebar-border: #dcdcdc;
 }
 
 /* Dark re-points the same names, so every utility built from the contract
@@ -328,8 +353,10 @@
   --paint-muted-foreground: #95979b;
   --paint-accent-foreground: #f5f6f6;
   --paint-secondary-foreground: #f3f3f4;
-  --paint-sidebar-foreground: #b6b8bc;
-  --paint-sidebar-muted: #84868a;
+  --paint-sidebar-foreground: #9fa1a5;
+  --paint-sidebar-muted: #7e8084;
+  /* The same rung, inverted: the chrome's own brightest ink, at the panel's. */
+  --paint-sidebar-strong: #f2f3f3;
   --paint-utility-foreground: var(--paint-muted-foreground);
 
   --paint-primary: #973c00;
@@ -367,25 +394,30 @@
  * They stay two layers regardless. The mechanism is not here so that these two
  * can differ — it is here so that a customer's can (DECISIONS #035), and a
  * contract with one implementation is not a contract.
+ *
+ * The chrome has since been lightened and flattened to one achromatic value on
+ * both layers together, for the same reason it was converged: one product, one
+ * chrome (DECISIONS #042).
  */
 .theme-console {
-  --paint-sidebar-top: #e2e4e6; /* runtime #e7e3de */
-  --paint-sidebar-bottom: #dadcde; /* runtime #dfdbd6 */
+  --paint-sidebar-top: #f3f3f3;
+  --paint-sidebar-bottom: #f3f3f3;
   --paint-page: var(--paint-sidebar-top);
   --paint-background: #ffffff;
   --paint-card: #ffffff;
   --paint-muted: #f2f3f3;
   --paint-accent: #eff0f1;
   --paint-secondary: #ecedee;
-  --paint-sidebar-accent: #f3f4f7; /* runtime #f7f4f0 */
+  --paint-sidebar-accent: #e9e9e9;
 
   --paint-foreground: #0a0b0b;
   --paint-card-foreground: #0a0b0b;
   --paint-muted-foreground: #64666a;
   --paint-accent-foreground: #191a1b;
   --paint-secondary-foreground: #1c1d1e;
-  --paint-sidebar-foreground: #434548; /* runtime #4a443b */
-  --paint-sidebar-muted: #5e5f63; /* runtime #665e53 */
+  --paint-sidebar-foreground: #5a5a5a;
+  --paint-sidebar-muted: #6b6b6b;
+  --paint-sidebar-strong: #111111;
   --paint-utility-foreground: var(--paint-foreground);
 
   --paint-primary: #bb4d00;
@@ -404,7 +436,7 @@
   --paint-border: #e0e1e3;
   --paint-input: #dbdcde;
   --paint-ring: #a4a5a8;
-  --paint-sidebar-border: #cfd1d4; /* runtime #d5d0ca */
+  --paint-sidebar-border: #dcdcdc;
 }
 
 .theme-console.dark {
@@ -422,8 +454,9 @@
   --paint-muted-foreground: #95979b;
   --paint-accent-foreground: #f5f6f6;
   --paint-secondary-foreground: #f3f3f4;
-  --paint-sidebar-foreground: #b6b8bc; /* runtime #bdb7ae */
-  --paint-sidebar-muted: #84868a; /* runtime #8b857d */
+  --paint-sidebar-foreground: #9fa1a5;
+  --paint-sidebar-muted: #7e8084;
+  --paint-sidebar-strong: #f2f3f3;
   --paint-utility-foreground: var(--paint-muted-foreground);
 
   --paint-primary: #973c00;

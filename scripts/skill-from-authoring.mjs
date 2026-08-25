@@ -44,9 +44,10 @@ const CARRIED = [
   "2 · Connect — and never touch a secret",
   "3 · Where the definition lives",
   "4 · Classify every column",
-  "5 · Actions, and the endpoints behind them",
-  "6 · Submit and repair",
-  "7 · Work locally, before any of that",
+  "5 · Editable is a decision, not a default",
+  "6 · Actions, and the endpoints behind them",
+  "7 · Submit and repair",
+  "8 · Work locally, before any of that",
   "Platforms",
 ];
 

@@ -5,17 +5,25 @@
   "primaryKey": "id",
   "labelField": "title",
   "icon": "tag",
-  "readOnly": true,
+  "writes": { "create": true, "update": true },
   "fields": [
     { "key": "id", "label": "ID", "type": "text" },
-    { "key": "airline_id", "label": "Airline", "type": "relation", "target": "airlines" },
-    { "key": "title", "label": "Title", "type": "text" },
+    {
+      "key": "airline_id",
+      "label": "Airline",
+      "type": "relation",
+      "target": "airlines",
+      "editable": true,
+      "required": true
+    },
+    { "key": "title", "label": "Title", "type": "text", "editable": true, "required": true },
     {
       "key": "status",
       "label": "Status",
       "type": "enum",
       "values": ["draft", "open", "closed"],
-      "tones": { "open": "positive" }
+      "tones": { "open": "positive" },
+      "editable": true
     },
     { "key": "created_at", "label": "Created", "type": "dateTime" }
   ],
@@ -25,7 +33,7 @@
   ],
   "views": {
     "table": {
-      "columns": ["title", "airline_id", "status", "created_at"],
+      "columns": ["title", "airline_id", "status"],
       "defaultSort": { "field": "created_at", "direction": "desc" },
       "search": ["title"],
       "filters": [
@@ -35,7 +43,9 @@
       ]
     },
     "detail": {
-      "sections": [{ "title": "Opening", "fields": ["title", "airline_id", "status", "created_at"] }],
+      "sections": [
+        { "title": "Opening", "fields": ["title", "airline_id", "status", "created_at"] }
+      ],
       "relatedLists": ["applications"],
       "relatedLayout": "inline"
     }

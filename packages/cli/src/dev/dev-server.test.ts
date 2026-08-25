@@ -56,6 +56,14 @@ async function get(path: string): Promise<Response> {
   return fetch(`${origin}${path}`);
 }
 
+async function send(method: string, path: string, body: unknown): Promise<Response> {
+  return fetch(`${origin}${path}`, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+
 test("the session question is answered by the operator who started the server", async () => {
   const response = await get("/api/auth/me");
 
@@ -235,4 +243,70 @@ test("the full cycle above ran with every host but this one unreachable", async 
     /fetch failed/,
   );
   assert.throws(() => new net.Socket().connect({ host: "192.0.2.1", port: 80 }), /egress denied/);
+});
+
+/**
+ * The write half of the same parity. `repanel dev` serves the hosted API's own
+ * addresses out of the same engine, so a form the runtime draws submits here
+ * exactly as it submits there — including what a refusal looks like, which is
+ * what the form puts under its inputs.
+ */
+test("a create writes the record and answers with it, at the hosted address", async () => {
+  const response = await send("POST", "/api/runtime/local/resources/users/records", {
+    values: { email: "ada@example.test", name: "Ada" },
+  });
+
+  assert.equal(response.status, 201);
+  const record = (await response.json()) as RecordDto;
+  assert.ok(record.id);
+  assert.ok(api.pool.texts().some((text) => text.includes('insert into "users" ("email", "name")')));
+});
+
+test("an update writes only what it named", async () => {
+  const response = await send("PATCH", "/api/runtime/local/resources/users/records/u_1", {
+    values: { notes: "hello" },
+  });
+
+  assert.equal(response.status, 200);
+  assert.ok(
+    api.pool.texts().some((text) => text.includes('update "users" set "notes" = $1 where "id" = $2')),
+  );
+});
+
+test("a refused value comes back as the details a form puts under its inputs", async () => {
+  const response = await send("PATCH", "/api/runtime/local/resources/users/records/u_1", {
+    values: { email: 7 },
+  });
+
+  assert.equal(response.status, 422);
+  const body = (await response.json()) as {
+    error: { code: string; details?: { path: string; hint: string }[] };
+  };
+  assert.equal(body.error.code, "validation_failed");
+  assert.equal(body.error.details?.[0]?.path, "values.email");
+  assert.ok(body.error.details?.[0]?.hint);
+});
+
+test("a write the definition does not offer is declined, not answered", async () => {
+  const response = await send("POST", "/api/runtime/local/resources/orders/records", {
+    values: { reference: "AC-2" },
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(((await response.json()) as { error: { code: string } }).error.code, "write_refused");
+});
+
+test("a body that is not JSON is refused before anything looks at it", async () => {
+  const response = await send("POST", "/api/runtime/local/resources/users/records", "{not json");
+
+  assert.equal(response.status, 400);
+  assert.equal(((await response.json()) as { error: { code: string } }).error.code, "bad_request");
+});
+
+test("a key that could not name a field never reaches a lookup", async () => {
+  const response = await send("POST", "/api/runtime/local/resources/users/records", {
+    values: { 'name" = \'owned\' --': "x" },
+  });
+
+  assert.equal(response.status, 400);
 });

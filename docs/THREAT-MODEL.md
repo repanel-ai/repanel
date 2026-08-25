@@ -374,9 +374,11 @@ version could not fail (#048), which is the reason both exist.
 the definition names; your database decides what the role can reach. Under
 direct DSN this is the strongest control you hold and RePanel does not enforce
 it: give it a role scoped to the tables your definition names, read-only unless
-your definition has `dbUpdate` actions, in which case `UPDATE` on those columns
-and nothing more. Restricting inbound access to RePanel's egress addresses is
-the second one.
+your definition writes — `UPDATE` on the columns a `dbUpdate` action sets or a
+resource marks `editable`, `INSERT` on the tables whose resources offer
+`create`, and nothing more. A definition that offers no writes wants a role that
+cannot perform one, which is a guarantee your database makes and we cannot.
+Restricting inbound access to RePanel's egress addresses is the second one.
 
 ## 8. Residual risk
 

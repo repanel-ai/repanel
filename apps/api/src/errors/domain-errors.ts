@@ -1,5 +1,4 @@
 import { DomainError } from "@repanel/engine";
-import type { ValidationError } from "@repanel/contracts";
 
 /**
  * The errors the API answers with. The engine raises most of them and owns
@@ -12,11 +11,14 @@ import type { ValidationError } from "@repanel/contracts";
  */
 export {
   ActionFailedError,
+  ConflictError,
   DomainError,
   InvalidQueryError,
   NotFoundError,
   QueryTimeoutError,
   UnservableResourceError,
+  ValidationFailedError,
+  WriteRefusedError,
   type ActionFailureCode,
 } from "@repanel/engine";
 
@@ -32,18 +34,3 @@ export class ForbiddenError extends DomainError {
   readonly code = "forbidden";
 }
 
-export class ConflictError extends DomainError {
-  readonly code = "conflict";
-}
-
-/** Input that parsed but did not hold up. Details use the contracts error shape. */
-export class ValidationFailedError extends DomainError {
-  readonly code = "validation_failed";
-
-  constructor(
-    message: string,
-    readonly details: readonly ValidationError[],
-  ) {
-    super(message);
-  }
-}

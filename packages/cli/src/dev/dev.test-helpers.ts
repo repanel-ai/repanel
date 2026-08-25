@@ -9,6 +9,7 @@ import {
   HttpCall,
   QueryBuilder,
   RecordReader,
+  RecordWriter,
   indexResources,
   type ActionContext,
   type ReadContext,
@@ -78,6 +79,7 @@ export function testApi(definition: () => Definition, secret = "dev-secret"): Te
   const pool = new FakePool();
   const queries = new QueryBuilder();
   const reader = new RecordReader(queries);
+  const writer = new RecordWriter(queries);
   const runner = new ActionRunner(reader, queries, new HttpCall());
 
   const read = (): ReadContext => ({
@@ -90,6 +92,7 @@ export function testApi(definition: () => Definition, secret = "dev-secret"): Te
     projectKey: PROJECT_KEY,
     user: OPERATOR,
     reader,
+    writer,
     runner,
     definition,
     read,

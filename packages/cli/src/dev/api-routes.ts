@@ -1,6 +1,14 @@
-import type { Definition, UserDto } from "@repanel/contracts";
-import { NotFoundError, type ActionContext, type ActionRunner, type ReadContext, type RecordReader } from "@repanel/engine";
+import { recordWriteSchema, type Definition, type RecordWrite, type UserDto } from "@repanel/contracts";
+import {
+  NotFoundError,
+  type ActionContext,
+  type ActionRunner,
+  type ReadContext,
+  type RecordReader,
+  type RecordWriter,
+} from "@repanel/engine";
 import { readListQuery } from "./query-params.js";
+import { UnreadableBodyError } from "./request-body.js";
 
 /**
  * Where the runtime's own requests arrive, after its client's `/api` prefix.
@@ -17,6 +25,7 @@ export interface RuntimeApi {
   /** The one operator. `repanel dev` has no accounts, so there is nobody else. */
   readonly user: UserDto;
   readonly reader: RecordReader;
+  readonly writer: RecordWriter;
   readonly runner: ActionRunner;
   definition(): Definition;
   read(): ReadContext;
@@ -47,6 +56,7 @@ export async function handleApi(
   api: RuntimeApi,
   method: string,
   url: URL,
+  readBody: () => Promise<unknown> = () => Promise.resolve(undefined),
 ): Promise<ApiResponse | undefined> {
   const segments = url.pathname.split("/").filter((segment) => segment !== "");
   if (segments[0]?.toLowerCase() !== API_PREFIX) return undefined;
@@ -79,10 +89,26 @@ export async function handleApi(
     };
   }
 
+  if (method === "POST" && rest.length === 3) {
+    // 201, because the hosted route is a bare `@Post` and that is what Nest
+    // answers a bare `@Post` with.
+    return {
+      status: 201,
+      body: await api.writer.createRecord(api.read(), resourceKey, await write(readBody)),
+    };
+  }
+
   const id = rest[3] ?? "";
 
   if (method === "GET" && rest.length === 4) {
     return { status: 200, body: await api.reader.getRecord(api.read(), resourceKey, id) };
+  }
+
+  if (method === "PATCH" && rest.length === 4) {
+    return {
+      status: 200,
+      body: await api.writer.updateRecord(api.read(), resourceKey, id, await write(readBody)),
+    };
   }
 
   if (method === "GET" && rest.length === 6 && rest[4] === "related") {
@@ -106,6 +132,20 @@ export async function handleApi(
   }
 
   throw notFound(url);
+}
+
+/**
+ * The body of a write, read the way the hosted API's validation pipe reads it:
+ * strictly, and answered with every problem at once. A key that could not name
+ * a field is refused here, before anything looks one up.
+ */
+async function write(readBody: () => Promise<unknown>): Promise<RecordWrite> {
+  const result = recordWriteSchema.safeParse(await readBody());
+  if (result.success) return result.data;
+
+  throw new UnreadableBodyError(
+    result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
+  );
 }
 
 /**

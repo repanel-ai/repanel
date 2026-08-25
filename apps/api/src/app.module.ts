@@ -11,6 +11,7 @@ import { DomainExceptionFilter } from "./errors/domain-exception.filter";
 import { HealthModule } from "./health/health.module";
 import { McpModule } from "./mcp/mcp.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { RecordsModule } from "./records/records.module";
 import { RuntimeModule } from "./runtime/runtime.module";
 
 @Module({
@@ -25,6 +26,7 @@ import { RuntimeModule } from "./runtime/runtime.module";
     HealthModule,
     McpModule,
     ProjectsModule,
+    RecordsModule,
     RuntimeModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: DomainExceptionFilter }],

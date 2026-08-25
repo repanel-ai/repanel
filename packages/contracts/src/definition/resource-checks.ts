@@ -12,6 +12,7 @@ import {
 import type { Relationship, Resource } from "./schema.js";
 import { checkTableView } from "./table-view-checks.js";
 import { checkTones } from "./tone-checks.js";
+import { checkWrites } from "./write-checks.js";
 
 /** Types with no single reading to show, so nothing to name a record with. */
 const UNLABELLABLE_FIELD_TYPES: ReadonlySet<FieldType> = new Set(["json", "relation"]);
@@ -62,6 +63,7 @@ export function checkResource(
 
   errors.push(...checkPrimaryKey(resource, at, fields, fieldKeys));
   errors.push(...checkLabelField(resource, at, fields, fieldKeys));
+  errors.push(...checkWrites(resource, at, fields));
 
   resource.fields.forEach((field, index) => {
     if (field.type !== "relation" || resources.has(field.target)) return;

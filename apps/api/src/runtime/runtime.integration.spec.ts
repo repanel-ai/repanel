@@ -6,7 +6,7 @@ import {
   type Resource,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { QueryBuilder, RecordReader } from "@repanel/engine";
+import { QueryBuilder, RecordReader, RecordWriter } from "@repanel/engine";
 import { prismaDefinition } from "@repanel/engine/fixtures";
 import { Client } from "pg";
 import type { ConfigService } from "../config/config.service";
@@ -15,7 +15,15 @@ import type { ConnectionRow, ConnectionsRepository } from "../connections/connec
 import { CustomerPoolService } from "../connections/customer-pool.service";
 import { CryptoService } from "../crypto/crypto.service";
 import type { DefinitionsService } from "../definitions/definitions.service";
-import { InvalidQueryError, NotFoundError, QueryTimeoutError } from "../errors/domain-errors";
+import {
+  ConflictError,
+  InvalidQueryError,
+  NotFoundError,
+  QueryTimeoutError,
+  ValidationFailedError,
+  WriteRefusedError,
+} from "../errors/domain-errors";
+import { RecordsService } from "../records/records.service";
 import type { ProjectsService } from "../projects/projects.service";
 import { RuntimeService } from "./runtime.service";
 
@@ -70,19 +78,22 @@ create table ${SCHEMA}.organizations (
   created_at timestamptz not null
 );
 
+-- Written the way an application that invites its users writes it: the columns
+-- a form does not fill have defaults, and the password arrives when the person
+-- does. A column with neither is a column an admin cannot create around.
 create table ${SCHEMA}.users (
-  id uuid primary key,
-  email text not null,
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
   name text,
-  status text not null,
-  password_hash text not null,
+  status text not null default 'invited',
+  password_hash text,
   organization_id uuid references ${SCHEMA}.organizations(id),
-  is_active boolean not null,
+  is_active boolean not null default true,
   notes text,
-  created_at timestamptz not null,
+  created_at timestamptz not null default now(),
   avatar_url text,
   trial_ends_on date,
-  login_count integer not null,
+  login_count integer not null default 0,
   preferences jsonb
 );
 
@@ -198,6 +209,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
   let admin: Client;
   let pools: CustomerPoolService;
   let runtime: RuntimeService;
+  let records: RecordsService;
   let draft: unknown = saasDefinition;
 
   beforeAll(async () => {
@@ -214,6 +226,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     const connections = new OneConnection(crypto.encrypt(scopedTo(dsn, SCHEMA)));
     pools = new CustomerPoolService(connections as unknown as ConnectionsRepository, crypto);
 
+    const queries = new QueryBuilder();
     runtime = new RuntimeService(
       { requireOwnedByKey: () => Promise.resolve(PROJECT) } as unknown as ProjectsService,
       {
@@ -221,8 +234,9 @@ describeAgainstPostgres("the query engine against Postgres", () => {
           Promise.resolve({ payload: draft, version: 1, publishedAt: "2026-08-19T09:00:00.000Z" }),
       } as unknown as DefinitionsService,
       pools,
-      new RecordReader(new QueryBuilder()),
+      new RecordReader(queries),
     );
+    records = new RecordsService(runtime, new RecordWriter(queries));
   });
 
   afterAll(async () => {
@@ -433,7 +447,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
    * (DECISIONS #022). Each case seeds and drops its own row, so nothing above
    * depends on the order these run in.
    */
-  describe("a write", () => {
+  describe("an action's write", () => {
     const SUBJECT = "eeeeeeee-4444-4444-8444-eeeeeeeeeeee";
     const PRISMA_SUBJECT = "user-write";
     const builder = new QueryBuilder();
@@ -465,7 +479,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     }
 
     it("sets the one column it named, on the one row it named", async () => {
-      const affected = await run(builder.update(USERS, fieldOf(USERS, "status"), "suspended", SUBJECT));
+      const affected = await run(builder.setField(USERS, fieldOf(USERS, "status"), "suspended", SUBJECT));
 
       expect(affected).toBe(1);
       const record = await runtime.getRecord(OWNER, PROJECT.key, "users", SUBJECT);
@@ -478,7 +492,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     });
 
     it("writes a boolean literal as a boolean the column accepts", async () => {
-      const affected = await run(builder.update(USERS, fieldOf(USERS, "is_active"), false, SUBJECT));
+      const affected = await run(builder.setField(USERS, fieldOf(USERS, "is_active"), false, SUBJECT));
 
       expect(affected).toBe(1);
       expect((await runtime.getRecord(OWNER, PROJECT.key, "users", SUBJECT)).values.is_active).toBe(false);
@@ -486,7 +500,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
     it("affects nothing when the id names no row", async () => {
       const affected = await run(
-        builder.update(USERS, fieldOf(USERS, "status"), "suspended", "99999999-9999-4999-8999-999999999999"),
+        builder.setField(USERS, fieldOf(USERS, "status"), "suspended", "99999999-9999-4999-8999-999999999999"),
       );
 
       expect(affected).toBe(0);
@@ -497,13 +511,205 @@ describeAgainstPostgres("the query engine against Postgres", () => {
       draft = prismaDefinition;
 
       const affected = await run(
-        builder.update(PRISMA_USER, fieldOf(PRISMA_USER, "avatarUrl"), "https://cdn.acme.test/new.png", PRISMA_SUBJECT),
+        builder.setField(PRISMA_USER, fieldOf(PRISMA_USER, "avatarUrl"), "https://cdn.acme.test/new.png", PRISMA_SUBJECT),
       );
 
       expect(affected).toBe(1);
       const record = await runtime.getRecord(OWNER, PROJECT.key, "User", PRISMA_SUBJECT);
       expect(record.values.avatarUrl).toBe("https://cdn.acme.test/new.png");
     });
+  });
+
+  /**
+   * The write path against the real thing. Everything here is about what
+   * Postgres actually does with the statement a form produces — that a
+   * data-modifying CTE hands its row to the select above it, that a column with
+   * a default fills itself, that an integrity failure comes back as a category
+   * and not as the driver's words — and none of it can be asserted against a
+   * stub.
+   */
+  describe("a form's write", () => {
+    const PRISMA_SUBJECT = "user-form";
+
+    beforeEach(async () => {
+      await admin.query(
+        `insert into ${SCHEMA}."User" (id, email, "avatarUrl", "teamId", "signedUpOn", "createdAt")
+         values ($1, 'form@acme.test', null, 'team-1', '2026-02-02', '2026-08-19 10:00:00')`,
+        [PRISMA_SUBJECT],
+      );
+    });
+
+    /** Rolls the tables back to what the suite seeded, between cases. */
+    afterEach(async () => {
+      await admin.query(`delete from ${SCHEMA}."User" where id = $1`, [PRISMA_SUBJECT]);
+      await admin.query(`delete from ${SCHEMA}.users where id not in ($1, $2, $3)`, [ADA, BOB, CY]);
+      await admin.query(
+        `update ${SCHEMA}.users set email = 'ada@acme.test', name = 'Ada', notes = 'founding user',` +
+          ` login_count = 1284, organization_id = $2 where id = $1`,
+        [ADA, ACME],
+      );
+    });
+
+    it("creates the record and answers with it, read back through the same statement", async () => {
+      const record = await records.createRecord(OWNER, PROJECT.key, "users", {
+        values: { email: "new@acme.test", name: "Nia", organization_id: ACME },
+      });
+
+      expect(record.id).toEqual(expect.any(String));
+      expect(record.values.email).toBe("new@acme.test");
+      // The label came off the join, exactly as a detail read would have made it.
+      expect(record.values.organization_id).toEqual({ id: ACME, label: "Acme" });
+      // The columns a form does not fill were filled by the database.
+      expect(record.values.status).toBe("invited");
+      expect(record.values.login_count).toBe(0);
+      expect(record.values.created_at).toEqual(expect.any(String));
+    });
+
+    it("is the same record the read path answers with a moment later", async () => {
+      const written = await records.createRecord(OWNER, PROJECT.key, "users", {
+        values: { email: "twice@acme.test", name: "Twice" },
+      });
+
+      const read = await runtime.getRecord(OWNER, PROJECT.key, "users", written.id);
+
+      expect(read).toEqual(written);
+    });
+
+    it("puts no sensitive value on the wire, in either direction", async () => {
+      const record = await records.createRecord(OWNER, PROJECT.key, "users", {
+        values: { email: "quiet@acme.test", name: "Quiet" },
+      });
+
+      expect(JSON.stringify(record)).not.toContain("password_hash");
+      await admin.query(`update ${SCHEMA}.users set password_hash = $2 where id = $1`, [
+        record.id,
+        "scrypt$do-not-leak",
+      ]);
+
+      const updated = await records.updateRecord(OWNER, PROJECT.key, "users", record.id, {
+        values: { name: "Still quiet" },
+      });
+
+      expect(JSON.stringify(updated)).not.toContain("do-not-leak");
+    });
+
+    it("changes the fields it names and leaves the rest of the row alone", async () => {
+      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+        values: { notes: "edited" },
+      });
+
+      expect(record.values.notes).toBe("edited");
+      expect(record.values.email).toBe("ada@acme.test");
+      expect(record.values.login_count).toBe(1284);
+      // And nobody else moved.
+      const bob = await runtime.getRecord(OWNER, PROJECT.key, "users", BOB);
+      expect(bob.values.notes).toBeNull();
+    });
+
+    it("clears a field that is asked to hold nothing", async () => {
+      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+        values: { notes: null, organization_id: null },
+      });
+
+      expect(record.values.notes).toBeNull();
+      expect(record.values.organization_id).toEqual({ id: null, label: null });
+    });
+
+    it("writes the types the definition declares as the column's own", async () => {
+      const record = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+        values: { trial_ends_on: "2027-01-31", login_count: 5, avatar_url: "https://cdn.acme.test/x.png" },
+      });
+
+      expect(record.values.trial_ends_on).toBe("2027-01-31");
+      expect(record.values.login_count).toBe(5);
+    });
+
+    /**
+     * There is no optimistic concurrency in v1: the second save wins, and the
+     * first operator is not told. It is written down here because it is a real
+     * property of the product rather than an accident of this suite.
+     */
+    it("lets the last write win", async () => {
+      await records.updateRecord(OWNER, PROJECT.key, "users", ADA, { values: { name: "First" } });
+      const second = await records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+        values: { name: "Second" },
+      });
+
+      expect(second.values.name).toBe("Second");
+    });
+
+    it("writes through a mixed-case table and column", async () => {
+      draft = prismaDefinition;
+
+      const record = await records.updateRecord(OWNER, PROJECT.key, "User", PRISMA_SUBJECT, {
+        values: { avatarUrl: "https://cdn.acme.test/new.png" },
+      });
+
+      expect(record.values.avatarUrl).toBe("https://cdn.acme.test/new.png");
+    });
+
+    it("says a record that is not there is not there, and writes nothing", async () => {
+      await expect(
+        records.updateRecord(OWNER, PROJECT.key, "users", "99999999-9999-4999-8999-999999999999", {
+          values: { name: "Ghost" },
+        }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("refuses a resource that offers no create, before it reaches the database", async () => {
+      await expect(
+        records.createRecord(OWNER, PROJECT.key, "orders", { values: { reference: "REF-9" } }),
+      ).rejects.toBeInstanceOf(WriteRefusedError);
+    });
+
+    describe("what the database itself refuses", () => {
+      it("answers a unique violation as a conflict", async () => {
+        await expect(
+          records.createRecord(OWNER, PROJECT.key, "users", {
+            values: { email: "ada@acme.test", name: "Impostor" },
+          }),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it("points a not-null violation at the column the database named", async () => {
+        const refusal = await refusalFrom(
+          records.updateRecord(OWNER, PROJECT.key, "users", ADA, { values: { login_count: null } }),
+        );
+
+        expect(refusal).toBeInstanceOf(ValidationFailedError);
+        expect((refusal as ValidationFailedError).details[0]?.path).toBe("values.login_count");
+      });
+
+      it("points a foreign key violation at the relation that was written", async () => {
+        const refusal = await refusalFrom(
+          records.updateRecord(OWNER, PROJECT.key, "users", ADA, {
+            values: { organization_id: "99999999-9999-4999-8999-999999999999" },
+          }),
+        );
+
+        expect(refusal).toBeInstanceOf(ValidationFailedError);
+        expect((refusal as ValidationFailedError).details[0]?.path).toBe("values.organization_id");
+      });
+
+      it("never repeats the driver's words", async () => {
+        const refusal = await refusalFrom(
+          records.createRecord(OWNER, PROJECT.key, "users", {
+            values: { email: "ada@acme.test", name: "Impostor" },
+          }),
+        );
+
+        expect(refusal.message).not.toMatch(/duplicate key|constraint|users_email/i);
+      });
+    });
+
+    async function refusalFrom(call: Promise<unknown>): Promise<Error> {
+      try {
+        await call;
+      } catch (error) {
+        return error as Error;
+      }
+      throw new Error("expected the write to be refused");
+    }
   });
 
   describe("the connection probe", () => {

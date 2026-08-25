@@ -12,6 +12,7 @@ import { filterConditions, searchCondition } from "./conditions.js";
 import { identityField, indexFields, listFields } from "./fields.js";
 import { column, quoteIdentifier } from "./identifier.js";
 import { Parameters } from "./parameters.js";
+import { insertStatement, updateStatement, type Assignment } from "./write-statements.js";
 
 /** A statement, what to send with it, and how to read what comes back. */
 export interface Query {
@@ -160,8 +161,31 @@ export class QueryBuilder {
   }
 
   /**
-   * One field of one record set to one literal — the only statement this engine
-   * writes that is not a read, and the only one a `dbUpdate` action needs.
+   * A record made out of what a form carried, answered with the record it
+   * became. The columns and the values are the caller's; the table, the
+   * quoting and the select list that reads the new row back are not.
+   */
+  insertRecord(
+    resources: ReadonlyMap<string, Resource>,
+    resource: Resource,
+    assignments: readonly Assignment[],
+  ): Query {
+    return insertStatement(resources, resource, assignments);
+  }
+
+  /** The fields a form changed, written to the record a key names. */
+  updateRecord(
+    resources: ReadonlyMap<string, Resource>,
+    resource: Resource,
+    assignments: readonly Assignment[],
+    id: RecordId,
+  ): Query {
+    return updateStatement(resources, resource, assignments, id);
+  }
+
+  /**
+   * One field of one record set to one literal — what a `dbUpdate` action
+   * needs, and nothing a form goes through.
    *
    * It is built here rather than beside the action because the rules of
    * DECISIONS #024 are properties of this file: the table, the column and the
@@ -170,9 +194,9 @@ export class QueryBuilder {
    * that went around it would be a write nothing had checked.
    *
    * `set` names a bare column: Postgres refuses a table-qualified target there,
-   * which is also why this is the one statement with no row alias.
+   * which is why this statement has no row alias.
    */
-  update(resource: Resource, field: Field, value: ActionValue, id: RecordId): Query {
+  setField(resource: Resource, field: Field, value: ActionValue, id: RecordId): Query {
     // Validation refuses a `dbUpdate` on a sensitive field; this is that rule
     // standing where the statement is written, for a definition stored before
     // it existed. `hidden` is deliberately not refused — hidden is a display

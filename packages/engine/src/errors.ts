@@ -1,3 +1,5 @@
+import type { ValidationError } from "@repanel/contracts";
+
 /**
  * What the engine throws. Each carries a stable, client-safe `code`; deciding
  * what a code becomes on the wire belongs to whoever is serving the request, so
@@ -19,6 +21,43 @@ export abstract class DomainError extends Error {
 
 export class NotFoundError extends DomainError {
   readonly code = "not_found";
+}
+
+/**
+ * What was asked for is already there, or is no longer the thing it was asked
+ * about. Raised where a constraint the database owns is the authority on the
+ * answer — a unique index refusing a second row is exactly such a case, and a
+ * pre-check that only sometimes wins the race is not (DECISIONS #016).
+ */
+export class ConflictError extends DomainError {
+  readonly code = "conflict";
+}
+
+/**
+ * Input that parsed and did not hold up. The details are the same shape a
+ * definition's problems come back in (DECISIONS #008) — a path, what is wrong,
+ * what would be right, and the fix — because the renderer puts them under the
+ * input they belong to, and a path that does not resolve to a field is a
+ * message nobody can place.
+ */
+export class ValidationFailedError extends DomainError {
+  readonly code = "validation_failed";
+
+  constructor(
+    message: string,
+    readonly details: readonly ValidationError[],
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * The definition does not offer this write at all. Not a malformed request and
+ * not a missing record: the request was understood and the admin it was sent to
+ * declines to perform it, which is the same answer however it is asked again.
+ */
+export class WriteRefusedError extends DomainError {
+  readonly code = "write_refused";
 }
 
 /**

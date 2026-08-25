@@ -148,7 +148,15 @@ describe("QueryBuilder", () => {
 
       // And the builder refuses it anyway, for a resource assembled by hand.
       const smuggled = structuredClone(USERS);
-      smuggled.fields.push({ key: hostileKey, label: "X", type: "text", sensitive: false, hidden: false });
+      smuggled.fields.push({
+        key: hostileKey,
+        label: "X",
+        type: "text",
+        sensitive: false,
+        hidden: false,
+        editable: false,
+        required: false,
+      });
       smuggled.views.table.columns.push(hostileKey);
 
       expect(() => builder.records(SAAS_RESOURCES, smuggled, listQuery())).toThrow(
@@ -466,20 +474,20 @@ describe("QueryBuilder", () => {
     });
   });
 
-  describe("update", () => {
+  describe("setField", () => {
     it("sets one column of one record, with both values bound", () => {
-      const query = builder.update(USERS, fieldOf(USERS, "status"), "suspended", "user-1");
+      const query = builder.setField(USERS, fieldOf(USERS, "status"), "suspended", "user-1");
 
       expect(query.text).toBe('update "users" set "status" = $1 where "id" = $2');
       expect(query.values).toEqual(["suspended", "user-1"]);
     });
 
     it("writes a boolean and a null as the literals they are", () => {
-      expect(builder.update(USERS, fieldOf(USERS, "is_active"), false, "user-1").values).toEqual([
+      expect(builder.setField(USERS, fieldOf(USERS, "is_active"), false, "user-1").values).toEqual([
         false,
         "user-1",
       ]);
-      expect(builder.update(USERS, fieldOf(USERS, "notes"), null, "user-1").values).toEqual([
+      expect(builder.setField(USERS, fieldOf(USERS, "notes"), null, "user-1").values).toEqual([
         null,
         "user-1",
       ]);
@@ -494,7 +502,7 @@ describe("QueryBuilder", () => {
       const prisma = definitionFrom(prismaDefinition);
       const user = resourceOf(prisma, "User");
 
-      const query = builder.update(user, fieldOf(user, "avatarUrl"), "https://x.test/a.png", "u1");
+      const query = builder.setField(user, fieldOf(user, "avatarUrl"), "https://x.test/a.png", "u1");
 
       expect(query.text).toBe('update "User" set "avatarUrl" = $1 where "id" = $2');
     });
@@ -507,7 +515,7 @@ describe("QueryBuilder", () => {
      */
     it("refuses to write a sensitive column", () => {
       const refusal = refusalFrom(() =>
-        builder.update(USERS, fieldOf(USERS, "password_hash"), "x", "user-1"),
+        builder.setField(USERS, fieldOf(USERS, "password_hash"), "x", "user-1"),
       );
 
       expect(refusal).toBeInstanceOf(UnservableResourceError);
@@ -515,7 +523,7 @@ describe("QueryBuilder", () => {
     });
 
     it("still writes a hidden column, because hidden is only about display", () => {
-      const query = builder.update(USERS, fieldOf(USERS, "preferences"), null, "user-1");
+      const query = builder.setField(USERS, fieldOf(USERS, "preferences"), null, "user-1");
 
       expect(query.text).toBe('update "users" set "preferences" = $1 where "id" = $2');
     });
@@ -524,8 +532,13 @@ describe("QueryBuilder", () => {
       const secretKey = definitionFrom(saasDefinition, (draft) => {
         const orders = draftResource(draft, "orders");
         orders.primaryKey = "reference";
+        // The reference becomes the key, and a key is never a form field — so
+        // the only write this resource offered goes with it.
+        delete orders.writes;
         orders.fields = orders.fields.map((field) =>
-          field.key === "reference" ? { ...field, hidden: false } : field,
+          field.key === "reference"
+            ? { ...field, hidden: false, editable: false, required: false }
+            : field,
         );
       });
       const orders = resourceOf(secretKey, "orders");
@@ -539,7 +552,7 @@ describe("QueryBuilder", () => {
       };
 
       const refusal = refusalFrom(() =>
-        builder.update(withSecretKey, fieldOf(withSecretKey, "status"), "refunded", "AC-1"),
+        builder.setField(withSecretKey, fieldOf(withSecretKey, "status"), "refunded", "AC-1"),
       );
 
       expect(refusal).toBeInstanceOf(UnservableResourceError);

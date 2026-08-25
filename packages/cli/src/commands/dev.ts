@@ -7,6 +7,7 @@ import {
   HttpCall,
   QueryBuilder,
   RecordReader,
+  RecordWriter,
   indexResources,
   type ActionContext,
   type ReadContext,
@@ -145,6 +146,7 @@ export async function dev(
 
   const queries = new QueryBuilder();
   const reader = new RecordReader(queries);
+  const writer = new RecordWriter(queries);
   const runner = new ActionRunner(reader, queries, new HttpCall());
 
   // A secret generated for this run and held in memory: there is no project to
@@ -169,6 +171,7 @@ export async function dev(
       projectKey: PROJECT_KEY,
       user: LOCAL_OPERATOR,
       reader,
+      writer,
       runner,
       definition: () => watched.current,
       read,

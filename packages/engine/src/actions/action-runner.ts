@@ -90,7 +90,7 @@ export class ActionRunner {
     id: RecordId,
   ): Promise<void> {
     const field = requireField(indexFields(resource), action.field, resource);
-    const result = await this.execute(context, this.queries.update(resource, field, action.value, id));
+    const result = await this.execute(context, this.queries.setField(resource, field, action.value, id));
 
     // Nothing was updated, so there was nothing there to update. An admin that
     // reports success for a record it did not touch is worse than one that

@@ -112,7 +112,7 @@ describe("RuntimeService", () => {
     it("answers with the definition as validation makes it, defaults and all", async () => {
       const definition = await runtime.definitionFor(OWNER, PROJECT.key);
 
-      expect(definition.resources[0]?.readOnly).toBe(true);
+      expect(definition.resources[0]?.writes).toEqual({ create: false, update: false });
       expect(definition.resources[0]?.actions).toHaveLength(1);
     });
 

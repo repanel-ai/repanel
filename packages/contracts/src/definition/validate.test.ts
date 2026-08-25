@@ -42,7 +42,7 @@ test("validation applies the v0 defaults", () => {
 
   const orders = definition.resources.find((resource) => resource.key === "orders");
   assert.ok(orders);
-  assert.equal(orders.readOnly, true, "resources are read-only unless stated");
+  assert.equal(orders.writes.create, false, "a resource offers no create unless it says so");
   assert.deepEqual(orders.views.detail.relatedLists, [], "an omitted related list becomes empty");
   assert.equal(
     orders.views.detail.relatedLayout,
@@ -126,14 +126,15 @@ test("an unknown schema version is rejected with the version this package speaks
   assert.equal(error.hint, "Change `schemaVersion` to `0.1`.");
 });
 
-test("a resource cannot opt out of read-only in v0", () => {
+test("`readOnly: false` is not how a resource opts into writes", () => {
   const input = draft();
-  const users = (input.resources as Record<string, unknown>[])[1] as Record<string, unknown>;
-  users.readOnly = false;
+  const orders = (input.resources as Record<string, unknown>[])[2] as Record<string, unknown>;
+  orders.readOnly = false;
 
   const error = onlyErrorOf(input);
-  assert.equal(error.path, "resources[1].readOnly");
-  assert.equal(error.hint, "Change `resources[1].readOnly` to `true`.");
+  assert.equal(error.path, "resources[2].readOnly");
+  assert.equal(error.expected, "`writes`, naming which writes the resource offers");
+  assert.match(error.hint, /Remove `resources\[2\].readOnly` and add/);
 });
 
 test("a key that is not a usable column name is rejected", () => {

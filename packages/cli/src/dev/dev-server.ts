@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { fileURLToPath } from "node:url";
 import { handleApi, type RuntimeApi } from "./api-routes.js";
 import { failureOf } from "./failures.js";
+import { readJsonBody } from "./request-body.js";
 import type { DefinitionEvent, WatchedDefinition } from "./project.js";
 import {
   EMBEDDED_RUNTIME,
@@ -77,7 +78,7 @@ export function createDevServer({
     }
 
     try {
-      const answered = await handleApi(api, method, url);
+      const answered = await handleApi(api, method, url, () => readJsonBody(request));
       if (answered) {
         return send(response, answered.status, "application/json; charset=utf-8", JSON.stringify(answered.body));
       }

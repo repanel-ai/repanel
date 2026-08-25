@@ -29,11 +29,11 @@ what to do when the answer is not in the definition at all.
    from memory of an older schema fails on keys that no longer mean anything.
 4. **Author** the definition into `repanel/` in the customer's repository (the
    layout is below). It is their file, in their review, under their history.
-5. **Run it locally** with `repanel dev` if the CLI is installed (§7). It is a
+5. **Run it locally** with `repanel dev` if the CLI is installed (§8). It is a
    faster loop than submitting, it needs no project and no account, and it
    shows you the admin instead of telling you the definition parsed.
 6. **Submit** the composed object with `submit_definition` — or, where the CLI
-   is installed and the repository is linked, with `repanel deploy` (§6).
+   is installed and the repository is linked, with `repanel deploy` (§7).
 7. **Repair.** An invalid submission comes back with every problem found, each
    carrying a path, an expectation and a fix. Apply them, submit again, repeat
    until `valid` is true. Invalid drafts are stored, so nothing is lost, and
@@ -72,7 +72,7 @@ denormalized caches, counters maintained by triggers.
 **Existing admin-API endpoints.** Search the routes for a `/repanel` prefix, and
 more generally for endpoints that already perform operator-shaped work:
 `approve`, `refund`, `resend`, `suspend`, `retry`. Every one you find is an
-action you can offer without writing any application code (§5).
+action you can offer without writing any application code (§6).
 
 Also read the application's *language*. A table called `orgs` whose UI says
 "Workspaces" is a resource labelled Workspace/Workspaces. The definition is
@@ -85,7 +85,7 @@ read by operators, not by the schema.
 RePanel needs a connection string to the customer's database. **It must never
 pass through you.** Do not ask for a DSN in chat, do not read one out of a
 `.env` file to send onward, and do not put one in a file you write. The same
-goes for the project's action secret (§5): it is revealed once, to a signed-in
+goes for the project's action secret (§6): it is revealed once, to a signed-in
 human, in the console.
 
 This is not a formality. Anything you handle is in a transcript.
@@ -211,7 +211,7 @@ paths like `resources[2].views.table.columns[5]`, and an index that means a
 different resource each time you submit is an index you cannot act on.
 
 `repanel deploy` performs exactly this assembly and submits the result, so
-where the CLI is installed it is the shorter path (§6). Where it is not, you
+where the CLI is installed it is the shorter path (§7). Where it is not, you
 assemble in memory before calling the tool. Either way you write the files,
 because the files are what the customer reviews, versions and comes back to in
 six months.
@@ -283,19 +283,19 @@ without hiding the rows themselves. Two things follow:
    live rows, bound as the resource's `source.table`. That is a change to the
    customer's database, so propose it — never make it silently.
 
-### A status with rules is read-only, plus an action
+### A status with rules is moved, not typed
 
-v0 resources are read-only, so nothing you write makes a status editable. The
-mistake is subtler: leaving the status as an ordinary field when an operator's
-whole job is to *move* it, or wiring a raw `dbUpdate` at a column that has rules
-behind it.
+A status is the classic case for an action rather than a form field. The mistake
+is subtler than marking it `editable`: it is leaving the status as an ordinary
+field when an operator's whole job is to *move* it, or wiring a raw `dbUpdate`
+at a column that has rules behind it.
 
 Decide with one question: **is there a rule about who may move it, when, or what
 else happens?**
 
 - **Yes, and an endpoint exists** → `httpCall` at that endpoint. The application
   enforces its rule and answers.
-- **Yes, and no endpoint exists** → you offer to write the endpoint (§5). This
+- **Yes, and no endpoint exists** → you offer to write the endpoint (§6). This
   is the normal case, not an escalation.
 - **No — the flip is genuinely rule-free** → `dbUpdate` is honest and costs the
   customer nothing.
@@ -316,7 +316,73 @@ in every row of the table.
 
 ---
 
-## 5 · Actions, and the endpoints behind them
+## 5 · Editable is a decision, not a default
+
+A resource offers no writes until it says so, and a column is not writable until
+it says so too:
+
+```json
+{
+  "key": "job_openings",
+  "writes": { "create": true, "update": true },
+  "fields": [
+    { "key": "title", "label": "Title", "type": "text", "editable": true, "required": true },
+    { "key": "status", "label": "Status", "type": "enum", "values": ["draft", "open", "closed"], "editable": true },
+    { "key": "created_at", "label": "Created", "type": "dateTime" }
+  ]
+}
+```
+
+Both halves are required and neither is inert: `editable` on a resource with no
+`writes` is a validation error, and so is a `writes` with nothing editable under
+it. That is deliberate. A half-written opt-in is an author who believes they
+opened a form, and a blank screen is the worst way to find out otherwise.
+
+**When in doubt, an action or an endpoint.** Reading is safe and writing is not,
+so the burden of proof sits on the write. Before you mark a column `editable`,
+ask what happens when somebody types into it:
+
+- **A rule decides who may change it, when, or what else happens** → not
+  editable. It is an `httpCall` at an endpoint (§6), or a `dbUpdate` if the flip
+  is genuinely rule-free.
+- **The application owns the value** — counters, timestamps, derived totals,
+  soft-delete columns, anything a job writes → not editable. An operator typing
+  over it produces a number that is wrong until the next run.
+- **It is a secret** → not editable, and not negotiable. A form would have to
+  render what is there before anyone could change it.
+- **It is plain data the operator is the authority on** — a name, a title, a
+  note, a contact address, which record something points at → editable. This is
+  the case forms exist for.
+
+**`required` means the database will insist.** Mark a field `required` when its
+column is `not null` and has no default; leave it off when the column is
+nullable or defaulted, so an operator can leave the box empty and let the
+default apply. Getting this wrong is not dangerous — the database refuses the
+write and the operator is told which field — but getting it right means they are
+told before they press save.
+
+**A resource is creatable only if the database can fill in the rest.** Every
+`not null` column with no default has to be either `editable` or supplied by the
+application. A table whose primary key is issued by the application, or whose
+`password_hash` is `not null`, cannot be created from an admin — offer `update`
+alone and let the application create the row:
+
+```json
+"writes": { "update": true }
+```
+
+That is the common shape, not a fallback. Most records are created by the
+product and corrected by an operator.
+
+**What you cannot do in v0:** delete a record, edit a `json` field, edit files
+or images, or edit many records at once. And an update is last-write-wins —
+there is no version check, so when two operators save the same record the second
+one wins silently. Where that is not acceptable, put the write behind an
+endpoint that can decide.
+
+---
+
+## 6 · Actions, and the endpoints behind them
 
 **Prefer an existing `/repanel/*` endpoint over `dbUpdate`, every time.** An
 endpoint has the rule in it, is tested and reviewed in the customer's
@@ -397,7 +463,7 @@ rule — put it in the endpoint, where it can be tested (DECISIONS #010).
 
 ---
 
-## 6 · Submit and repair
+## 7 · Submit and repair
 
 Send the composed object. Read the errors as a work list, not as a verdict:
 each one carries `path`, `message`, `expected` and `hint`, and the hint is a
@@ -441,7 +507,7 @@ again, read the work list until there is none.
 
 ---
 
-## 7 · Work locally, before any of that
+## 8 · Work locally, before any of that
 
 `repanel dev` runs the whole admin on the developer's machine — the real
 renderer, the real query engine, their own database — with no RePanel account,
@@ -477,7 +543,7 @@ admin *underneath keeps working*, because a definition is only ever swapped for
 one that validated. So a broken edit costs you nothing: the screen you were on
 is still the screen you were on, and the overlay tells you what to change.
 
-Read those problems the way §6 says to read a submission's: as a work list, and
+Read those problems the way §7 says to read a submission's: as a work list, and
 never by widening an exposure.
 
 **Actions are signed with a secret generated for that run.** It is printed once
@@ -488,7 +554,7 @@ REPANEL_ACTION_SECRET=…
 ```
 
 Put it in the application's environment and restart the application, or every
-`httpCall` action is refused with a 401 — which is the verification in §5
+`httpCall` action is refused with a 401 — which is the verification in §6
 working, not a bug. It is a new secret every run and it is never written to
 disk: a development secret that persists is a development secret that
 eventually ships.
@@ -557,4 +623,4 @@ changes what you may write, only where to look for it.
 Reserved. Curated recipes for putting a third-party endpoint behind an action —
 the widget-shaped patterns that are worth having one blessed answer for — land
 here after MVP. Until then, anything external is an endpoint in the customer's
-application (§5), which is also what those recipes will generate.
+application (§6), which is also what those recipes will generate.

@@ -4,8 +4,16 @@ import type { DefinitionInput } from "../schema.js";
  * Reference definition for a small SaaS: organizations own users, users place
  * orders. Exercises every v0 concept — every field type, enum tones, hidden
  * and sensitive fields, both relationship kinds, both action kinds, an action
- * precondition, and navigation groups. `users` carries one field of each type
- * on purpose: it is the record every renderer is reviewed against.
+ * precondition, navigation groups, and both writes. `users` carries one field
+ * of each type on purpose: it is the record every renderer is reviewed against.
+ *
+ * The two writable resources are deliberately unlike each other. `users` offers
+ * both writes: an operator adds a colleague and corrects what the record says.
+ * `orders` offers only `update`, because an order is placed by the application
+ * and an operator only ever fixes a typo in one. What neither offers is a form
+ * over a field that carries rules — `status`, `is_active` and `plan` each have
+ * an action instead, which is the whole of the opt-in philosophy in one
+ * fixture.
  */
 export const saasDefinition: DefinitionInput = {
   schemaVersion: "0.1",
@@ -72,10 +80,11 @@ export const saasDefinition: DefinitionInput = {
       primaryKey: "id",
       labelField: "email",
       icon: "users",
+      writes: { create: true, update: true },
       fields: [
         { key: "id", label: "ID", type: "text" },
-        { key: "email", label: "Email", type: "email" },
-        { key: "name", label: "Name", type: "text" },
+        { key: "email", label: "Email", type: "email", editable: true, required: true },
+        { key: "name", label: "Name", type: "text", editable: true, required: true },
         {
           key: "status",
           label: "Status",
@@ -85,14 +94,23 @@ export const saasDefinition: DefinitionInput = {
           // and it renders exactly as every value did before tones existed.
           tones: { active: "positive", suspended: "critical" },
         },
+        // Never editable and never selected. It is also why `status` starts at
+        // `invited`: the operator creates the account and the person sets the
+        // password, so the column an admin may not write is one it never has to.
         { key: "password_hash", label: "Password hash", type: "text", sensitive: true },
-        { key: "organization_id", label: "Organization", type: "relation", target: "organizations" },
+        {
+          key: "organization_id",
+          label: "Organization",
+          type: "relation",
+          target: "organizations",
+          editable: true,
+        },
         { key: "is_active", label: "Active", type: "boolean" },
-        { key: "notes", label: "Notes", type: "longText" },
+        { key: "notes", label: "Notes", type: "longText", editable: true },
         { key: "created_at", label: "Created", type: "dateTime" },
-        { key: "avatar_url", label: "Avatar", type: "url" },
-        { key: "trial_ends_on", label: "Trial ends", type: "date" },
-        { key: "login_count", label: "Logins", type: "number" },
+        { key: "avatar_url", label: "Avatar", type: "url", editable: true },
+        { key: "trial_ends_on", label: "Trial ends", type: "date", editable: true },
+        { key: "login_count", label: "Logins", type: "number", editable: true },
         { key: "preferences", label: "Preferences", type: "json", hidden: true },
       ],
       relationships: [
@@ -163,10 +181,13 @@ export const saasDefinition: DefinitionInput = {
       primaryKey: "id",
       labelField: "reference",
       icon: "receipt",
-      readOnly: true,
+      // An order is placed by the application; nobody types one into an admin.
+      // Correcting the reference it was placed under is the one thing an
+      // operator does to it, so `update` is offered and `create` is not.
+      writes: { update: true },
       fields: [
         { key: "id", label: "ID", type: "text" },
-        { key: "reference", label: "Reference", type: "text" },
+        { key: "reference", label: "Reference", type: "text", editable: true, required: true },
         { key: "user_id", label: "Customer", type: "relation", target: "users" },
         { key: "status", label: "Status", type: "enum", values: ["pending", "paid", "refunded"] },
         { key: "total_cents", label: "Total (cents)", type: "number" },

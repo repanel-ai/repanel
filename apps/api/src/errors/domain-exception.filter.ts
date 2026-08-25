@@ -18,6 +18,7 @@ import {
   QueryTimeoutError,
   UnauthorizedError,
   ValidationFailedError,
+  WriteRefusedError,
 } from "./domain-errors";
 
 interface Failure {
@@ -69,6 +70,9 @@ function statusOf(error: DomainError): number {
   if (error instanceof ForbiddenError) return HttpStatus.FORBIDDEN;
   if (error instanceof ConflictError) return HttpStatus.CONFLICT;
   if (error instanceof InvalidQueryError) return HttpStatus.BAD_REQUEST;
+  // Understood, and declined: the definition offers no such write, and asking
+  // again with different credentials would not change that.
+  if (error instanceof WriteRefusedError) return HttpStatus.FORBIDDEN;
   if (error instanceof QueryTimeoutError) return HttpStatus.GATEWAY_TIMEOUT;
   return HttpStatus.INTERNAL_SERVER_ERROR;
 }

@@ -5,8 +5,9 @@ fields mean, how they relate, how they are listed and shown, and which actions
 an operator may run. A coding agent writes it, RePanel validates and renders it.
 
 It expresses *intent*, never layout. There is no component tree, no styling, no
-branching — the runtime owns presentation. v0 resources are **read-only**: the
-only writes are the two action kinds at the end of this document.
+branching — the runtime owns presentation. A resource is **read-only until it
+says otherwise**: writes are opt in, per resource and per field, and a
+definition that says nothing about them offers none.
 
 Validate a definition with `validateDefinition(input)` from
 `@repanel/contracts`. A complete, valid example lives in
@@ -66,7 +67,7 @@ A resource binds one postgres table to one admin section.
   "source": { "table": "users" },
   "primaryKey": "id",
   "labelField": "email",
-  "readOnly": true,
+  "writes": { "create": true, "update": true },
   "fields": [],
   "relationships": [],
   "views": { "table": {}, "detail": {} },
@@ -82,7 +83,8 @@ A resource binds one postgres table to one admin section.
 | `primaryKey` | yes | Field key used to address one record. Must not be `sensitive`. |
 | `labelField` | no (default `primaryKey`) | Field key a record is displayed by. Must not be `sensitive`, `hidden`, `json` or `relation`. |
 | `icon` | no (default `table`) | The mark navigation draws this resource with, from the fixed vocabulary below. |
-| `readOnly` | no (default `true`) | v0 accepts only `true`. |
+| `writes` | no (default none) | Which writes this resource offers: `create`, `update`, or both. See [Writes](#writes). |
+| `readOnly` | no | What every resource said before `writes` existed: this one offers no writes. Only `true` is meaningful; a resource offering a form leaves it out. |
 | `fields` | yes, ≥1 | Columns the admin knows about. |
 | `relationships` | no (default `[]`) | Links to other resources. |
 | `views` | yes | The table view and the detail view. |
@@ -173,6 +175,87 @@ Two flags, both defaulting to `false`:
 - `hidden` — **detail-only**. Hidden fields are excluded from list payloads, so
   a hidden field cannot be a table column, a search field, a filter, the
   default sort, or the `labelField`. It may still appear in a detail section.
+  A hidden field may still be `editable`: a form is a detail surface.
+
+Two more, also defaulting to `false`, are about writing rather than showing:
+
+```json
+{ "key": "title", "label": "Title", "type": "text", "editable": true, "required": true }
+```
+
+- `editable` — an operator may write this column from a form.
+- `required` — the field must carry a value: on create it has to be supplied and
+  cannot be null; on update it may be left out, which changes nothing, but may
+  never be set to null. Only meaningful on an `editable` field.
+
+## Writes
+
+A resource offers writes by saying so, and a field is writable by saying so.
+Both halves are required, and neither is inert on its own — a field marked
+`editable` on a resource that offers no write is a validation error, not a
+leftover.
+
+```json
+{
+  "key": "job_openings",
+  "writes": { "create": true, "update": true },
+  "fields": [
+    { "key": "id", "label": "ID", "type": "text" },
+    { "key": "title", "label": "Title", "type": "text", "editable": true, "required": true },
+    { "key": "status", "label": "Status", "type": "enum", "values": ["draft", "open"], "editable": true }
+  ]
+}
+```
+
+| Key | Required | Meaning |
+|---|---|---|
+| `writes.create` | no (default `false`) | An operator may add a record. |
+| `writes.update` | no (default `false`) | An operator may change a record. |
+
+The two are separate because they are separate decisions: a table whose rows are
+created by the application and corrected by an operator offers `update` and not
+`create`. There is no `delete` — removing a record is a rule-bearing act, and it
+waits for the audit log that would make it accountable.
+
+**Which types a form can write.** Every type but `json`:
+
+`text` · `longText` · `number` · `boolean` · `date` · `dateTime` · `email` ·
+`url` · `enum` · `relation`
+
+A `json` field cannot be `editable`. A blob has no single input that fits it and
+the shape inside it belongs to the application, so editing one is an endpoint
+reached by an `httpCall` action (DECISIONS #010).
+
+**What a value has to be.** Nothing is coerced. A value is the type its field
+declares or the write is refused — an admin that reads `"false"` as false, or an
+empty box as null, writes something nobody typed.
+
+| Type | Accepts |
+|---|---|
+| `text`, `longText` | A string. `""` is a value; it is refused only where the field is `required`. |
+| `email` | A string; an address when it is not empty. |
+| `url` | A string; an absolute `http(s)` URL when it is not empty. |
+| `number` | A number, or the digits of one as a string — what a `numeric` or `bigint` too large for JSON comes back as on a read goes back the same way, bound exactly as sent. |
+| `boolean` | `true` or `false`. Never `"true"`, never `1`. |
+| `date` | `YYYY-MM-DD`, and a day that is on the calendar. |
+| `dateTime` | ISO 8601, with `Z` or an offset where the column keeps one and without where it does not. Nothing is shifted between zones. |
+| `enum` | One of the field's own `values`. |
+| `relation` | The key of the record to point at, or `null`. Whether that record exists is the foreign key's answer, not the schema's. |
+
+`null` is accepted for any editable field that is not `required`. A key that
+names no field, a field that is not `editable`, a `sensitive` field and the
+`primaryKey` are each refused with the path of the field they name, so a form
+can put the message under the input it belongs to.
+
+**What a write answers with.** The record as it now stands, in the same shape a
+detail read returns: sensitive fields absent, hidden fields present, relations
+carrying their label. A create is answered with the key the database issued.
+
+**The primary key is never writable.** It addresses the record rather than
+describing it. So a table whose key the application has to supply cannot be
+created from the admin — and neither can one with a `not null` column that has
+no default and is not editable, which the database will say when the write
+lands.
 
 ## Relationship
 
@@ -381,6 +464,12 @@ then checks what a schema cannot express:
 - a label field reads as a name: never a `json` or `relation` field;
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
   writes one of the enum's values or a boolean literal;
+- a field marked `editable` belongs to a resource that offers a write, is not
+  `sensitive`, is not the `primaryKey`, and is not a `json` field; a resource
+  that offers a write marks at least one field `editable`; `required` appears
+  only on an `editable` field;
+- `readOnly` is never `false`, and never accompanies a `writes` that offers
+  anything — a resource says what it offers, not what it is not;
 - a `visibleWhen` states exactly one of `equals` or `isSet`; an `equals` names a
   field of a comparable type and states a literal of that field's own type —
   on an `enum` field, one of its declared values;
@@ -406,6 +495,24 @@ field, and never a `sensitive` one. Text, numbers, dates, JSON and relations are
 excluded on purpose: setting them almost always carries rules — validation, side
 effects, cascades — that belong to the application rather than the admin.
 Express those as an endpoint invoked by an `httpCall` action (DECISIONS #010).
+
+**Forms are last-write-wins.** An update writes the fields it names over
+whatever is there. There is no optimistic concurrency in v0: nothing carries a
+version, nothing is compared before writing, and when two operators edit the
+same record the second save wins and the first is not told. Where a record
+cannot afford that, the write belongs behind an endpoint that can decide —
+`httpCall`, with the rule in your application.
+
+**No delete.** v0 creates and updates records; it never removes one. Deleting is
+a rule-bearing act — what cascades, what is archived instead, what an operator
+may undo — and it waits for the audit log that would make it accountable.
+Express it as an endpoint invoked by an `httpCall` action.
+
+**No bulk edit, and no file or image fields.** A form writes one record, and
+every value it writes is JSON.
+
+**`json` fields are read-only.** A `json` field renders as inspectable JSON and
+is never `editable`; see [Writes](#writes).
 
 **Preconditions.** `visibleWhen` is one comparison against one field of the same
 record, and there is no `and`, no `or`, no negation and no comparison between

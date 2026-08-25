@@ -122,7 +122,7 @@ describe("RecordCell", () => {
       <MemoryRouter>
         <RecordCell
           projectKey="acme"
-          field={{ key: "total_cents", label: "Total", type: "number", sensitive: false, hidden: false }}
+          field={{ key: "total_cents", label: "Total", type: "number", sensitive: false, hidden: false, editable: false, required: false }}
           value={129900}
           isIdentity={false}
         />
@@ -137,7 +137,7 @@ describe("RecordCell", () => {
       <MemoryRouter>
         <RecordCell
           projectKey="acme"
-          field={{ key: "id", label: "ID", type: "number", sensitive: false, hidden: false }}
+          field={{ key: "id", label: "ID", type: "number", sensitive: false, hidden: false, editable: false, required: false }}
           value={129900}
           isIdentity
         />

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { actionSchema } from "./actions.js";
-import { fieldSchema } from "./fields.js";
+import { fieldSchema, type Field } from "./fields.js";
 import { DEFAULT_ICON, iconNameSchema } from "./icons.js";
 import { identifierSchema } from "./identifier.js";
 import { viewsSchema } from "./views.js";
@@ -25,6 +25,25 @@ export const relationshipSchema = z.strictObject({
   foreignKey: identifierSchema,
 });
 
+/**
+ * Which writes a resource offers the admin. Both are false unless the author
+ * says otherwise: an admin that can read is useful and an admin that can write
+ * is dangerous, so the dangerous half is asked for by name (DECISIONS #007).
+ *
+ * The two are separate because they are separate decisions — a table whose rows
+ * are created by the application and corrected by an operator offers `update`
+ * and not `create`. Deletion is deliberately absent, and is additive when the
+ * audit log that makes it accountable exists.
+ */
+export const writesSchema = z
+  .strictObject({
+    create: z.boolean().default(false),
+    update: z.boolean().default(false),
+  })
+  .default({ create: false, update: false });
+
+export type Writes = z.infer<typeof writesSchema>;
+
 export const resourceSchema = z.strictObject({
   key: identifierSchema,
   label: z.strictObject({
@@ -47,9 +66,18 @@ export const resourceSchema = z.strictObject({
    * looked like before the vocabulary existed.
    */
   icon: iconNameSchema.default(DEFAULT_ICON),
-  /** v0 has no write configuration beyond actions, so this is always true. */
-  readOnly: z.literal(true).default(true),
+  /**
+   * What every resource said before `writes` existed, and still says: this
+   * resource offers no writes. Kept so that definitions written against v0
+   * validate unchanged; a resource that offers writes leaves it out. Only
+   * `true` means anything — `readOnly: false` offers nothing, and the
+   * referential pass says so in this package's own words rather than letting a
+   * literal failure hint at the wrong fix.
+   */
+  readOnly: z.boolean().optional(),
   fields: z.array(fieldSchema).min(1),
+  /** The writes this resource offers. Absent means none, which is the default. */
+  writes: writesSchema,
   relationships: z.array(relationshipSchema).default([]),
   views: viewsSchema,
   actions: z.array(actionSchema).default([]),
@@ -77,6 +105,21 @@ export type Relationship = z.infer<typeof relationshipSchema>;
  */
 export function labelFieldOf(resource: Resource): string {
   return resource.labelField ?? resource.primaryKey;
+}
+
+/** Whether anything at all may be written to this resource from the admin. */
+export function offersWrites(resource: Resource): boolean {
+  return resource.writes.create || resource.writes.update;
+}
+
+/**
+ * The fields a form may write, in the order the resource declares them. That
+ * order is the form's order: a form carries only the opt-in subset, which is
+ * small by construction, and the author already put the fields in the order
+ * they meant.
+ */
+export function editableFields(resource: Resource): Field[] {
+  return resource.fields.filter((field) => field.editable);
 }
 
 export type RelationshipKind = Relationship["kind"];

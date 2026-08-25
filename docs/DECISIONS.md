@@ -1105,3 +1105,69 @@ risk names the direct-DSN trust assumption plainly with the connector as
 the structural answer. The document is maintained as a claim surface —
 a change that falsifies a stated claim must update the document in the
 same change.
+
+055 · 2026-08 · Writes are opt-in twice: a resource declares `writes`
+(`create` and/or `update`, both defaulting to false) and a field declares
+`editable`. Neither half is inert — a field marked `editable` on a resource
+that offers no write is a validation error, and so is a `writes` with nothing
+editable under it. `readOnly` is retained as the assertion every v0 definition
+already makes, is only ever `true`, and may never accompany a write; the
+referential pass answers `readOnly: false` by pointing at `writes` rather than
+letting a literal failure hint at the wrong fix. The writable types are every
+type but `json`; `sensitive` fields, the `primaryKey` and `json` fields can
+never be editable. `delete` is deliberately absent and is additive when the
+audit log that makes it accountable exists (#028).
+
+**Two declarations rather than one, and it is not redundancy.** They answer
+different questions. The resource's is "does this admin write here at all",
+which is a posture; the field's is "may a human type into this column", which
+is a fact about the column. Collapsing them would mean a form's field list
+doubles as the grant, and adding a field to a form would silently widen what
+the admin may write — the exact accident #007 deferred forms to avoid.
+
+**Loud in both directions, because a half-opt-in is the dangerous state.** The
+inert reading — ignore an `editable` that no `writes` backs — hides an author's
+belief that they opened a form until an operator finds a screen with no
+button. The error carries the fix in both directions: add `writes`, or drop
+`editable`.
+
+**No `views.form`.** A form's field order is the resource's own `fields` order,
+and the runtime owns everything else about how it is drawn. `views.detail` has
+sections because a detail view shows every field and needs grouping; a form
+shows the opt-in subset, which is small by construction. Arrangement can be
+added additively if 027 proves it is needed, and #012's reversibility is the
+reason it is cheap to wait.
+
+**Nothing is coerced, anywhere.** A value is the type its field declares or the
+write is refused. `"false"` is not false, `""` is not null, `1` is not true.
+The one apparent exception is not one: a `number` field accepts the digits of a
+number as a string, bound exactly as sent, because that is what the reader
+answers a `numeric` or `bigint` with when it cannot be a JSON number without
+losing digits — refusing it would make a value readable and unwritable.
+
+056 · 2026-08 · A form's write is one statement: the insert or update runs
+inside a data-modifying CTE and the record it returns is selected out of it,
+through the same select list, the same relation joins and the same mapper a
+detail read uses. So a written record and a read one are the same shape, and
+"a sensitive field is never selected" keeps having exactly one door
+(`columns.ts`). The RETURNING list is derived from the same select entries as
+the outer query, so the two cannot drift; sensitive columns are named in
+neither.
+
+**One statement rather than a write and then a read.** There is no moment
+between them for somebody else's write to land in, and no transaction to hold
+open across two round trips on a pool that only lends out `query`.
+
+**Refusals carry a path and a hint, including the engine's own.** The
+submission is checked against the definition before the statement is built and
+the fields are checked again where it is built — two walls, sharing one
+predicate so they cannot disagree about the reason. Both answer in #008's error
+shape with a path of `values.<field key>`, which is what a form puts under the
+input it belongs to. A definition stored before a rule existed is exactly what
+the second wall is for.
+
+**Last-write-wins, stated rather than solved.** An update writes the fields it
+names over whatever is there; nothing carries a version and nothing is compared
+before writing. It is in SCHEMA.md's known limitations because it is a real
+property of the product, and the answer for a record that cannot afford it is
+an endpoint that can decide.

@@ -9,11 +9,14 @@
  */
 export {
   ActionFailedError,
+  ConflictError,
   DomainError,
   InvalidQueryError,
   NotFoundError,
   QueryTimeoutError,
   UnservableResourceError,
+  ValidationFailedError,
+  WriteRefusedError,
   type ActionFailureCode,
 } from "./errors.js";
 
@@ -24,6 +27,9 @@ export { CustomerPool, type CustomerPoolOptions } from "./pool/customer-pool.js"
 export { QueryBuilder, type Query, type RecordsQuery, type Ownership } from "./query/query-builder.js";
 
 export { RecordReader, type ReadContext } from "./read/record-reader.js";
+
+export { RecordWriter } from "./write/record-writer.js";
+export { WRITE_REFUSED, type Assignment } from "./query/write-statements.js";
 
 export { ActionRunner, type ActionContext } from "./actions/action-runner.js";
 export { HttpCall, type OutboundCall } from "./actions/http-call.js";

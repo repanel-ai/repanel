@@ -18,10 +18,13 @@ export const prismaDefinition: DefinitionInput = {
       source: { table: "User" },
       primaryKey: "id",
       labelField: "email",
+      // `id` is a text key this schema expects the application to issue, so
+      // there is no create to offer — only the corrections an operator makes.
+      writes: { update: true },
       fields: [
         { key: "id", label: "ID", type: "text" },
-        { key: "email", label: "Email", type: "email" },
-        { key: "avatarUrl", label: "Avatar", type: "url" },
+        { key: "email", label: "Email", type: "email", editable: true, required: true },
+        { key: "avatarUrl", label: "Avatar", type: "url", editable: true },
         { key: "teamId", label: "Team", type: "relation", target: "Team" },
         { key: "signedUpOn", label: "Signed up", type: "date" },
         { key: "createdAt", label: "Created", type: "dateTime" },

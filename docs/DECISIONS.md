@@ -702,3 +702,16 @@ own three, outside the five that §3 fixes.
 home — chat ideas land there or die; the decision log records rulings,
 the backlog records sequenced intent. Items graduate to numbered tasks
 per #010's gate; nothing in the backlog is a commitment.
+
+045 · 2026-08 · The CLI takes no argument-parsing dependency: `repanel` is
+dispatched with Node's own `util.parseArgs` (task 018 allowed one parser).
+Why: four commands and `--help` are the whole surface, the platform already
+refuses an unknown option, and the CLI is the package a customer installs —
+its dependency list is read by strangers.
+
+046 · 2026-08 · Assembly composes resources in navigation order first, then
+every unlisted resource by key — not by filename alone. Why: the sidebar's
+order is the one a human already has in their head, so `resources[2]` in an
+error is the third thing they see; unlisted resources still need a total
+order, and their key is it. AUTHORING.md §3 still describes hand assembly as
+sort-by-filename and is now a step behind the CLI.

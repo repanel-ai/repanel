@@ -59,7 +59,20 @@ pnpm -r typecheck
 pnpm -r test
 ```
 
-`pnpm -r test` alone leaves one suite **skipped**, and it will tell you so:
+One piece of setup comes first, and only once. `apps/api` validates its
+environment while its modules are being defined — a misconfigured API should
+refuse to start rather than fail halfway through a request — so its suite needs
+an `.env` on disk before anything imports it:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+openssl rand -base64 32     # paste into APP_ENCRYPTION_KEY
+```
+
+Under test the values do not have to be real ones; nothing in the suite connects
+to RePanel's own database. CI does exactly this, from the same example file.
+
+`pnpm -r test` then leaves one suite **skipped**, and it will tell you so:
 `apps/api`'s query-engine integration suite runs only when it is given a
 database, because what it asserts — identifier folding, the types the driver
 returns, the statement timeout — cannot be asserted against a stub. Give it one
@@ -80,18 +93,19 @@ does not exist.
 
 Three surfaces on three origins, plus its own database:
 
+Same `apps/api/.env` as above, with one difference that matters here: outside
+the suite, `APP_ENCRYPTION_KEY` has to be a key you keep. It encrypts customer
+connection strings at rest, so **changing it makes every connection and action
+secret already stored unreadable** — there is no way back to them. Generate it
+once and leave it alone.
+
 ```bash
 docker compose up -d                        # postgres on 5432
-cp apps/api/.env.example apps/api/.env
-openssl rand -base64 32                     # paste into APP_ENCRYPTION_KEY
 pnpm --filter @repanel/api db:migrate
 pnpm dev:api                                # http://localhost:3001
 pnpm dev:web                                # http://localhost:5173  the console
 pnpm dev:runtime                            # http://localhost:5174  the admin
 ```
-
-`APP_ENCRYPTION_KEY` is the only value you must generate. It encrypts customer
-connection strings at rest, so the API refuses to boot without a real one.
 
 ### The local loop: Crewbase and `repanel dev`
 

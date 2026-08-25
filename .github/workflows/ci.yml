@@ -62,6 +62,18 @@ jobs:
 
       - run: pnpm -r typecheck
 
+      # apps/api validates its environment while its modules are being defined —
+      # a misconfigured API should refuse to start rather than fail later — so
+      # importing anything under test needs the same `.env` a contributor makes
+      # by hand. This is CONTRIBUTING's setup, run verbatim.
+      #
+      # The appended key wins over the empty one in the example, and is
+      # throwaway: nothing here encrypts a value a later step reads back.
+      - name: Configure apps/api the way CONTRIBUTING says to
+        run: |
+          cp apps/api/.env.example apps/api/.env
+          printf 'APP_ENCRYPTION_KEY=%s\n' "$(openssl rand -base64 32)" >> apps/api/.env
+
       - run: pnpm -r test
 
       # `pnpm -r test` proves the suite passes but leaves no machine-readable

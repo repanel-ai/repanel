@@ -15,7 +15,10 @@ preview labeling, trust answers one click away) lands here.
   Stage-3 roadmap (forms, audit, roles, connector) linked to issues;
   security & licensing links — `docs/THREAT-MODEL.md` and
   `docs/LICENSING.md` (022); how it works (five layers, one
-  diagram-as-text or image); contributing pointer.
+  diagram-as-text or image); the agent skill — the one-command install
+  for Claude Code and the `AGENTS.md` form, copied from
+  `skills/README.md`, said to be optional because it is (023);
+  contributing pointer.
 - docs/DEMO.md: the exact filmable script for the 60-second video
   (scene list against Crewbase), so recording is mechanical.
 - Root repo polish: description, topics, social preview note.

@@ -56,6 +56,16 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # First, because it needs neither the install nor the build: the skill is
+      # a generated copy of docs/AUTHORING.md, and a guide edited without a
+      # regeneration ships a skill that teaches the previous release. The tests
+      # run alongside it because byte-equality cannot catch a generator that
+      # started dropping sections — the rulings inside it can.
+      - name: The skill must still be what AUTHORING.md says
+        run: |
+          node --test "scripts/*.test.mjs"
+          node scripts/build-skill.mjs --check
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm -r build

@@ -39,6 +39,13 @@ const definitionStatusSchema = z.enum(["none", "invalid", "valid"]);
  * Registers the tools an authoring agent works through. Names, descriptions
  * and shapes here are public contract: agents everywhere are prompted against
  * them, so they change the way a published API changes.
+ *
+ * They are also the floor, and the floor is sovereign. An agent with no skill
+ * installed and no guide to hand must be able to author, submit and repair a
+ * definition from these descriptions and the server instructions alone
+ * (DECISIONS #021). `skills/repanel/` improves that; it never becomes a
+ * prerequisite for it, so no description may be thinned on the grounds that
+ * the skill says the same thing.
  */
 export function registerTools(
   server: McpServer,

@@ -1,3 +1,10 @@
+---
+name: repanel
+description: Author, submit and repair a RePanel admin definition for a customer's application — how to read a schema into resources, which columns are sensitive and which are merely hidden, when an action needs an endpoint in the application rather than a direct write, and how to run the admin locally with repanel dev. Use when a repository has a repanel/ directory, when the repanel MCP tools are connected, or when asked to build, extend or repair a RePanel admin.
+---
+
+<!-- Generated from docs/AUTHORING.md. Edit that, then run `pnpm skill`. -->
+
 # Authoring a RePanel definition
 
 **This document is written for a coding agent.** You are working inside a
@@ -347,7 +354,7 @@ The convention, once you have the yes (DECISIONS #013):
 - **One module**, mounted at `/repanel`, holding every endpoint RePanel may
   call. Not routes scattered across the app.
 - **One verification middleware** in front of all of it, and nothing else behind
-  it. The scheme is [`SIGNING.md`](SIGNING.md): an HMAC over
+  it. The scheme is [`SIGNING.md`](https://github.com/repanel-ai/repanel/blob/main/docs/SIGNING.md): an HMAC over
   `<timestamp>.<METHOD> <URL>` under the project's action secret, compared in
   constant time, with a five-minute tolerance. That document carries a working
   verifier — copy it, do not reinvent it from this paragraph.
@@ -551,10 +558,3 @@ changes what you may write, only where to look for it.
   `hidden` fields, read-only resources, and actions that go through the
   application. Classify the columns as if nothing else were guarding them —
   because nothing else is.
-
-## Integrations
-
-Reserved. Curated recipes for putting a third-party endpoint behind an action —
-the widget-shaped patterns that are worth having one blessed answer for — land
-here after MVP. Until then, anything external is an endpoint in the customer's
-application (§5), which is also what those recipes will generate.

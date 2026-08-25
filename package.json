@@ -11,7 +11,8 @@
     "dev:runtime": "pnpm --filter @repanel/runtime dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "skill": "node scripts/build-skill.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

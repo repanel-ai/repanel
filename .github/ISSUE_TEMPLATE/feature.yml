@@ -1,0 +1,66 @@
+name: Feature request
+description: Something RePanel should do and does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two things worth knowing before you write, because they decide most
+        requests here:
+
+        - **The definition schema never gains branching, sequencing or
+          computation** (decision #010). Multi-step or conditional operations
+          belong in your own application, reached by an `httpCall` action — your
+          agent writes both sides. Requests to make the definition more
+          programmable are declined on principle, not on effort.
+        - **RePanel has no blank canvas.** Inferred resources and strong
+          defaults, never an empty builder. A request shaped like "let me lay
+          out this page myself" is usually a request for a different product.
+
+        `docs/SCOPE.md` and `docs/BACKLOG.md` say what is already planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What you were trying to administer, and where RePanel left you. Describe
+        the situation rather than the feature — the situation is the part we
+        cannot guess.
+      placeholder: |
+        Our `orders` table has a `refund` flow that needs a reason and an amount.
+        Today I can point an action at our endpoint, but the operator has nowhere
+        to type either one, so they message us on Slack instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do instead today
+      description: The workaround, if there is one, and what it costs.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of RePanel
+      options:
+        - The definition schema (what a customer can express)
+        - The generated admin — tables, detail pages, actions
+        - The CLI and the local loop
+        - The console — projects, connections, publishing
+        - Agent authoring — MCP tools, guidance, validation errors
+        - Something else, or not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What you think it should look like
+      description: >
+        Optional. If you have a shape in mind, sketch it — a definition snippet,
+        a screen, an endpoint. It is fine to leave this empty and let the
+        problem stand on its own.

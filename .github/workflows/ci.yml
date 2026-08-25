@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run's answer worthless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: build · typecheck · test
+    runs-on: ubuntu-latest
+
+    # The query-engine integration suite asserts what a real Postgres and a real
+    # driver do — identifier folding, returned types, the statement timeout —
+    # so a stub cannot stand in for this. It matches docker-compose.yml.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: repanel
+          POSTGRES_PASSWORD: repanel
+          POSTGRES_DB: repanel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://repanel:repanel@localhost:5432/repanel
+      # Set here and never conditionally: this is what stops the env-gated
+      # suites from skipping in CI, which is the whole point of the job.
+      TEST_CUSTOMER_DATABASE_URL: postgres://repanel:repanel@localhost:5432/repanel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm -r build
+
+      - run: pnpm -r typecheck
+
+      - run: pnpm -r test
+
+      # `pnpm -r test` proves the suite passes but leaves no machine-readable
+      # trace, and a suite that skipped in silence passes too. This runs the one
+      # package that has env-gated specs a second time — three seconds — for a
+      # report the next step can actually assert against.
+      - name: Re-run apps/api for a report
+        run: pnpm --filter @repanel/api exec jest --ci --json --outputFile=jest-report.json
+
+      - name: The integration suite must have run
+        run: node .github/scripts/assert-integration-ran.mjs apps/api/jest-report.json
+
+  dco:
+    name: DCO sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The check walks base..head, so both ends have to be present.
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Every commit carries a Signed-off-by
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: .github/scripts/check-sign-off.sh

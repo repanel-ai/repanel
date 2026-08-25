@@ -1,0 +1,78 @@
+name: Bug report
+description: Something in RePanel does not do what it says it does.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for security issues.** If this is a vulnerability, close this and
+        use the private channel in [SECURITY.md](https://github.com/repanel-ai/repanel/blob/main/SECURITY.md)
+        instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what RePanel did instead of what you expected.
+      placeholder: |
+        I added a `filter` on candidates.status and opened the list. Every row
+        came back, unfiltered. I expected only the pending ones.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: >
+        The smallest sequence that shows it. If a definition is involved, paste
+        the part that matters — with any real connection string removed.
+      placeholder: |
+        1. `repanel dev` against a table with an enum column
+        2. …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - The generated admin (apps/runtime)
+        - The console (apps/web)
+        - The CLI (repanel dev / validate / link / deploy)
+        - The API, MCP server, or definition validation
+        - The query engine (reads, actions)
+        - Somewhere else, or not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The commit you are on, or the version of the package.
+      placeholder: 9861c4a
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >
+        Node version, OS, Postgres version, and whether this is a local
+        `repanel dev`, a self-hosted deployment, or RePanel Cloud.
+      placeholder: |
+        Node 24.1, macOS 15, Postgres 17, local `repanel dev`
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: >
+        Anything the CLI, the API or the browser console printed. Check it for
+        connection strings before you paste it.
+      render: shell

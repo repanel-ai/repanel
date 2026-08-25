@@ -6,3 +6,4 @@ dist/
 *.log
 coverage/
 .repanel/
+jest-report*.json

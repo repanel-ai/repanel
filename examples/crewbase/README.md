@@ -21,6 +21,19 @@ pnpm --filter crewbase dev    # http://localhost:3002
 `seed` is re-runnable: it truncates first, and the data is generated from a
 fixed seed, so two people looking at Crewbase are looking at the same rows.
 
+### The admin, locally
+
+With Crewbase running, `repanel dev` serves the admin its `repanel/` directory
+describes — against this database, with no RePanel account and no project:
+
+```bash
+pnpm --filter crewbase exec repanel dev    # http://127.0.0.1:5170/a/local/
+```
+
+It finds `DATABASE_URL` in `.env` and asks before using it. It also prints a
+`REPANEL_ACTION_SECRET` generated for that run: put that value in `.env`, restart
+`pnpm --filter crewbase dev`, and the `approve` action works — see below for why.
+
 ## The data
 
 | Table | What it is |
@@ -51,8 +64,11 @@ refused with 401 before it reaches a controller. The scheme is
 [`docs/SIGNING.md`](../../docs/SIGNING.md) and the implementation is
 `src/repanel/repanel-signature.ts` — an HMAC over `<timestamp>.<METHOD> <URL>`,
 compared in constant time, with a five-minute tolerance so a captured request
-stops working. `REPANEL_ACTION_SECRET` is the project's action secret, copied
-from the RePanel console (Project → Agent access).
+stops working. `REPANEL_ACTION_SECRET` is whichever secret the caller signs with:
+under `repanel dev` it is the one that run printed, and under a hosted project it
+is the project's action secret, copied from the RePanel console (Project → Agent
+access). Either way, if it does not match, `approve` comes back as a refusal
+rather than as a success — which is the verification working.
 
 `pnpm --filter crewbase test` covers exactly that endpoint: signed and pending →
 approved, signed and not pending → 409, unknown airline → 404, wrong secret →

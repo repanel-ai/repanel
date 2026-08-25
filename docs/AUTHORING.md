@@ -29,8 +29,11 @@ what to do when the answer is not in the definition at all.
    from memory of an older schema fails on keys that no longer mean anything.
 4. **Author** the definition into `repanel/` in the customer's repository (the
    layout is below). It is their file, in their review, under their history.
-5. **Submit** the composed object with `submit_definition`.
-6. **Repair.** An invalid submission comes back with every problem found, each
+5. **Run it locally** with `repanel dev` if the CLI is installed (§7). It is a
+   faster loop than submitting, it needs no project and no account, and it
+   shows you the admin instead of telling you the definition parsed.
+6. **Submit** the composed object with `submit_definition`.
+7. **Repair.** An invalid submission comes back with every problem found, each
    carrying a path, an expectation and a fix. Apply them, submit again, repeat
    until `valid` is true. Invalid drafts are stored, so nothing is lost, and
    `get_validation_result` resumes the loop in a later session.
@@ -360,6 +363,64 @@ When it validates, write the final files, and tell the human what you decided:
 the resources you left out, the columns you marked sensitive or hidden, the
 actions you added and the endpoints you wrote for them, and any known gap you
 worked around.
+
+---
+
+## 7 · Work locally, before any of that
+
+`repanel dev` runs the whole admin on the developer's machine — the real
+renderer, the real query engine, their own database — with no RePanel account,
+no project and no RePanel network call. Use it as the loop: it is faster than
+submitting, and it shows you the admin rather than telling you the definition
+parsed.
+
+```
+repanel dev
+```
+
+It reads `repanel/`, works out which database to use, and serves the admin at
+`http://127.0.0.1:5170/a/local/`.
+
+**It will not start on a definition that does not validate.** There is no admin
+to show yet, so it prints the same problems `repanel validate` prints, opens no
+port, and exits nonzero. Once it is up, a broken edit is a different matter —
+see the overlay below.
+
+The database is looked for in four places, in order: `--database-url`, then a
+`DATABASE_URL` already exported in the shell, then `.env.local`, then `.env`. The
+first two are taken as an answer and used. The two files are only a guess, so it
+prints the DSN with the password masked and asks before connecting — and where
+there is no terminal to ask at, it refuses rather than assuming. `--yes` accepts
+the guess; naming the database outright with `--database-url` also needs no
+terminal. `--port` moves the server.
+
+**The overlay is your feedback channel, and it is the same output `repanel
+validate` prints.** Every save under `repanel/` is reassembled and rechecked.
+When it validates, the browser reloads. When it does not, the problems appear
+as an overlay over the admin — file, path, message, expected, hint — and the
+admin *underneath keeps working*, because a definition is only ever swapped for
+one that validated. So a broken edit costs you nothing: the screen you were on
+is still the screen you were on, and the overlay tells you what to change.
+
+Read those problems the way §6 says to read a submission's: as a work list, and
+never by widening an exposure.
+
+**Actions are signed with a secret generated for that run.** It is printed once
+when the server starts:
+
+```
+REPANEL_ACTION_SECRET=…
+```
+
+Put it in the application's environment and restart the application, or every
+`httpCall` action is refused with a 401 — which is the verification in §5
+working, not a bug. It is a new secret every run and it is never written to
+disk: a development secret that persists is a development secret that
+eventually ships.
+
+`repanel dev` reaches nothing but the database it was given and the endpoints
+your own actions declare. There is no RePanel account, and no RePanel service is
+contacted, anywhere in this path.
 
 ---
 

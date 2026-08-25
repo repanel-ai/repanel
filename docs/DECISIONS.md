@@ -751,3 +751,73 @@ composition order still ends with every unlisted resource by key, and that tail
 is now load-bearing: it is what carries an unlisted resource into `resources[]`
 so validation can refuse it at a path. An assembler that dropped it would delete
 the resource instead, which is the degradation this check exists to close.
+
+048 · 2026-08 · `repanel dev` serves the same product, not a sibling. One
+process on loopback is at once the static host for the runtime bundle, the data
+API it reads, the action runner and the watch channel — one origin, so the
+app's relative `/api` client reaches it exactly as it reaches the hosted API.
+Nothing in `apps/runtime` changed to make this work, and nothing may.
+
+**One bundle, and local arrives as served config.** The runtime is built once
+and copied into the CLI at build time; `repanel dev` serves that file
+unmodified. There is no local build, no forked entry point and no `if (local)`
+anywhere in the app — the difference is entirely on this side of the wire, in
+what the server answers. Auth is the case that proves it: `/auth/me` is
+answered with a synthetic local operator, so the app's session path runs the
+code it always runs and finds somebody there. A local difference that cannot be
+expressed as an answer is a signal to stop, not to branch.
+
+**Zero third-party dependencies, per #045.** `util.parseArgs`, `util.parseEnv`,
+`fs.watch({recursive})`, `node:http` and Server-Sent Events cover the whole
+command; the CLI's dependency list gains only `@repanel/engine`, and `pg` stays
+the engine's to declare. The one thing written by hand is a reader for
+`filter[x][from]`, which Express nests before the schema sees it and
+`URLSearchParams` does not.
+
+**#045's premise widened, and is worth saying out loud.** Its reasoning was that
+"four commands and `--help` are the whole surface". The surface is now four
+commands, `--help`, and `dev`'s three options — `--port`, `--database-url`,
+`-y/--yes` — which `parseArgs` still refuses to confuse: an option is rejected
+where the command that takes it is not the one named. The ruling stands; the
+sentence it rested on has one more clause in it.
+
+**Zero egress, proven twice.** A source gate reads every file of the package and
+refuses an address off this machine, an outbound client, or the name of a
+RePanel service; and the server's whole request cycle is exercised in a spec
+with every non-loopback socket refused at `net.Socket.prototype.connect`. The
+only calls out of the process are the database the operator confirmed and the
+endpoints a definition's own `httpCall` actions declare.
+
+The socket guard has a spec of its own, and the reason is worth keeping. Its
+first version read only `socket.connect(options)`; `net.connect(...)` — which
+is what `fetch`, `http.request` and `pg` all arrive through — normalizes its
+arguments into a single `[options, callback]` array first, so every plain-HTTP
+request went through a guard that reported nothing, and the case asserting the
+guard could fail used the one shape no client library produces. A proof that
+cannot fail proves nothing, so the ways this one must fail are now written down
+as tests, and a connection whose target cannot be read is refused rather than
+allowed.
+
+**The overlay is the CLI's, injected, and never fatal.** A definition is only
+swapped for one that validated, so a broken edit leaves the admin drawn,
+answering and interactive while the overlay names the problems — the same
+file/path/message/expected/hint `repanel validate` prints, with the assembler's
+own source filenames. The client is a script the server adds to the document as
+it serves it; putting it in the bundle would be a development branch in the
+product. An invalid definition at startup is refused instead: there is no last
+good render to protect, so it is a `validate` run that did not open a port.
+
+**The action secret is generated per run and printed once.** Nothing is written
+to disk. The operator pastes it into their application's environment and
+restarts it; until they do, every signed action is refused, which is the
+verification working. A development secret that persists is one that eventually
+ships.
+
+**Publishing the embedded asset has no task yet, and that is the note.** The
+copy step is enough for this repository, where pnpm builds the runtime first.
+What an installed package carries — the `files` list, whether the bundle ships
+in the tarball, how a consumer without the monorepo gets it — is release
+engineering, and no task owns it: 021 excludes npm publishing by name, 024 is
+the README, and 025 is definition snapshots rather than package ones. It is
+deferred rather than improvised, and it needs a home before the CLI is
+published.

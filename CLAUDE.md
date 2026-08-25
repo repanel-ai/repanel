@@ -111,6 +111,33 @@ open-source code. Therefore:
   light coverage.
 - Tests are co-located. Test output must be clean — no stray console noise.
 
+## Commits
+
+Every commit message follows **Conventional Commits v1.0.0**
+(<https://www.conventionalcommits.org/en/v1.0.0/#specification>):
+
+```
+<type>[optional scope][!]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+- `feat:` adds a feature, `fix:` fixes a bug. Also in use: `build:`, `chore:`,
+  `ci:`, `docs:`, `perf:`, `refactor:`, `style:`, `test:`.
+- A scope is a noun naming a section of the codebase, in parentheses:
+  `fix(engine):`. Optional.
+- The description follows the colon and space. Keep it to one short lowercase
+  line, imperative, no trailing period.
+- Messages stay small: a subject line is the default. Add a body — one blank
+  line after the description — only when the change cannot be understood
+  without it.
+- Footers go one blank line after the body, in git trailer form (`Token: value`,
+  `-` in place of spaces). Never add `Co-Authored-By` trailers.
+- Breaking changes: `!` before the colon, or a `BREAKING CHANGE: <description>`
+  footer. `BREAKING CHANGE` is the one token that MUST be uppercase.
+
 ## Definition of done (every task)
 
 - [ ] Scope of the task file implemented; nothing beyond it

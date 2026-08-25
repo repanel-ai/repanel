@@ -697,3 +697,8 @@ different questions: a table cell's size is set by how much of a record fits on
 a screen, a nav item's by how fast a destination can be found. They were the same
 number by coincidence. It joins `--t-brand` and `--t-nav-meta` as the sidebar's
 own three, outside the five that §3 fixes.
+
+044 · 2026-08 · docs/BACKLOG.md created as the post-MVP ladder's single
+home — chat ideas land there or die; the decision log records rulings,
+the backlog records sequenced intent. Items graduate to numbered tasks
+per #010's gate; nothing in the backlog is a commitment.

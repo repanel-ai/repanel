@@ -7,6 +7,7 @@ import {
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import type { Principal } from "../auth/principal";
+import { ConfigService } from "../config/config.service";
 import { NotFoundError, ValidationFailedError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 import { MAX_PAYLOAD_BYTES } from "./definition-size";
@@ -19,6 +20,9 @@ import { DefinitionsService } from "./definitions.service";
 
 const CREWBASE = "project-crewbase";
 const LEDGER = "project-ledger";
+
+/** Where this deployment serves the rendered admin. */
+const RUNTIME_URL = "https://admin.repanel.test";
 
 /** Ada owns Crewbase; Grace owns nothing here. */
 const ADA: Principal = { kind: "user", userId: "user-ada" };
@@ -118,6 +122,7 @@ describe("DefinitionsService", () => {
         DefinitionsService,
         { provide: DefinitionsRepository, useValue: repository },
         { provide: ProjectsService, useValue: new ReachableProjects() },
+        { provide: ConfigService, useValue: { runtimeUrl: RUNTIME_URL } },
       ],
     }).compile();
 
@@ -209,6 +214,31 @@ describe("DefinitionsService", () => {
       const refusal = await refusalFrom(
         service.submitDraft(LEDGER_AGENT, CREWBASE, saasDefinition),
       );
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(repository.rows).toEqual([]);
+    });
+  });
+
+  describe("submit", () => {
+    it("stores the definition and says where the admin it describes is served", async () => {
+      await expect(service.submit("user-ada", CREWBASE, saasDefinition)).resolves.toEqual({
+        valid: true,
+        adminUrl: `${RUNTIME_URL}/a/${PROJECT.key}`,
+      });
+      expect(repository.rows).toHaveLength(1);
+    });
+
+    it("answers an invalid definition with the work list, and stores it anyway", async () => {
+      const verdict = await service.submit("user-ada", CREWBASE, BROKEN);
+
+      expect(verdict).toEqual({ valid: false, errors: errorsOf(validateDefinition(BROKEN)) });
+      expect(repository.rows).toHaveLength(1);
+      expect(repository.rows[0]?.valid).toBe(false);
+    });
+
+    it("answers a submission to someone else's project as missing, and stores nothing", async () => {
+      const refusal = await refusalFrom(service.submit("user-grace", CREWBASE, saasDefinition));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(repository.rows).toEqual([]);

@@ -84,6 +84,6 @@ test("a DSN with no password is shown exactly as it was written", () => {
 });
 
 test("the banner names the database without any of the credential", () => {
-  assert.equal(describeDatabase(DSN), "crewbase@localhost:5433");
+  assert.equal(describeDatabase(DSN), "localhost:5433/crewbase");
   assert.doesNotMatch(describeDatabase(DSN), /hunter2|crewbase:/);
 });

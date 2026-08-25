@@ -2,9 +2,11 @@ import { Injectable } from "@nestjs/common";
 import {
   validateDefinition,
   type DefinitionStatusDto,
+  type DefinitionSubmissionDto,
   type ValidationResult,
 } from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
+import { ConfigService } from "../config/config.service";
 import { ProjectsService } from "../projects/projects.service";
 import { requirePayloadWithinLimit } from "./definition-size";
 import {
@@ -26,6 +28,7 @@ export class DefinitionsService {
   constructor(
     private readonly repository: DefinitionsRepository,
     private readonly projects: ProjectsService,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -50,6 +53,24 @@ export class DefinitionsService {
     });
 
     return result;
+  }
+
+  /**
+   * The same submission, made by the human at a command line rather than by
+   * the agent that wrote the definition. What comes back is the verdict and
+   * where to open the admin — a terminal has no console page to send anyone to.
+   */
+  async submit(
+    ownerId: string,
+    projectId: string,
+    payload: unknown,
+  ): Promise<DefinitionSubmissionDto> {
+    const principal: Principal = { kind: "user", userId: ownerId };
+    const result = await this.submitDraft(principal, projectId, payload);
+    if (!result.valid) return { valid: false, errors: result.errors };
+
+    const project = await this.projects.requireAccess(principal, projectId);
+    return { valid: true, adminUrl: `${this.config.runtimeUrl}/a/${project.key}` };
   }
 
   /** The project's draft as it stands, or null if nothing was ever submitted. */

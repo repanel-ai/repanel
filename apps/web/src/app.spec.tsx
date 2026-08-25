@@ -1,6 +1,6 @@
 import type { ProjectDto, UserDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app";
@@ -43,6 +43,42 @@ describe("App", () => {
     }
     // Which project, said once, where the runtime says which app.
     expect(screen.getAllByText("crewbase-a3k9x2").length).toBeGreaterThan(0);
+  });
+
+  it("comes back to the address a visitor was sent to once they have signed in", async () => {
+    // `repanel link` hands out this address, and an agent hands out a
+    // project's. A sign-in that dropped what it was carrying would strand both.
+    let signedIn = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string) => {
+        if (input === "/api/auth/login") {
+          signedIn = true;
+          return Promise.resolve(json(ADA));
+        }
+        if (input === "/api/auth/me") return Promise.resolve(signedIn ? json(ADA) : unauthorized());
+        return Promise.resolve(unauthorized());
+      }),
+    );
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/cli?port=54321&state=s-1"]}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.change(await screen.findByLabelText("Email"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Authorize the RePanel CLI" }),
+    ).toBeDefined();
   });
 
   it("gives each of the four pages its own address", async () => {

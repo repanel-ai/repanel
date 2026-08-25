@@ -22,9 +22,9 @@ export interface DatabaseUrl {
 }
 
 /**
- * The database the admin will read, found the way a developer would look:
- * what they typed, then what their shell already holds, then the application's
- * own env files.
+ * The database RePanel will read, found the way a developer would look: what
+ * they typed, then what their shell already holds, then the application's own
+ * env files.
  *
  * The files are read, never loaded: nothing here writes `process.env`, so a
  * DSN found for one command does not silently become the default for whatever
@@ -80,13 +80,21 @@ export function maskDatabaseUrl(url: string): string {
   return url.replace(/password=[^\s]+/gi, `password=${MASK}`);
 }
 
-/** How the database is named in the banner: enough to recognize, no secret. */
+/**
+ * How a database is named wherever a human has to recognize which one it is:
+ * `localhost:5433/crewbase`. Enough to know it, and no secret in it.
+ *
+ * One spelling, on purpose. The console names a project's connection this way,
+ * `repanel dev` names the one it is serving, and `repanel link` asks about the
+ * one it is about to send — three surfaces describing the same fact, which is
+ * one fact and should read as one.
+ */
 export function describeDatabase(url: string): string {
   try {
     const { hostname, port, pathname } = new URL(url);
     const name = pathname.replace(/^\//, "");
     const host = port === "" ? hostname : `${hostname}:${port}`;
-    return name === "" ? host : `${name}@${host}`;
+    return name === "" ? host : `${host}/${name}`;
   } catch {
     return maskDatabaseUrl(url);
   }

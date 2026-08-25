@@ -1,14 +1,23 @@
 import { SCHEMA_VERSION } from "@repanel/contracts";
 import { DEFINITION_DIRECTORY } from "./assemble/assemble.js";
+import { PROJECT_FILE } from "./cloud/project-file.js";
+
+/** An option a command takes, said once and spent twice: the help, and the gate. */
+interface CommandOption {
+  /** The long name, as `parseArgs` knows it. */
+  readonly name: string;
+  /** The line `--help` prints for it. */
+  readonly help: string;
+}
 
 interface CommandDescription {
   /** One line, as the command list shows it. */
   readonly summary: string;
   /** What `repanel <command> --help` says, one line per element. */
   readonly details: readonly string[];
-  /** The options it takes, if it takes any. One fact, spent twice: the
-   *  synopsis says `[options]` exactly when this is here. */
-  readonly options?: readonly string[];
+  /** The options it takes, if it takes any. The synopsis says `[options]`
+   *  exactly when this is here, and every other command refuses them. */
+  readonly options?: readonly CommandOption[];
 }
 
 /** Every command, in the order the help lists them. */
@@ -38,18 +47,47 @@ export const COMMANDS = {
       "last definition that did — so the screen you were on stays where it was.",
     ],
     options: [
-      "  --port <number>        listen on this port (default 5170)",
-      "  --database-url <dsn>   use this database instead of the one in .env",
-      "  -y, --yes              accept the database found in .env without asking",
+      { name: "port", help: "  --port <number>        listen on this port (default 5170)" },
+      {
+        name: "database-url",
+        help: "  --database-url <dsn>   use this database instead of the one in .env",
+      },
+      { name: "yes", help: "  -y, --yes              accept the database found in .env without asking" },
     ],
   },
   link: {
-    summary: "connect this repository to a RePanel project (coming next)",
-    details: ["Signs in, picks a project, and connects its database."],
+    summary: "connect this repository to a RePanel project",
+    details: [
+      "Signs this machine in through your browser, chooses a project, and points",
+      "it at the database this application already reads.",
+      "",
+      "The connection string is read from your environment — DATABASE_URL, or",
+      "`.env.local`, or `.env` — shown to you with its password taken out, and",
+      "sent to RePanel only once you have said yes. It is never written down and",
+      "never printed, and it cannot be given as an option: a connection string on",
+      "a command line is a connection string in your shell history.",
+      "",
+      `Writes ${PROJECT_FILE}, which holds the project key and nothing else.`,
+      "Commit it — it is how `repanel deploy` knows where this repository goes.",
+    ],
+    options: [
+      { name: "project", help: "  --project <key>        link to this project instead of choosing one" },
+    ],
   },
   deploy: {
-    summary: "submit the assembled definition (coming next)",
-    details: ["Assembles the definition and submits it to the linked project."],
+    summary: "submit the assembled definition to the linked project",
+    details: [
+      `Assembles ${DEFINITION_DIRECTORY}/ and submits it to the project ${PROJECT_FILE}`,
+      "names, over the session `repanel link` signed this machine in with.",
+      "",
+      "The submission replaces the whole definition. A definition that does not",
+      "validate is stored all the same and comes back as a work list, reported in",
+      "the file that holds each problem exactly as `repanel validate` reports it;",
+      "one that does validate answers with the address of the admin it describes.",
+    ],
+    options: [
+      { name: "project", help: "  --project <key>        submit to this project instead of the linked one" },
+    ],
   },
 } as const satisfies Record<string, CommandDescription>;
 
@@ -57,6 +95,13 @@ export type Command = keyof typeof COMMANDS;
 
 export function isCommand(name: string): name is Command {
   return Object.hasOwn(COMMANDS, name);
+}
+
+/** Which commands take an option, for the help and for refusing it elsewhere. */
+export function commandsTaking(option: string): Command[] {
+  return commands().filter(([, command]) =>
+    (command.options ?? []).some((taken) => taken.name === option),
+  ).map(([name]) => name);
 }
 
 export function usage(): string[] {
@@ -68,9 +113,7 @@ export function usage(): string[] {
     "  repanel <command>",
     "",
     "Commands",
-    ...Object.entries(COMMANDS).map(
-      ([name, command]) => `  ${name.padEnd(width)}  ${command.summary}`,
-    ),
+    ...commands().map(([name, command]) => `  ${name.padEnd(width)}  ${command.summary}`),
     "",
     "Options",
     "  -h, --help  show this help, or a command's own help",
@@ -87,6 +130,10 @@ export function commandHelp(command: Command): string[] {
     `  repanel ${command}${options ? " [options]" : ""}`,
     "",
     ...details,
-    ...(options ? ["", "Options", ...options] : []),
+    ...(options ? ["", "Options", ...options.map((option) => option.help)] : []),
   ];
+}
+
+function commands(): [Command, CommandDescription][] {
+  return Object.entries(COMMANDS) as [Command, CommandDescription][];
 }

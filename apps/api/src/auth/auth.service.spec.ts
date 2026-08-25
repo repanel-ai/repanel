@@ -179,6 +179,42 @@ describe("AuthService", () => {
     });
   });
 
+  describe("mintSession", () => {
+    beforeEach(async () => {
+      await service.signup(SIGNUP);
+    });
+
+    it("opens a session the user can be found by, without disturbing the first", async () => {
+      const minted = await service.mintSession("user-1");
+
+      await expect(service.userForSession(minted.token)).resolves.toEqual({
+        id: "user-1",
+        email: "ada@example.com",
+        name: "Ada",
+      });
+      expect(repository.sessions).toHaveLength(2);
+    });
+
+    it("stores the token's digest and gives it the same thirty days", async () => {
+      const minted = await service.mintSession("user-1");
+
+      expect(repository.sessions[1]?.tokenHash).toBe(hashSessionToken(minted.token));
+      expect(JSON.stringify(repository.sessions)).not.toContain(minted.token);
+      const lifetime = minted.expiresAt.getTime() - Date.now();
+      expect(lifetime).toBeGreaterThan(THIRTY_DAYS_MS - 5_000);
+    });
+
+    it("ends where logout ends it, like any other session", async () => {
+      const minted = await service.mintSession("user-1");
+
+      await service.logout(minted.token);
+
+      await expect(refusalFrom(service.userForSession(minted.token))).resolves.toBeInstanceOf(
+        UnauthorizedError,
+      );
+    });
+  });
+
   describe("userForSession", () => {
     it("answers with the user behind a live session", async () => {
       const session = await service.signup(SIGNUP);

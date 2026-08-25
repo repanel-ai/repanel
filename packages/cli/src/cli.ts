@@ -1,17 +1,27 @@
 import { parseArgs } from "node:util";
-import { comingNext } from "./commands/coming-next.js";
-import { DEFAULT_PORT, dev, type DevIo } from "./commands/dev.js";
+import { deploy } from "./commands/deploy.js";
+import { DEFAULT_PORT, dev } from "./commands/dev.js";
+import { link } from "./commands/link.js";
 import { validate } from "./commands/validate.js";
 import type { CommandResult } from "./command-result.js";
-import { commandHelp, isCommand, usage } from "./usage.js";
+import type { Terminal } from "./terminal.js";
+import { commandHelp, commandsTaking, isCommand, usage } from "./usage.js";
 
-/** The options only `repanel dev` takes; every other command refuses them. */
-const DEV_OPTIONS = ["port", "database-url", "yes"] as const;
+/** Every option any command takes, and the shape it takes it in. */
+const OPTIONS = {
+  help: { type: "boolean", short: "h" },
+  port: { type: "string" },
+  "database-url": { type: "string" },
+  yes: { type: "boolean", short: "y" },
+  project: { type: "string" },
+} as const;
 
 /** What a command needs from the process it was started by. */
 export interface CliContext {
-  readonly io: DevIo;
+  readonly io: Terminal;
   readonly env: NodeJS.ProcessEnv;
+  /** The operator's home directory: where the CLI keeps its own session. */
+  readonly home: string;
 }
 
 /**
@@ -25,7 +35,8 @@ export interface CliContext {
  *
  * @param argv the arguments after the program name.
  * @param projectRoot the directory a command reads the definition from.
- * @param context the terminal to talk to and the environment to read.
+ * @param context the terminal to talk to, the environment to read, the home to
+ *   keep a session in.
  */
 export async function run(
   argv: readonly string[],
@@ -34,16 +45,7 @@ export async function run(
 ): Promise<CommandResult> {
   let parsed;
   try {
-    parsed = parseArgs({
-      args: [...argv],
-      options: {
-        help: { type: "boolean", short: "h" },
-        port: { type: "string" },
-        "database-url": { type: "string" },
-        yes: { type: "boolean", short: "y" },
-      },
-      allowPositionals: true,
-    });
+    parsed = parseArgs({ args: [...argv], options: OPTIONS, allowPositionals: true });
   } catch (error) {
     return usageError((error as Error).message);
   }
@@ -52,14 +54,8 @@ export async function run(
 
   // Before anything else answers: an option no command is going to read is a
   // mistake, and printing the help over it would be ignoring it.
-  const misplaced = DEV_OPTIONS.find((option) => parsed.values[option] !== undefined);
-  if (name !== "dev" && misplaced !== undefined) {
-    return usageError(
-      name === undefined
-        ? `\`--${misplaced}\` belongs to a command; \`repanel dev\` is the one that takes it.`
-        : `\`repanel ${name}\` does not take \`--${misplaced}\`.`,
-    );
-  }
+  const misplaced = misplacedOption(name, parsed.values);
+  if (misplaced) return usageError(misplaced);
 
   if (name === undefined) return { exitCode: 0, lines: usage() };
   if (!isCommand(name)) return usageError(`Unknown command \`${name}\`.`);
@@ -67,10 +63,20 @@ export async function run(
   if (rest.length > 0) return usageError(`\`repanel ${name}\` takes no arguments.`);
 
   if (name === "validate") return validate(projectRoot);
-  if (name !== "dev") return comingNext(name);
+
+  const project = parsed.values.project?.trim();
+  if (parsed.values.project !== undefined && (project === undefined || project === "")) {
+    return usageError("`--project` takes a project key.");
+  }
+  const account = { env: context.env, home: context.home, ...(project ? { project } : {}) };
+
+  if (name === "link") return link(projectRoot, account, context.io);
+  if (name === "deploy") return deploy(projectRoot, account);
 
   const port = readPort(parsed.values.port);
-  if (port === undefined) return usageError(`\`--port\` takes a port number, not \`${parsed.values.port ?? ""}\`.`);
+  if (port === undefined) {
+    return usageError(`\`--port\` takes a port number, not \`${parsed.values.port ?? ""}\`.`);
+  }
 
   const outcome = await dev(
     projectRoot,
@@ -78,6 +84,28 @@ export async function run(
     context.io,
   );
   return outcome.started ? { exitCode: 0, lines: [] } : outcome.result;
+}
+
+/** What is wrong with an option that was given to a command that does not take it. */
+function misplacedOption(
+  name: string | undefined,
+  values: Record<string, unknown>,
+): string | undefined {
+  for (const [option, value] of Object.entries(values)) {
+    if (option === "help" || value === undefined) continue;
+    const takers = commandsTaking(option);
+    if (name !== undefined && takers.includes(name as (typeof takers)[number])) continue;
+
+    return name === undefined
+      ? `\`--${option}\` belongs to a command; ${list(takers.map((taker) => `\`repanel ${taker}\``))} take${takers.length === 1 ? "s" : ""} it.`
+      : `\`repanel ${name}\` does not take \`--${option}\`.`;
+  }
+  return undefined;
+}
+
+function list(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? "no command";
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1) ?? ""}`;
 }
 
 function readPort(raw: string | undefined): number | undefined {

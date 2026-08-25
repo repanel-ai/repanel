@@ -1,18 +1,30 @@
 import { Button, Card, FormError, Input, Label } from "@repanel/ui";
 import { type FormEvent, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { messageOf } from "../../lib/api-client";
 import { useAuth } from "./use-auth";
 
+/**
+ * Where signing in leads: the address the guard was protecting, or the
+ * projects list. Only a path within the console is accepted — a destination is
+ * a place in this app, and anything else is somebody else's idea of one.
+ */
+function intendedFrom(state: unknown): string {
+  const from = (state as { from?: unknown } | null)?.from;
+  if (typeof from !== "string" || !from.startsWith("/") || from.startsWith("//")) return "/";
+  return from;
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
+  const returnTo = intendedFrom(useLocation().state);
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    login.mutate({ email, password }, { onSuccess: () => navigate("/", { replace: true }) });
+    login.mutate({ email, password }, { onSuccess: () => navigate(returnTo, { replace: true }) });
   }
 
   return (

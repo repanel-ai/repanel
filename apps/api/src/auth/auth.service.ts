@@ -9,11 +9,15 @@ import { createSessionToken, hashSessionToken } from "./session-token";
 /** How long a session lives. Sessions do not slide: 30 days from sign-in, then out. */
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** A signed-in user, plus the raw token the caller must be handed back. */
-export interface AuthenticatedSession {
-  user: UserDto;
+/** A session, and the raw token whoever asked for it must be handed back. */
+export interface MintedSession {
   token: string;
   expiresAt: Date;
+}
+
+/** A signed-in user, plus the raw token the caller must be handed back. */
+export interface AuthenticatedSession extends MintedSession {
+  user: UserDto;
 }
 
 @Injectable()
@@ -62,16 +66,26 @@ export class AuthService {
     return toUserDto(found.user);
   }
 
-  private async startSession(user: UserRow): Promise<AuthenticatedSession> {
+  /**
+   * A session for a user who is already known to be who they say they are.
+   * Signing in is one caller; the console authorizing the `repanel` CLI on
+   * this account's machine is the other, and what it is handed is an ordinary
+   * session — same lifetime, same table, ended by the same logout.
+   */
+  async mintSession(userId: string): Promise<MintedSession> {
     const token = createSessionToken();
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
     await this.repository.createSession({
-      userId: user.id,
+      userId,
       tokenHash: hashSessionToken(token),
       expiresAt,
     });
 
-    return { user: toUserDto(user), token, expiresAt };
+    return { token, expiresAt };
+  }
+
+  private async startSession(user: UserRow): Promise<AuthenticatedSession> {
+    return { user: toUserDto(user), ...(await this.mintSession(user.id)) };
   }
 }

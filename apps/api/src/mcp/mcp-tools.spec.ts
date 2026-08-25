@@ -6,6 +6,7 @@ import { Test } from "@nestjs/testing";
 import { validateDefinition, type ProjectDto, type ValidationError } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import type { AgentPrincipal, Principal } from "../auth/principal";
+import { ConfigService } from "../config/config.service";
 import { ConnectionsService } from "../connections/connections.service";
 import { MAX_PAYLOAD_BYTES } from "../definitions/definition-size";
 import {
@@ -53,6 +54,9 @@ const DOCUMENTATION = "# RePanel definition schema — v0\n\nEvery key, written 
 
 /** Where this deployment serves the console, as CONSOLE_URL would say. */
 const CONSOLE_URL = "https://console.repanel.test";
+
+/** Where it serves the rendered admin, as RUNTIME_URL would say. */
+const RUNTIME_URL = "https://admin.repanel.test";
 
 const TOOL_NAMES = [
   "get_definition",
@@ -153,6 +157,7 @@ describe("MCP tools", () => {
         { provide: DefinitionsRepository, useValue: repository },
         { provide: ConnectionsService, useValue: connected },
         { provide: ProjectsService, useValue: new ReachableProjects() },
+        { provide: ConfigService, useValue: { runtimeUrl: RUNTIME_URL } },
         {
           provide: SchemaDocumentationService,
           useValue: { read: () => Promise.resolve(DOCUMENTATION) },

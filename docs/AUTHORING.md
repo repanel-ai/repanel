@@ -32,7 +32,8 @@ what to do when the answer is not in the definition at all.
 5. **Run it locally** with `repanel dev` if the CLI is installed (§7). It is a
    faster loop than submitting, it needs no project and no account, and it
    shows you the admin instead of telling you the definition parsed.
-6. **Submit** the composed object with `submit_definition`.
+6. **Submit** the composed object with `submit_definition` — or, where the CLI
+   is installed and the repository is linked, with `repanel deploy` (§6).
 7. **Repair.** An invalid submission comes back with every problem found, each
    carrying a path, an expectation and a fix. Apply them, submit again, repeat
    until `valid` is true. Invalid drafts are stored, so nothing is lost, and
@@ -101,10 +102,46 @@ Stop and hand the job to a human, with that link:
 Pass the URL through verbatim. Once a connection exists the field is `null`,
 which is how you know not to send anyone anywhere.
 
-A `repanel link` CLI arrives at MVP and does this handshake without the
-copy-paste: it opens the console, the human pastes the DSN once, and the agent
-is told only that a connection now exists. Until then, the deep link and the
-sentence above are the pattern.
+### Better: offer to run `repanel link`
+
+Where the CLI is installed, there is a shorter path, and **you may run it
+yourself**:
+
+```
+repanel link
+```
+
+It signs the machine in through the human's browser, asks which project this
+repository belongs to, reads `DATABASE_URL` out of the application's own
+environment, shows it as `host/database` with the password taken out, and asks
+`Connect …? [Y/n]` in the terminal. On yes it sends the connection string
+straight to RePanel over that browser session. Then it writes
+`.repanel/project` — the project key, nothing else — for the human to commit.
+
+**Running it is not handling the secret, and the difference is built in.** The
+connection string goes from the environment to the API and nowhere else: it is
+never printed, never written to a file, and it cannot be passed as an option,
+because a connection string on a command line is a connection string in a shell
+history. You never see it. What you see is the command's output, which names
+the host and the database and no credential.
+
+Two rules about running it:
+
+- **You may not answer its questions.** Where there is no terminal it refuses
+  rather than assuming; that refusal is the safety property working, not an
+  obstacle to route around.
+- **Never try to give it a DSN.** It takes none, on purpose. If you find
+  yourself wanting to, you are about to do the thing this section forbids.
+
+Say what you are about to do, run it, and read the result:
+
+> Crewbase's RePanel project has no database connection yet. I can run
+> `repanel link` — it will ask you which project, then show you the database
+> from your `.env` and ask you to confirm before connecting it. The connection
+> string stays between your machine and RePanel; I never see it.
+
+Where the CLI is not installed, the deep link and the sentence above it are the
+pattern.
 
 Everything else you can do while you wait: you can inspect the repository,
 classify every column and write the definition before a connection exists.
@@ -173,9 +210,11 @@ Keep the order stable between submissions. Validation errors are reported at
 paths like `resources[2].views.table.columns[5]`, and an index that means a
 different resource each time you submit is an index you cannot act on.
 
-A CLI will do this assembly at MVP. Until it exists, you assemble in memory
-before calling the tool — and you still write the files, because the files are
-what the customer reviews, versions and comes back to in six months.
+`repanel deploy` performs exactly this assembly and submits the result, so
+where the CLI is installed it is the shorter path (§6). Where it is not, you
+assemble in memory before calling the tool. Either way you write the files,
+because the files are what the customer reviews, versions and comes back to in
+six months.
 
 ---
 
@@ -363,6 +402,24 @@ When it validates, write the final files, and tell the human what you decided:
 the resources you left out, the columns you marked sensitive or hidden, the
 actions you added and the endpoints you wrote for them, and any known gap you
 worked around.
+
+### Or `repanel deploy`
+
+Where the CLI is installed and the repository has been linked (§2), the whole
+submission is one command, and it is another you may run yourself:
+
+```
+repanel deploy
+```
+
+It assembles `repanel/`, submits it to the linked project over the human's own
+session, and reports the same problems in the same form — each in the file that
+holds it — or, when it validates, the address of the admin it just described.
+It carries no secret and invents no input: what it sends is the definition in
+the repository, which is the one under review.
+
+The loop is the same as above, one command shorter: repair the files, run it
+again, read the work list until there is none.
 
 ---
 

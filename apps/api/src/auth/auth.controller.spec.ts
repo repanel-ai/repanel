@@ -16,6 +16,7 @@ describe("AuthController", () => {
     const auth = {
       signup: () => Promise.resolve(SESSION),
       login: () => Promise.resolve(SESSION),
+      mintSession: () => Promise.resolve({ token: "cli-token", expiresAt: EXPIRES_AT }),
       logout: (token: string | undefined) => {
         endedSessions.push(token);
         return Promise.resolve();
@@ -88,5 +89,14 @@ describe("AuthController", () => {
 
   it("answers /me with the user the guard resolved", () => {
     expect(controllerFor("development").me(USER)).toEqual(USER);
+  });
+
+  it("hands the CLI a session token in the body, and sets no cookie for it", async () => {
+    const response = responseSpy();
+    const controller = controllerFor("development");
+
+    await expect(controller.cli(USER)).resolves.toEqual({ token: "cli-token" });
+
+    expect(response.cookie).not.toHaveBeenCalled();
   });
 });

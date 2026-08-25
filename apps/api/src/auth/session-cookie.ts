@@ -1,8 +1,13 @@
+import { SESSION_COOKIE } from "@repanel/contracts";
 import type { CookieOptions, Request } from "express";
 import type { Env } from "../config/env.schema";
 
-/** The cookie a browser carries its session token in. */
-export const SESSION_COOKIE = "repanel_session";
+/**
+ * The cookie a browser carries its session token in. Its name is the wire's,
+ * not this feature's: the CLI sets the same header by hand, so the string is
+ * declared once in `@repanel/contracts` and read here.
+ */
+export { SESSION_COOKIE };
 
 /**
  * The flags every session cookie is written and cleared with. `secure` is off

@@ -7,7 +7,7 @@ const anywhere = process.cwd();
 /** A terminal nobody is at: whatever a command writes is collected, not printed. */
 function context(): CliContext & { written: string[] } {
   const written: string[] = [];
-  return { written, env: {}, io: { write: (line) => void written.push(line) } };
+  return { written, env: {}, home: anywhere, io: { write: (line) => void written.push(line) } };
 }
 
 test("with no command, the help lists every command", async () => {
@@ -25,11 +25,29 @@ test("a command's own help is its usage", async () => {
   assert.match(result.lines.join("\n"), /repanel validate/);
 });
 
-test("the commands still to come say so, and do not report success", async () => {
+test("a command that needs a terminal refuses when there is nobody at one", async () => {
   const result = await run(["link"], anywhere, context());
 
   assert.equal(result.exitCode, 1);
-  assert.match(result.lines[0] ?? "", /`repanel link` is not implemented yet/);
+  assert.match(result.lines[0] ?? "", /Nobody to ask/);
+  assert.match(result.lines.join("\n"), /hint: /);
+});
+
+test("an option belongs to whichever commands take it, and is refused elsewhere", async () => {
+  const named = await run(["--project", "crewbase"], anywhere, context());
+  assert.equal(named.exitCode, 2);
+  assert.match(named.lines[0] ?? "", /`repanel link` and `repanel deploy` take it/);
+
+  const wrong = await run(["dev", "--project", "crewbase"], anywhere, context());
+  assert.equal(wrong.exitCode, 2);
+  assert.match(wrong.lines[0] ?? "", /`repanel dev` does not take `--project`/);
+});
+
+test("an empty project key is a usage error, not a missing one", async () => {
+  const result = await run(["deploy", "--project", ""], anywhere, context());
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.lines[0] ?? "", /`--project` takes a project key/);
 });
 
 test("an unknown command is a usage error", async () => {

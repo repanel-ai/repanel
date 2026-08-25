@@ -1,6 +1,6 @@
 import type { Definition, Field, RecordId, Resource } from "@repanel/contracts";
-import { Skeleton } from "@repanel/ui";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { Skeleton, buttonClasses } from "@repanel/ui";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { EmptyState } from "./empty-state";
 import { ErrorState } from "./error-state";
@@ -68,12 +68,30 @@ function ResourceScreen({ projectKey, resource }: { projectKey: string; resource
 
   return (
     <Screen>
-      <div className="flex items-baseline gap-2.5">
-        <h1 className="text-title font-semibold tracking-[-0.02em]">{resource.label.plural}</h1>
-        {records.data && (
-          <span className="text-small text-muted-foreground">{`${total.toLocaleString()} records`}</span>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-baseline gap-2.5">
+          <h1 className="text-title font-semibold tracking-[-0.02em]">{resource.label.plural}</h1>
+          {records.data && (
+            <span className="text-small text-muted-foreground">{`${total.toLocaleString()} records`}</span>
+          )}
+          {records.isPending && <Skeleton className="h-3 w-16" />}
+        </div>
+
+        {/*
+          * Only where the definition says a record may be made. It is a link
+          * because a form is a screen with an address, and it wears the
+          * `outline` clothes every other control on this screen wears: the
+          * `primary` fill is spent on the one button that goes ahead with
+          * something, and this one only opens a form (DESIGN.md §10).
+          */}
+        {resource.writes.create && (
+          <Link
+            to={runtimeRoutes.newRecord(projectKey, resource.key)}
+            className={buttonClasses({ variant: "outline" })}
+          >
+            New {resource.label.singular.toLowerCase()}
+          </Link>
         )}
-        {records.isPending && <Skeleton className="h-3 w-16" />}
       </div>
 
       <FilterBar

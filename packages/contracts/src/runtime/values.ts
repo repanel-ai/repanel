@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { formatList, type ValidationError } from "../definition/errors.js";
 import { isWritableType, type Field } from "../definition/fields.js";
-import { editableFields, type Resource } from "../definition/schema.js";
+import { primaryKeyGenerationOf, type Resource } from "../definition/schema.js";
 import type { JsonValue } from "./records.js";
 
 /** Which write a submission is: the two differ only in what may be left out. */
@@ -39,16 +39,15 @@ export function checkRecordValues(
   values: RecordValues,
 ): ValidationError[] {
   const submitted = Object.keys(values);
-  const editable = editableFields(resource);
-  const editableKeys = editable.map((field) => field.key);
+  const accepted = acceptedKeys(resource, mode);
 
   if (submitted.length === 0) {
     return [
       {
         path: VALUES_PATH,
         message: "A write carries no values.",
-        expected: `at least one of: ${formatList(editableKeys)}`,
-        hint: `Put the values to write in \`${VALUES_PATH}\`, keyed by field: ${formatList(editableKeys)}.`,
+        expected: `at least one of: ${formatList(accepted)}`,
+        hint: `Put the values to write in \`${VALUES_PATH}\`, keyed by field: ${formatList(accepted)}.`,
       },
     ];
   }
@@ -58,7 +57,9 @@ export function checkRecordValues(
 
   for (const key of submitted) {
     const field = fields.get(key);
-    const refusal = field ? refuseWriteTo(resource, field) : unknownField(resource, key, editableKeys);
+    const refusal = field
+      ? refuseWriteTo(resource, field, mode)
+      : unknownField(resource, key, accepted);
 
     if (refusal) {
       errors.push(refusal);
@@ -72,7 +73,11 @@ export function checkRecordValues(
   }
 
   if (mode === "create") {
-    for (const field of editable) {
+    // Only a field this write could have carried is one it can be faulted for
+    // leaving out: a `required` flag on a column nothing may write is a mistake
+    // in the definition, and asking for a value that would then be refused is
+    // no way to report it.
+    for (const field of writableFields(resource, mode)) {
       if (field.required && !(field.key in values)) errors.push(missingValue(field));
     }
   }
@@ -80,52 +85,70 @@ export function checkRecordValues(
   return errors;
 }
 
+/** Why a field may not be written, before the refusal is written down. */
+interface Refusal {
+  message: string;
+  hint: string;
+}
+
 /**
  * Why this field may not be written, if it may not.
  *
  * Exported because the engine asks the same question again where the statement
  * is assembled, and two walls that disagree about the reason are worse than
- * one. The order of the tests is deliberate: a field that is `editable` and
- * also sensitive cannot come from a definition that validates today, but it can
- * come from one stored before that rule existed — and when it does, the refusal
+ * one. It takes the mode because two of the answers depend on it: a primary key
+ * the client issues is written when the record is made and never after, and
+ * what a write "could have carried instead" is a different list on each.
+ */
+export function refuseWriteTo(
+  resource: Resource,
+  field: Field,
+  mode: WriteMode,
+): ValidationError | undefined {
+  const refusal = refusalFor(resource, field, mode);
+  if (!refusal) return undefined;
+
+  return {
+    path: `${VALUES_PATH}.${field.key}`,
+    message: refusal.message,
+    expected: `one of: ${formatList(acceptedKeys(resource, mode))}`,
+    hint: refusal.hint,
+  };
+}
+
+/**
+ * The reason, without the list of what would have been accepted — which is
+ * built out of this same predicate, so the two are kept apart rather than
+ * calling each other in a circle.
+ *
+ * The order of the tests is deliberate: a field that is `editable` and also
+ * sensitive cannot come from a definition that validates today, but it can come
+ * from one stored before that rule existed — and when it does, the refusal
  * should name the reason that matters rather than the one that is merely true.
  */
-export function refuseWriteTo(resource: Resource, field: Field): ValidationError | undefined {
-  const path = `${VALUES_PATH}.${field.key}`;
-  const editableKeys = editableFields(resource).map((editable) => editable.key);
-
+function refusalFor(resource: Resource, field: Field, mode: WriteMode): Refusal | undefined {
   if (field.sensitive) {
     return {
-      path,
       message: `Field \`${field.key}\` is sensitive and is never written from the admin.`,
-      expected: `one of: ${formatList(editableKeys)}`,
       hint: `Remove \`${field.key}\` from the write. A secret is set by your application — expose an endpoint and call it with an \`httpCall\` action.`,
     };
   }
 
   if (field.key === resource.primaryKey) {
-    return {
-      path,
-      message: `Field \`${field.key}\` is the primary key of \`${resource.key}\` and is never written.`,
-      expected: `one of: ${formatList(editableKeys)}`,
-      hint: `Remove \`${field.key}\` from the write; a record's key addresses it and is issued by the database, never typed.`,
-    };
+    const refusal = refusePrimaryKey(resource, field, mode);
+    if (refusal) return refusal;
   }
 
   if (!isWritableType(field.type)) {
     return {
-      path,
       message: `Field \`${field.key}\` has type \`${field.type}\` and cannot be written from the admin.`,
-      expected: `one of: ${formatList(editableKeys)}`,
       hint: `Remove \`${field.key}\` from the write; a \`${field.type}\` value is edited through an endpoint in your application, called with an \`httpCall\` action.`,
     };
   }
 
   if (!field.editable) {
     return {
-      path,
       message: `Field \`${field.key}\` is not editable.`,
-      expected: `one of: ${formatList(editableKeys)}`,
       hint: `Remove \`${field.key}\` from the write, or mark it \`"editable": true\` in the definition of \`${resource.key}\` if an operator should be able to change it.`,
     };
   }
@@ -133,16 +156,59 @@ export function refuseWriteTo(resource: Resource, field: Field): ValidationError
   return undefined;
 }
 
+/**
+ * The primary key, which is the one column whose writability is a fact about
+ * the table rather than about the field.
+ *
+ * Under `database` generation — the default, and what every resource meant
+ * before generation could be declared — it is never written: the insert leaves
+ * the column out and the database's own default fills it in. Under `client` it
+ * is written exactly once, when the record is made, because that is when a key
+ * is decided; an update that carried one would be changing the address of the
+ * very form that sent it.
+ */
+function refusePrimaryKey(resource: Resource, field: Field, mode: WriteMode): Refusal | undefined {
+  if (primaryKeyGenerationOf(resource) === "database") {
+    return {
+      message: `Field \`${field.key}\` is the primary key of \`${resource.key}\` and is issued by the database.`,
+      hint: `Remove \`${field.key}\` from the write; the insert leaves the column out and reports back the key the database issued. If the key is genuinely chosen rather than generated, declare \`"primaryKeyGeneration": "client"\` on \`${resource.key}\` and mark \`${field.key}\` editable.`,
+    };
+  }
+
+  if (mode === "update") {
+    return {
+      message: `Field \`${field.key}\` is the primary key of \`${resource.key}\`: it addresses the record and is set when it is made.`,
+      hint: `Remove \`${field.key}\` from the write; a key the client issues is chosen once, at create, and moving it would move the address of the record being changed.`,
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * The fields a write in this mode may carry, in the order the resource declares
+ * them. That order is the form's order: a form carries only the opt-in subset,
+ * which is small by construction, and the author already put the fields in the
+ * order they meant.
+ */
+function writableFields(resource: Resource, mode: WriteMode): Field[] {
+  return resource.fields.filter((field) => refusalFor(resource, field, mode) === undefined);
+}
+
+function acceptedKeys(resource: Resource, mode: WriteMode): string[] {
+  return writableFields(resource, mode).map((field) => field.key);
+}
+
 function unknownField(
   resource: Resource,
   key: string,
-  editableKeys: readonly string[],
+  accepted: readonly string[],
 ): ValidationError {
   return {
     path: `${VALUES_PATH}.${key}`,
     message: `Resource \`${resource.key}\` has no field \`${key}\`.`,
-    expected: `one of: ${formatList(editableKeys)}`,
-    hint: `Remove \`${key}\` from the write; \`${resource.key}\` accepts: ${formatList(editableKeys)}.`,
+    expected: `one of: ${formatList(accepted)}`,
+    hint: `Remove \`${key}\` from the write; \`${resource.key}\` accepts: ${formatList(accepted)}.`,
   };
 }
 

@@ -5,6 +5,7 @@ import {
   type RecordId,
   type Resource,
   type ValidationError,
+  type WriteMode,
 } from "@repanel/contracts";
 import { ValidationFailedError } from "../errors.js";
 import { ROW_ALIAS, selectFields, type SelectEntry } from "./columns.js";
@@ -45,7 +46,7 @@ export function insertStatement(
   resource: Resource,
   assignments: readonly Assignment[],
 ): Query {
-  return statement(resources, resource, assignments, (parameters, returning) => {
+  return statement(resources, resource, assignments, "create", (parameters, returning) => {
     const columns = assignments.map(({ field }) => quoteIdentifier(field.key)).join(", ");
     const values = assignments.map(({ value }) => parameters.bind(value)).join(", ");
 
@@ -67,7 +68,7 @@ export function updateStatement(
   assignments: readonly Assignment[],
   id: RecordId,
 ): Query {
-  return statement(resources, resource, assignments, (parameters, returning) => {
+  return statement(resources, resource, assignments, "update", (parameters, returning) => {
     const sets = assignments
       .map(({ field, value }) => `${quoteIdentifier(field.key)} = ${parameters.bind(value)}`)
       .join(", ");
@@ -86,9 +87,10 @@ function statement(
   resources: ReadonlyMap<string, Resource>,
   resource: Resource,
   assignments: readonly Assignment[],
+  mode: WriteMode,
   modify: (parameters: Parameters, returning: string) => string,
 ): Query {
-  refuseUnwritable(resource, assignments);
+  refuseUnwritable(resource, assignments, mode);
   // Refuses a sensitive primary key, which would leave the written row with no
   // key to answer under — the same guard every read passes through.
   identityField(resource);
@@ -128,14 +130,22 @@ function returningList(entries: readonly SelectEntry[]): string {
  * that stands between it and a write. It refuses with a path and a hint rather
  * than a bare failure, because the caller has to be told which field, and the
  * renderer has to be able to put the sentence under it.
+ *
+ * The mode is part of the question: a primary key the client issues belongs in
+ * an insert and in nothing else, and this is where an update that carried one
+ * anyway stops.
  */
-function refuseUnwritable(resource: Resource, assignments: readonly Assignment[]): void {
+function refuseUnwritable(
+  resource: Resource,
+  assignments: readonly Assignment[],
+  mode: WriteMode,
+): void {
   if (assignments.length === 0) {
     throw new Error(`a write to \`${resource.key}\` reached the builder with no fields to set`);
   }
 
   const details = assignments
-    .map(({ field }) => refuseWriteTo(resource, field))
+    .map(({ field }) => refuseWriteTo(resource, field, mode))
     .filter((detail): detail is ValidationError => detail !== undefined);
 
   if (details.length > 0) throw new ValidationFailedError(WRITE_REFUSED, details);

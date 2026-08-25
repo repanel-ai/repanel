@@ -370,9 +370,8 @@ told before they press save.
 
 **A resource is creatable only if the database can fill in the rest.** Every
 `not null` column with no default has to be either `editable` or supplied by the
-application. A table whose primary key is issued by the application, or whose
-`password_hash` is `not null`, cannot be created from an admin — offer `update`
-alone and let the application create the row:
+application. A table whose `password_hash` is `not null` cannot be created from
+an admin — offer `update` alone and let the application create the row:
 
 ```json
 "writes": { "update": true }
@@ -380,6 +379,31 @@ alone and let the application create the row:
 
 That is the common shape, not a fallback. Most records are created by the
 product and corrected by an operator.
+
+**The database issues the key unless you say otherwise.** `primaryKeyGeneration`
+defaults to `database`: the insert leaves the key column out, the column's own
+default fills it in — a `uuid`, a sequence — and the key it issued comes back
+with the record, so the form never asks for one. Where the key is chosen rather
+than generated — a slug, an account number, an id your application mints — say
+so and open the column:
+
+```json
+"primaryKeyGeneration": "client",
+"fields": [{ "key": "slug", "label": "Slug", "type": "text", "editable": true, "required": true }]
+```
+
+Check the column before you write either one: a key column with no default and
+`primaryKeyGeneration: "database"` fails on the first create, and the operator
+is told about a column they cannot fill in. An edit form never shows the key
+whichever you declare — a key addresses the record and is chosen once.
+
+**An editable relation is typed as a key.** There is no picker and no
+search-by-name in v0: the form shows a box, and the operator puts the target
+record's key in it. It shows what the key currently points at, by the same label
+the table and the record page use, so an operator can see what they are about to
+change — but they cannot look one up from here. Where the key is not something
+they could reasonably have to hand, leave the relation closed and set it from
+your application.
 
 **What you cannot do in v0:** delete a record, edit a `json` field, edit files
 or images, or edit many records at once. And an update is last-write-wins —

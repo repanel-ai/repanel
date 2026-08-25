@@ -479,6 +479,24 @@ A detail field pairs a `--t-small` label with a `--t-body` value on a shared
 20px line box and 8px of air, which puts an ordinary field row on the table's
 own 36px rhythm and lets a long value grow in whole lines.
 
+**A form sits on that same grid, and stops at 680px.** Reading a record and
+editing one are the same page with the values in different clothes, so the two
+share one frame: the same label column, the same hairlines, the same rounded
+panel — `packages/ui`'s `Fields` and `FormFields` are one grid constant, and a
+form whose rows sat on a different one would say the two screens were different
+kinds of thing. The row grows, because a `--h-control` 32px input inside 8px of
+air is 48px rather than 36px, and that is the one difference: a control is
+taller than the value it holds.
+
+`--spacing-form` 680px is the second measure this record has, and §11's argument
+for why the runtime never spends the first one is exactly the argument for
+spending this one. "A table wants every pixel" is about a field of five hundred
+records; a form is the one screen in the runtime that is not one. A line of
+typed text has a measure the same way a paragraph does, and an input stretched
+across a wide window makes the value harder to read back and the row harder to
+scan. It is left against the panel's gutter rather than centred, because every
+other runtime screen is.
+
 ---
 
 ## 7. Accessibility floor
@@ -916,11 +934,31 @@ Motion appears in these places and nowhere else:
 | the dialog, and its backdrop | base | fade up over 4px; the backdrop fades |
 | the date-range popover | base | fade up over 4px |
 | a dropdown, when RePanel owns one | base | the same enter, by the same rule |
+| a form | base | fade up over 4px |
 | a toast arriving | base | fade up over 4px |
 | a toast leaving | fast | fade back down over the same 4px |
 | the stack closing over a notice that has gone | — | nothing moves; it is instant |
 | the theme toggle | fast | the colours of the whole screen cross |
 | a checklist step turning done | fast | the mark's and the title's colour |
+
+**A form is a surface, not a data surface, and that is why it is on this list.**
+Task 027 added the only row this section has gained since it was written, and
+the rule it has to answer is the one below it: a record does not fade onto its
+page, and a table row does not move at all. A form is neither. The ban is an
+argument about *reading* — an operator reads a value under time pressure and
+then acts on it, so motion there delays the value and pulls the eye to the
+change instead of to what it now says. Nobody reads a form under time pressure;
+they arrive at it having decided to change something, and there is no value on
+it yet to be delayed. What the enter buys is the one thing the ban costs
+nothing to keep: a screen that is now asking for input rather than showing
+records says so before the first character is typed.
+
+It is the same 180ms, the same ease-out and the same four pixels every other
+arriving surface spends, applied to the form's own frame — the panel of fields
+and the two answers under it — and to nothing else on the screen. **Submitting
+is instant**, and so is the record the write lands on: the write is a data
+event, and the record it produces is a data surface, both of them squarely
+inside the ban. DECISIONS #057.
 
 **Enters only, and a notice is the one thing that also leaves.** A dialog and a
 popover arrive and do not go: an exit there is time an operator spends watching
@@ -1068,7 +1106,16 @@ top right of the panel, clear of the topbar. The record header's action row is
 right there too (§10's own action row rule), so for as long as a notice is up it
 covers the buttons it is a notice about — visible in `toast-stacked-*` below,
 and worst on a failure, where the control an operator would retry with is the
-one under the notice. Three corners are already spoken for: the topbar's chrome
+one under the notice.
+
+*Task 027 made this worse and is the reason it is now worth answering.* The
+action row could previously be empty — an action is drawn only where the record
+meets its precondition, and a record with nothing left to do to it wears no row
+at all — so the collision was occasional. `Edit` is on that row whenever the
+resource takes changes, whatever state the record is in, and a create lands on
+the record it made with a notice about it. So the first thing an operator sees
+after making a record is a notice sitting on the one control that screen offers:
+`shots/forms-027/form-success-light.png`. Three corners are already spoken for: the topbar's chrome
 is above, the breadcrumb is top left, and `repanel dev`'s problems overlay is
 bottom left. Bottom right — where 012 put it — is the only corner nothing else
 claims. The answer is a placement ruling, not a component change: the stack is

@@ -41,6 +41,61 @@ describe("api client", () => {
       message: "Request failed (502)",
     });
   });
+  /**
+   * A form's write is the one request this app sends a body with, and a
+   * refusal of one is the one error it has somewhere specific to put: the
+   * details name the field, so the sentence lands under the input.
+   */
+  it("sends a write as JSON", async () => {
+    const fetched = stubFetch(json(200, { id: "u_9", values: {} }));
+
+    await api.post("/runtime/acme/resources/users/records", { values: { name: "Ada" } });
+
+    expect(fetched).toHaveBeenCalledWith("/api/runtime/acme/resources/users/records", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ values: { name: "Ada" } }),
+    });
+  });
+
+  it("corrects a record with PATCH, so what it leaves out is left alone", async () => {
+    const fetched = stubFetch(json(200, { id: "u_1", values: {} }));
+
+    await api.patch("/runtime/acme/resources/users/records/u_1", { values: { name: "Ada" } });
+
+    expect(fetched).toHaveBeenCalledWith(
+      "/api/runtime/acme/resources/users/records/u_1",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+  });
+
+  it("keeps the details a refusal carries, so a form can place each one", async () => {
+    const detail = {
+      path: "values.email",
+      message: "`nope` is not an email address.",
+      expected: "an email value",
+      hint: "Send an email address such as `person@example.com` for `values.email`.",
+    };
+    stubFetch(
+      json(422, { error: { code: "write_refused", message: "This write was refused.", details: [detail] } }),
+    );
+
+    const error = await api
+      .post("/runtime/acme/resources/users/records", { values: {} })
+      .catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).details).toEqual([detail]);
+  });
+
+  it("carries no details when the failure has none", async () => {
+    stubFetch(json(500, { error: { code: "internal_error", message: "Internal server error" } }));
+
+    const error = await api.get("/auth/me").catch((reason: unknown) => reason);
+
+    expect((error as ApiError).details).toEqual([]);
+  });
 });
 
 function json(status: number, body: unknown): Response {

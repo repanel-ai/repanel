@@ -15,7 +15,7 @@
       "label": "Status",
       "type": "enum",
       "values": ["invited", "active", "suspended"],
-      "tones": { "active": "positive", "invited": "attention", "suspended": "critical" }
+      "tones": { "invited": "attention", "active": "positive", "suspended": "critical" }
     },
     { "key": "password_hash", "label": "Password hash", "type": "text", "sensitive": true },
     { "key": "created_at", "label": "Created", "type": "dateTime" }
@@ -32,7 +32,9 @@
       ]
     },
     "detail": {
-      "sections": [{ "title": "Staff member", "fields": ["name", "email", "status", "created_at"] }]
+      "sections": [
+        { "title": "Staff member", "fields": ["name", "email", "status", "created_at"] }
+      ]
     }
   },
   "actions": []

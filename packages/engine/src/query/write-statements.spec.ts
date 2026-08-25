@@ -74,6 +74,22 @@ const RESOURCES = resourcesOf(SAAS);
 const USERS = resourceOf(SAAS, "users");
 const ORDERS = resourceOf(SAAS, "orders");
 
+/**
+ * The same admin over a `users` table whose keys are chosen rather than
+ * generated — the one shape in which a primary key reaches a statement.
+ */
+const KEYED = definitionFrom(saasDefinition, (draft) => {
+  const users = draft.resources.find((resource) => resource.key === "users");
+  if (!users) throw new Error("the fixture has no `users`");
+  users.primaryKeyGeneration = "client";
+  const id = users.fields.find((field) => field.key === "id");
+  if (!id) throw new Error("`users` has no `id`");
+  id.editable = true;
+  id.required = true;
+});
+const KEYED_RESOURCES = resourcesOf(KEYED);
+const KEYED_USERS = resourceOf(KEYED, "users");
+
 /** Every non-sensitive column of `users`, which is what a write hands back. */
 const USERS_RETURNING =
   '"id", "email", "name", "status", "organization_id", "is_active", "notes", ' +
@@ -119,6 +135,26 @@ describe("insertStatement", () => {
 
     expect(query.text).toContain('values ($1, $2, $3, $4, $5)');
     expect(query.values).toEqual(["ada@example.test", "Ada", 3, null, "2026-12-31"]);
+  });
+
+  it("leaves the key column out where the database issues it", () => {
+    const query = insertStatement(RESOURCES, USERS, set(USERS, { email: "a@b.test", name: "Ada" }));
+
+    expect(query.text).toContain('insert into "users" ("email", "name") values ($1, $2)');
+    // Out of the insert, and still in what the statement hands back: the key
+    // the database issued is how the written record is answered for.
+    expect(query.text).toContain(`returning ${USERS_RETURNING}`);
+  });
+
+  it("writes the key column where the resource says the client issues it", () => {
+    const query = insertStatement(
+      KEYED_RESOURCES,
+      KEYED_USERS,
+      set(KEYED_USERS, { id: "u_ada", email: "a@b.test", name: "Ada" }),
+    );
+
+    expect(query.text).toContain('insert into "users" ("id", "email", "name") values ($1, $2, $3)');
+    expect(query.values).toEqual(["u_ada", "a@b.test", "Ada"]);
   });
 
   it("quotes every identifier, so a mixed-case schema is writable", () => {
@@ -238,6 +274,39 @@ describe("the wall at the statement", () => {
 
     expect(refusal.details[0]?.path).toBe("values.id");
     expect(refusal.details[0]?.message).toContain("is the primary key");
+  });
+
+  it("refuses an insert carrying a key the database issues, even from a stored definition", () => {
+    const stored = smuggle(USERS, "id", { editable: true });
+
+    const refusal = refusalFrom(() =>
+      insertStatement(RESOURCES, stored, [
+        { field: fieldOf(stored, "id"), value: "u2" },
+        { field: fieldOf(stored, "name"), value: "Ada" },
+      ]),
+    ) as ValidationFailedError;
+
+    expect(refusal.details).toEqual([
+      expect.objectContaining({
+        path: "values.id",
+        message: "Field `id` is the primary key of `users` and is issued by the database.",
+      }),
+    ]);
+    expect(refusal.details[0]?.hint).toMatch(/"primaryKeyGeneration": "client"/);
+  });
+
+  it("refuses an update carrying a key even where the client issues keys", () => {
+    const refusal = refusalFrom(() =>
+      updateStatement(
+        KEYED_RESOURCES,
+        KEYED_USERS,
+        [{ field: fieldOf(KEYED_USERS, "id"), value: "u2" }],
+        "u1",
+      ),
+    ) as ValidationFailedError;
+
+    expect(refusal.details[0]?.path).toBe("values.id");
+    expect(refusal.details[0]?.message).toMatch(/addresses the record and is set when it is made/);
   });
 
   it("refuses to write a column nobody marked editable", () => {

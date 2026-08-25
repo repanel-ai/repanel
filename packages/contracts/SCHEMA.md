@@ -81,6 +81,7 @@ A resource binds one postgres table to one admin section.
 | `label` | yes | Display names; the runtime picks singular or plural per context. |
 | `source.table` | yes | Postgres table name. |
 | `primaryKey` | yes | Field key used to address one record. Must not be `sensitive`. |
+| `primaryKeyGeneration` | no (default `database`) | Where a new record's key comes from: `database` or `client`. Only meaningful where `writes` offers `create`. See [Writes](#writes). |
 | `labelField` | no (default `primaryKey`) | Field key a record is displayed by. Must not be `sensitive`, `hidden`, `json` or `relation`. |
 | `icon` | no (default `table`) | The mark navigation draws this resource with, from the fixed vocabulary below. |
 | `writes` | no (default none) | Which writes this resource offers: `create`, `update`, or both. See [Writes](#writes). |
@@ -251,11 +252,28 @@ can put the message under the input it belongs to.
 detail read returns: sensitive fields absent, hidden fields present, relations
 carrying their label. A create is answered with the key the database issued.
 
-**The primary key is never writable.** It addresses the record rather than
-describing it. So a table whose key the application has to supply cannot be
-created from the admin — and neither can one with a `not null` column that has
-no default and is not editable, which the database will say when the write
-lands.
+**Where a new record's key comes from.** `primaryKeyGeneration` says it, and a
+resource that says nothing says `database`.
+
+| Value | Meaning |
+|---|---|
+| `database` (default) | The column has a default and the admin never sends a key. An insert leaves the column out, the database generates, and the key it issued comes back with the record. The `primaryKey` field cannot be `editable`, and a create carrying a key is refused. |
+| `client` | The key is chosen rather than generated — a slug, an account number, an id your application mints. The `primaryKey` field may be `editable`, the create form asks for it, and the insert writes it. |
+
+It is a declaration of intent and nothing more. The definition never names a
+generation algorithm: whether the default behind a `database` key is a sequence,
+a `uuid`, or a trigger is your schema's business, and RePanel writing it down
+would be RePanel guessing at it.
+
+**A key is written once, or not at all.** Under either value an update refuses
+the `primaryKey`: it addresses the record being changed, and moving it would
+move the address of the form doing the changing. And because generation is a
+question only a new record asks, declaring `primaryKeyGeneration` on a resource
+whose `writes` do not offer `create` is a validation error.
+
+What still cannot be created from the admin is a table with a `not null` column
+that has no default and is not editable, which the database will say when the
+write lands.
 
 ## Relationship
 
@@ -465,9 +483,12 @@ then checks what a schema cannot express:
 - a `dbUpdate` targets only a non-sensitive `enum` or `boolean` field, and
   writes one of the enum's values or a boolean literal;
 - a field marked `editable` belongs to a resource that offers a write, is not
-  `sensitive`, is not the `primaryKey`, and is not a `json` field; a resource
-  that offers a write marks at least one field `editable`; `required` appears
-  only on an `editable` field;
+  `sensitive`, is not a `json` field, and is not the `primaryKey` unless that
+  resource's `primaryKeyGeneration` is `client`; a resource that offers a write
+  marks at least one field `editable`; `required` appears only on an `editable`
+  field;
+- `primaryKeyGeneration` appears only on a resource whose `writes` offer
+  `create` — where a key comes from is a question only a new record asks;
 - `readOnly` is never `false`, and never accompanies a `writes` that offers
   anything — a resource says what it offers, not what it is not;
 - a `visibleWhen` states exactly one of `equals` or `isSet`; an `equals` names a
@@ -507,6 +528,14 @@ cannot afford that, the write belongs behind an endpoint that can decide —
 a rule-bearing act — what cascades, what is archived instead, what an operator
 may undo — and it waits for the audit log that would make it accountable.
 Express it as an endpoint invoked by an `httpCall` action.
+
+**A relation is edited by its key.** An `editable` relation field renders as a
+box an operator types the target record's key into — there is no picker and no
+search-by-name. The form shows what the key currently points at, by the label
+the read view uses, for as long as the key is the one the record came with; a
+key that points at nothing is refused by the database and the refusal lands on
+that field. Where an operator could not reasonably know the key, the honest
+answer today is to leave the relation closed and set it from your application.
 
 **No bulk edit, and no file or image fields.** A form writes one record, and
 every value it writes is JSON.

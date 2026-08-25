@@ -3,6 +3,7 @@
   "label": { "singular": "Opening", "plural": "Openings" },
   "source": { "table": "job_openings" },
   "primaryKey": "id",
+  "primaryKeyGeneration": "database",
   "labelField": "title",
   "icon": "tag",
   "writes": { "create": true, "update": true },

@@ -98,9 +98,8 @@ export function DateRangeFilter({ label, value, onChange, hasTime }: DateRangeFi
  * One end of the range. The control underneath stays the browser's own date
  * input — its picker, its keyboard, its parsing, none of it re-implemented —
  * and everything around it spends the tokens every other control spends: the
- * data face a date is set in, the muted-until-set voice the selects use, and a
- * calendar glyph dressed like the chevron it sits beside rather than left at
- * the browser's weight.
+ * data face a date is set in, the muted-until-set voice the selects use, and
+ * `Input`'s own dressing of the browser's calendar mark.
  */
 function DayInput({ value, onChange }: { value: string; onChange: (day: string) => void }) {
   return (
@@ -113,9 +112,6 @@ function DayInput({ value, onChange }: { value: string; onChange: (day: string) 
         // An empty date input shows `dd/mm/yyyy`, which is a placeholder and
         // reads as one; a date somebody picked comes forward.
         value === "" ? "text-muted-foreground" : "text-foreground",
-        "[&::-webkit-calendar-picker-indicator]:cursor-pointer",
-        "[&::-webkit-calendar-picker-indicator]:opacity-55",
-        "[&::-webkit-calendar-picker-indicator]:hover:opacity-100",
       )}
     />
   );

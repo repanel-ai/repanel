@@ -1,5 +1,12 @@
-import type { ActionResultDto, Definition, RecordDto, RecordId, RecordListDto } from "@repanel/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  ActionResultDto,
+  Definition,
+  RecordDto,
+  RecordId,
+  RecordListDto,
+  RecordValues,
+} from "@repanel/contracts";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 
 /**
@@ -128,4 +135,59 @@ export function useRunAction(projectKey: string, resourceKey: string, id: Record
         client.invalidateQueries({ queryKey: runtimeKeys.resourceRecords(projectKey, resourceKey) }),
       ]),
   });
+}
+
+/**
+ * Creating a record. What comes back is the record itself — the write and the
+ * read are one statement, through the same select list and the same mapper a
+ * detail read uses (DECISIONS #056) — so it is put in the cache under its own
+ * key rather than thrown away and asked for again a moment later.
+ *
+ * Then the two keys a write can be read through are put out of date: the record
+ * itself, and every page of the resource's table, which draws the fields the
+ * write has just set. It is the same pair an action invalidates, for the same
+ * reason — a change nobody invalidated is a screen that quietly disagrees with
+ * the database.
+ */
+export function useCreateRecord(projectKey: string, resourceKey: string) {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: (values: RecordValues) =>
+      api.post<RecordDto>(`${resourcePath(projectKey, resourceKey)}/records`, { values }),
+    onSuccess: (record) => written(client, projectKey, resourceKey, record),
+  });
+}
+
+/**
+ * Correcting a record. The values are what changed and nothing else: `PATCH`
+ * leaves every field the write does not name exactly as it was, which is the
+ * only thing that keeps last-write-wins (DECISIONS #056) from meaning that
+ * whoever saved last wrote every column.
+ */
+export function useUpdateRecord(projectKey: string, resourceKey: string, id: RecordId) {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: (values: RecordValues) =>
+      api.patch<RecordDto>(recordPath(projectKey, resourceKey, id), { values }),
+    onSuccess: (record) => written(client, projectKey, resourceKey, record),
+  });
+}
+
+/** What a write leaves behind in the cache, whichever write it was. */
+function written(
+  client: QueryClient,
+  projectKey: string,
+  resourceKey: string,
+  record: RecordDto,
+): Promise<unknown> {
+  client.setQueryData(runtimeKeys.record(projectKey, resourceKey, record.id), record);
+
+  return Promise.all([
+    // The record, and with it every list hanging off it.
+    client.invalidateQueries({ queryKey: runtimeKeys.record(projectKey, resourceKey, record.id) }),
+    // And every page of the resource's own table, whatever was asked for it.
+    client.invalidateQueries({ queryKey: runtimeKeys.resourceRecords(projectKey, resourceKey) }),
+  ]);
 }

@@ -1171,3 +1171,112 @@ names over whatever is there; nothing carries a version and nothing is compared
 before writing. It is in SCHEMA.md's known limitations because it is a real
 property of the product, and the answer for a record that cannot afford it is
 an endpoint that can decide.
+
+057 · 2026-08 · A form is a screen with an address, and it exists only where
+the definition says it may. `r/:resource/new` and `r/:resource/:id/edit` are
+routes rather than a dialog over the screen behind them: a form can be linked
+to, gone back from and reloaded into, which is the rule #033's table filters,
+§9's record tabs and §11's console pages all keep. Why: a person filling a form
+in is *somewhere*, and a modal is the one surface in this product that cannot
+say where.
+
+**The opt-in is checked at the screen, not only at the buttons.** `New` is on
+the table header where `writes.create` is declared and `Edit` on the record
+header where `writes.update` is, and the form screen itself refuses a resource
+that declares neither — so an address typed by hand is answered the way any
+other address this admin has no screen for is. The two flags are read
+separately all the way down: a resource that takes corrections is not thereby
+one records can be typed into (#055).
+
+**`primary` marks the button that goes ahead, never the one that navigates.**
+The entry points are `outline`, like every other control on their screens; the
+submit is the fill, which is the same rule §10 already keeps for the dialog —
+one thing to go ahead with, one fill. `Edit` sits at the head of the action row
+and stays there: an action comes and goes with the record's state (#038), and a
+control that moves under the pointer is worse than one that is always in the
+same place.
+
+**An enum's tone is ink, not a fill.** A `<select>` the height of a form row
+wearing a badge's tint is a coloured block on a data panel, which is what the
+notice stopped being (#052) and for the same reason. The value's own word is
+still the first signal and the colour the second, and a value the definition's
+`tones` map leaves out is quiet — the runtime reads severity out of the
+definition or out of nothing (#029).
+
+**The em-dash is how a form says nothing, and it belongs to a record that
+exists.** A nullable field holding `null` draws the mark the record page draws
+for the same fact, and pressing it puts the input there; a trailing em-dash puts
+it back. That is the only way to tell a field that is empty from one holding an
+empty string, which the write path keeps apart on purpose. It is off on a record
+being *made*: every field of a new record is unanswered, an unanswered field is
+left out of the write so the column's own default stands, and a form that made
+an operator press a dash before typing into each optional box would be charging
+for a distinction that does not exist yet. An empty box means what the type
+allows — `""` for `text`, `longText`, `email` and `url`, which have one, and
+nothing for the types that do not.
+
+**A refusal is placed by its path and by nothing else.** `values.<field key>`
+puts the sentence under that input and marks it `aria-invalid`; `values`, or a
+path this screen has no input for, is shown at the form. The words are the ones
+written upstream (#056) and the runtime rewrites none of them. The same
+predicate the engine runs (`checkRecordValues`) runs beside the inputs first, so
+an operator is told before a round trip rather than after one — it is not a
+second opinion, and the engine checks again and decides.
+
+**A failed write is said at the form; a successful one is said in the notice
+stack.** The form is still on the screen when a write fails, so the account of
+the failure stays with it — a notice would float over the button the operator is
+about to press again and then take the only account of it away on a clock. A
+success takes the form off the screen, which is exactly the case #050 says a
+notice is for.
+
+**Timestamps are written in the clock they are read in.** Every moment in this
+admin is shown in UTC (#030), so the digits typed into a `datetime-local` are
+UTC digits and are written with `Z`. A `timestamptz` column keeps exactly them
+and a `timestamp` column drops the marker and keeps exactly them; neither is
+shifted by the offset of whichever machine the form was filled in on.
+
+058 · 2026-08 · Customer-repo minimalism, ruled as law: RePanel may
+require code in a customer's repository only when it MUST be theirs by
+nature — business rules (#010), secret/credential custody (#023/#013),
+or the declaration of intent itself (repanel/, #012). Convenience is
+never sufficient cause: agent-authored code is cheap to generate and
+fully owned by the customer forever (maintenance, review, audit).
+Gate for any proposal: "could RePanel do this as a battery instead?" —
+if yes, it's a battery (the runtime-accretion advantage exists precisely
+so improvements land for every customer with zero repo diffs). Applies
+with extra force to recipes: each recipe's customer-side surface is
+measured in lines and minimized as a design goal.
+
+059 · 2026-08 · Where a primary key comes from is declared intent, and
+`database` is what a resource says by saying nothing: the engine leaves the key
+column out of the insert, the column's own default generates, and `RETURNING`
+reports what it issued. A key the client supplies is the explicit exception —
+`primaryKeyGeneration: "client"` opens the `primaryKey` field for writing, and
+the create form asks for it. Why: before this, the primary key was refused
+outright, which quietly ruled out every table whose key is a slug, an
+externally-issued number, or an id the application mints — those resources could
+offer `update` and never `create`, and nothing in the definition could say why.
+
+**The definition never states a generation algorithm.** It says who decides the
+key and stops there. Whether the default behind a `database` key is a sequence,
+a `gen_random_uuid()`, or a trigger is the customer's schema's business; RePanel
+naming it would be RePanel guessing at a column it has never read, and getting
+it wrong would mean writing a key over one the database was going to issue.
+
+**A key is written once, or not at all.** An update refuses the `primaryKey`
+under either value, because a key addresses the record rather than describing it
+— it is in the URL of the very form that would change it (#055). So the control
+exists on the create form and on no other, and the same predicate that decides
+the statement decides which controls are drawn (#056).
+
+**Refused at both layers, like every other write rule.** A key in a create
+payload for a database-generated resource is stopped by the value check and
+again where the statement is assembled, with a path and a hint (#008) rather
+than a bare failure — a definition stored before this existed is served
+unchanged, and the second wall is what stands between it and a write.
+
+**Declared where it means something.** `primaryKeyGeneration` on a resource that
+creates no records is a validation error rather than a harmless extra: it is an
+author who believes they opened something, and silence would be the only answer
+they got.

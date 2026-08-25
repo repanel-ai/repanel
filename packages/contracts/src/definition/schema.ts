@@ -44,6 +44,24 @@ export const writesSchema = z
 
 export type Writes = z.infer<typeof writesSchema>;
 
+/**
+ * Where a new record's primary key comes from.
+ *
+ * `database` — the column has a default and the admin never sends a key: the
+ * insert omits the column and reports back whatever the database issued.
+ * `client` — the key is part of what a record is, so the form asks for it and
+ * the insert writes it. A slug, an externally-issued account number, an id the
+ * application mints: keys somebody has to decide rather than a column can.
+ *
+ * It is a declaration of intent and nothing more. The definition never names a
+ * generation algorithm — no `uuid`, no sequence, no prefix — because that is
+ * the database's own business and RePanel writing it down would be RePanel
+ * guessing at it (DECISIONS #059).
+ */
+export const primaryKeyGenerationSchema = z.enum(["database", "client"]);
+
+export type PrimaryKeyGeneration = z.infer<typeof primaryKeyGenerationSchema>;
+
 export const resourceSchema = z.strictObject({
   key: identifierSchema,
   label: z.strictObject({
@@ -53,6 +71,12 @@ export const resourceSchema = z.strictObject({
   /** v0 binds a resource to a single postgres table. */
   source: z.strictObject({ table: identifierSchema }),
   primaryKey: identifierSchema,
+  /**
+   * Where a new record's key comes from. Left out it is `database`, which is
+   * what every resource meant before this existed: the column has a default and
+   * nothing types a key. Only meaningful on a resource that creates records.
+   */
+  primaryKeyGeneration: primaryKeyGenerationSchema.optional(),
   /**
    * The field a record is displayed by, wherever the admin names one rather
    * than showing it: a relation column, a related list, a link. Falls back to
@@ -107,16 +131,27 @@ export function labelFieldOf(resource: Resource): string {
   return resource.labelField ?? resource.primaryKey;
 }
 
+/**
+ * Where this resource's keys come from. The default is resolved here rather
+ * than in the schema for the same reason `labelField`'s is: an unset
+ * `primaryKeyGeneration` must never report a problem at a path the author did
+ * not write, and the referential pass has to be able to tell a declaration from
+ * a default.
+ */
+export function primaryKeyGenerationOf(resource: Resource): PrimaryKeyGeneration {
+  return resource.primaryKeyGeneration ?? "database";
+}
+
 /** Whether anything at all may be written to this resource from the admin. */
 export function offersWrites(resource: Resource): boolean {
   return resource.writes.create || resource.writes.update;
 }
 
 /**
- * The fields a form may write, in the order the resource declares them. That
- * order is the form's order: a form carries only the opt-in subset, which is
- * small by construction, and the author already put the fields in the order
- * they meant.
+ * The fields the author marked `editable`, in the order the resource declares
+ * them. It is the declaration and not the verdict: whether a write may actually
+ * carry one is `refuseWriteTo`'s answer, which reads the resource as well as the
+ * field and differs between a create and an update.
  */
 export function editableFields(resource: Resource): Field[] {
   return resource.fields.filter((field) => field.editable);

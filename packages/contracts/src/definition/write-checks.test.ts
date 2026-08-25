@@ -44,16 +44,6 @@ test("a sensitive field may not be editable, and the hint never offers unsetting
   assert.doesNotMatch(error.hint, /unset|remove `sensitive`|"sensitive": false/i);
 });
 
-test("the primary key may not be editable", () => {
-  const errors = errorsFor((draft) => {
-    fieldIn(resourceIn(draft, "users"), "id").editable = true;
-  });
-
-  const error = errorAt(errors, "resources[1].fields[0].editable");
-  assert.match(error.message, /is the primary key of `users` and cannot be editable/);
-  assert.match(error.hint, /let the database issue the key/);
-});
-
 test("a json field may not be editable", () => {
   const errors = errorsFor((draft) => {
     fieldIn(resourceIn(draft, "users"), "preferences").editable = true;
@@ -140,4 +130,37 @@ test("a hidden field may be editable: hidden is detail-only, and a form is detai
   const notes = definition.resources[1]?.fields.find((field) => field.key === "notes");
   assert.equal(notes?.hidden, true);
   assert.equal(notes?.editable, true);
+});
+
+test("the primary key may be editable where the resource says the client issues it", () => {
+  const definition = validFor((draft) => {
+    const users = resourceIn(draft, "users");
+    users.primaryKeyGeneration = "client";
+    fieldIn(users, "id").editable = true;
+    fieldIn(users, "id").required = true;
+  });
+
+  const users = definition.resources.find((resource) => resource.key === "users");
+  assert.equal(users?.primaryKeyGeneration, "client");
+});
+
+test("`primaryKeyGeneration` on a resource that creates nothing is an error", () => {
+  const errors = errorsFor((draft) => {
+    resourceIn(draft, "orders").primaryKeyGeneration = "client";
+  });
+
+  const error = errorAt(errors, "resources[2].primaryKeyGeneration");
+  assert.match(error.message, /declares `primaryKeyGeneration` but does not create records/);
+  assert.match(error.hint, /"create": true/);
+  assert.match(error.hint, /remove `resources\[2\].primaryKeyGeneration`/);
+});
+
+test("the primary key may not be editable while the database issues it, and the hint says what would change that", () => {
+  const errors = errorsFor((draft) => {
+    fieldIn(resourceIn(draft, "users"), "id").editable = true;
+  });
+
+  const error = errorAt(errors, "resources[1].fields[0].editable");
+  assert.match(error.message, /is the primary key of `users` and is issued by the database/);
+  assert.match(error.hint, /"primaryKeyGeneration": "client"/);
 });

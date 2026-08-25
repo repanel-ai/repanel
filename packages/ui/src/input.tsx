@@ -14,6 +14,13 @@ export function Input({ className, ...props }: InputProps) {
         "text-body text-foreground outline-none placeholder:text-muted-foreground",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/45",
         "disabled:opacity-50",
+        // The browser draws its own calendar mark on a date or a time field.
+        // It is dressed like the chevron it sits beside rather than left at the
+        // weight the browser picked, and it is styled here so that every date
+        // control in the product gets it without asking.
+        "[&::-webkit-calendar-picker-indicator]:cursor-pointer",
+        "[&::-webkit-calendar-picker-indicator]:opacity-55",
+        "[&::-webkit-calendar-picker-indicator]:hover:opacity-100",
         className,
       )}
       {...props}

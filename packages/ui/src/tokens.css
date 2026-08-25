@@ -134,6 +134,17 @@
    * rather than colour, so it belongs here rather than in a layer.
    */
   --spacing-measure: 1100px;
+  /*
+   * And what a form caps at, which is narrower than either.
+   *
+   * "A table wants every pixel" is an argument about a field of records, and a
+   * form is the one screen in the runtime that is not one. A text input two
+   * thirds of a wide window across is not more usable for it: a line of typed
+   * text has a measure the same way a paragraph does, and a control stretched
+   * past it makes the value harder to read back and the row harder to scan.
+   * The label column plus a comfortable line of body text is where this lands.
+   */
+  --spacing-form: 680px;
 
   /*
    * The one breakpoint the runtime has. Below it the sidebar gives its width to

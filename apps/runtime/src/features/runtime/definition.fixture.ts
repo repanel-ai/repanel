@@ -11,8 +11,8 @@ if (!result.valid) throw new Error("the shared definition fixture no longer vali
 
 export const adminDefinition: Definition = result.definition;
 
-export function resourceIn(key: string): Resource {
-  const resource = adminDefinition.resources.find((candidate) => candidate.key === key);
+export function resourceIn(key: string, definition: Definition = adminDefinition): Resource {
+  const resource = definition.resources.find((candidate) => candidate.key === key);
   if (!resource) throw new Error(`the fixture has no resource \`${key}\``);
   return resource;
 }
@@ -31,6 +31,57 @@ export function adminOffering(resourceKey: string, actionKeys: readonly string[]
     resources: adminDefinition.resources.map((resource) =>
       resource.key === resourceKey
         ? { ...resource, actions: resource.actions.filter((action) => actionKeys.includes(action.key)) }
+        : resource,
+    ),
+  };
+}
+
+
+/**
+ * The same admin with one resource's named fields opened for editing.
+ *
+ * The shared fixture keeps `status` behind an action on purpose — a field that
+ * carries rules is not a form's to write, and saying so is the whole of the
+ * opt-in philosophy it teaches. A form still has to be able to draw an editable
+ * enum, tones and all, so a spec opens one here rather than by weakening what
+ * the fixture teaches everywhere else.
+ */
+export function adminEditing(resourceKey: string, fieldKeys: readonly string[]): Definition {
+  return {
+    ...adminDefinition,
+    resources: adminDefinition.resources.map((resource) =>
+      resource.key === resourceKey
+        ? {
+            ...resource,
+            writes: { create: true, update: true },
+            fields: resource.fields.map((field) =>
+              fieldKeys.includes(field.key) ? { ...field, editable: true } : field,
+            ),
+          }
+        : resource,
+    ),
+  };
+}
+
+/**
+ * The same admin over a table whose keys are chosen rather than generated: the
+ * resource declares `primaryKeyGeneration: "client"` and opens its key field
+ * for writing. It is the one shape in which a primary key reaches a form at
+ * all, and a form has to draw it on a record being made and on nothing else.
+ */
+export function adminKeyedByClient(resourceKey: string): Definition {
+  return {
+    ...adminDefinition,
+    resources: adminDefinition.resources.map((resource) =>
+      resource.key === resourceKey
+        ? {
+            ...resource,
+            primaryKeyGeneration: "client",
+            writes: { create: true, update: true },
+            fields: resource.fields.map((field) =>
+              field.key === resource.primaryKey ? { ...field, editable: true, required: true } : field,
+            ),
+          }
         : resource,
     ),
   };
@@ -155,4 +206,3 @@ export const organizationRecord: RecordDto = {
     created_at: "2025-11-02T14:30:00.000Z",
   },
 };
-

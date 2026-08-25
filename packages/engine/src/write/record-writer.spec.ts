@@ -31,6 +31,25 @@ const RESOURCES: ReadonlyMap<string, Resource> = new Map(
   SAAS.resources.map((resource) => [resource.key, resource]),
 );
 
+/** The same admin over a `users` table whose keys are chosen, not generated. */
+const KEYED = definitionFrom({
+  ...saasDefinition,
+  resources: saasDefinition.resources.map((resource) =>
+    resource.key === "users"
+      ? {
+          ...resource,
+          primaryKeyGeneration: "client" as const,
+          fields: resource.fields.map((field) =>
+            field.key === "id" ? { ...field, editable: true, required: true } : field,
+          ),
+        }
+      : resource,
+  ),
+});
+const KEYED_RESOURCES: ReadonlyMap<string, Resource> = new Map(
+  KEYED.resources.map((resource) => [resource.key, resource]),
+);
+
 /**
  * The select list `users` answers a write with, by position — `c0`, `c1`, … in
  * the order the resource declares its non-sensitive fields, with the relation's
@@ -72,6 +91,7 @@ interface Asked {
 function contextThat(
   answer: QueryResult | Error,
   asked: Asked[] = [],
+  resources: ReadonlyMap<string, Resource> = RESOURCES,
 ): ReadContext & { asked: Asked[] } {
   const pool = {
     query(query: { text: string; values: unknown[] }): Promise<QueryResult> {
@@ -80,7 +100,7 @@ function contextThat(
     },
   } as unknown as Pool;
 
-  return { resources: RESOURCES, pool: () => Promise.resolve(pool), asked };
+  return { resources, pool: () => Promise.resolve(pool), asked };
 }
 
 function write(values: RecordWrite["values"]): RecordWrite {
@@ -161,6 +181,44 @@ describe("RecordWriter", () => {
       )) as ValidationFailedError;
 
       expect(refusal.details.map((detail) => detail.path)).toEqual(["values.email"]);
+    });
+
+    it("refuses a create that carries a key the database issues, before any statement runs", async () => {
+      const context = contextThat(usersRow({ id: "u1" }));
+
+      const refusal = (await refusalFrom(() =>
+        writer.createRecord(context, "users", write({ id: "u_ada", email: "a@b.test", name: "Ada" })),
+      )) as ValidationFailedError;
+
+      expect(refusal).toBeInstanceOf(ValidationFailedError);
+      expect(refusal.details.map((detail) => detail.path)).toEqual(["values.id"]);
+      expect(refusal.details[0]?.hint).toMatch(/"primaryKeyGeneration": "client"/);
+      expect(context.asked).toHaveLength(0);
+    });
+
+    it("writes the key on a create where the resource says the client issues it", async () => {
+      const context = contextThat(usersRow({ id: "u_ada" }), [], KEYED_RESOURCES);
+
+      const record = await writer.createRecord(
+        context,
+        "users",
+        write({ id: "u_ada", email: "a@b.test", name: "Ada" }),
+      );
+
+      expect(context.asked[0]?.text).toContain('insert into "users" ("id", "email", "name")');
+      expect(context.asked[0]?.values).toEqual(["u_ada", "a@b.test", "Ada"]);
+      expect(record.id).toBe("u_ada");
+    });
+
+    it("refuses an update that carries a key, even where the client issues keys", async () => {
+      const context = contextThat(usersRow({ id: "u1" }), [], KEYED_RESOURCES);
+
+      const refusal = (await refusalFrom(() =>
+        writer.updateRecord(context, "users", "u1", write({ id: "u_new" })),
+      )) as ValidationFailedError;
+
+      expect(refusal.details[0]?.path).toBe("values.id");
+      expect(context.asked).toHaveLength(0);
     });
 
     it("refuses a field the definition never opened", async () => {

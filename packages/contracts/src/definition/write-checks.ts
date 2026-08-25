@@ -1,7 +1,12 @@
 import { formatList, type ValidationError } from "./errors.js";
 import { isWritableType, WRITABLE_FIELD_TYPES } from "./fields.js";
 import { sensitiveFieldError, type FieldEntry } from "./reference-errors.js";
-import { editableFields, offersWrites, type Resource } from "./schema.js";
+import {
+  editableFields,
+  offersWrites,
+  primaryKeyGenerationOf,
+  type Resource,
+} from "./schema.js";
 
 /**
  * What a resource may be written through, and whether it said so.
@@ -17,7 +22,10 @@ export function checkWrites(
   at: string,
   fields: ReadonlyMap<string, FieldEntry>,
 ): ValidationError[] {
-  const errors: ValidationError[] = [...checkReadOnly(resource, at)];
+  const errors: ValidationError[] = [
+    ...checkReadOnly(resource, at),
+    ...checkPrimaryKeyGeneration(resource, at),
+  ];
   const offered = offersWrites(resource);
   const editable = editableFields(resource);
 
@@ -66,12 +74,12 @@ export function checkWrites(
       continue;
     }
 
-    if (field.key === resource.primaryKey) {
+    if (field.key === resource.primaryKey && primaryKeyGenerationOf(resource) === "database") {
       errors.push({
         path: `${fieldAt}.editable`,
-        message: `Field \`${field.key}\` is the primary key of \`${resource.key}\` and cannot be editable.`,
-        expected: "a field that is not the resource's `primaryKey`",
-        hint: `A primary key addresses the record rather than describing it — it is in the URL of the very form that would edit it. Remove \`${fieldAt}.editable\`; let the database issue the key, and change what the record says about itself instead.`,
+        message: `Field \`${field.key}\` is the primary key of \`${resource.key}\` and is issued by the database.`,
+        expected: "a field that is not the resource's `primaryKey`, unless `primaryKeyGeneration` is `client`",
+        hint: `A generated key addresses the record rather than describing it — it is in the URL of the very form that would edit it. Remove \`${fieldAt}.editable\` and change what the record says about itself instead. If \`${resource.key}\` is a table whose keys are chosen rather than generated, say so with \`"primaryKeyGeneration": "client"\` on \`${at}\`.`,
       });
       continue;
     }
@@ -87,6 +95,26 @@ export function checkWrites(
   }
 
   return errors;
+}
+
+/**
+ * `primaryKeyGeneration` says where a new record's key comes from, so it means
+ * something only where new records are made. On a resource that creates none it
+ * is not a harmless extra: it is an author who believes they have opened
+ * something, and the silence would be the only answer they got.
+ */
+function checkPrimaryKeyGeneration(resource: Resource, at: string): ValidationError[] {
+  if (resource.primaryKeyGeneration === undefined || resource.writes.create) return [];
+
+  const path = `${at}.primaryKeyGeneration`;
+  return [
+    {
+      path,
+      message: `Resource \`${resource.key}\` declares \`primaryKeyGeneration\` but does not create records.`,
+      expected: "`primaryKeyGeneration` only where `writes` offers `create`",
+      hint: `Where a key comes from is a question only a new record asks. Add \`"create": true\` to \`${at}.writes\` if this resource should offer a create form, or remove \`${path}\`.`,
+    },
+  ];
 }
 
 /**

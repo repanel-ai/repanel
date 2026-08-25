@@ -1,6 +1,6 @@
 import type { Definition, RecordDto, Resource } from "@repanel/contracts";
 import { labelFieldOf } from "@repanel/contracts";
-import { ArrowLeftIcon, Badge, CopyButton, FieldRow, Fields, Section } from "@repanel/ui";
+import { ArrowLeftIcon, Badge, CopyButton, FieldRow, Fields, Section, buttonClasses } from "@repanel/ui";
 import { Link, useLocation, useParams, type To } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { visibleActions } from "./action-visibility";
@@ -193,13 +193,34 @@ function RecordHeader({
         </CopyButton>
       </div>
 
-      {offered.length > 0 && (
-        <RecordActions
-          projectKey={projectKey}
-          resourceKey={resource.key}
-          recordId={record.id}
-          actions={offered}
-        />
+      {(resource.writes.update || offered.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/*
+            * Editing is the runtime's own control rather than one of the
+            * definition's, so it sits at the head of the row and stays there:
+            * an action can come and go with the record's state (#038), and a
+            * button that moves under the pointer is worse than a button that
+            * is always in the same place. It wears the same `outline` clothes
+            * as everything beside it — the runtime does not decide that one of
+            * these is the important one (DESIGN.md §10).
+            */}
+          {resource.writes.update && (
+            <Link
+              to={runtimeRoutes.editRecord(projectKey, resource.key, record.id)}
+              className={buttonClasses({ variant: "outline" })}
+            >
+              Edit
+            </Link>
+          )}
+          {offered.length > 0 && (
+            <RecordActions
+              projectKey={projectKey}
+              resourceKey={resource.key}
+              recordId={record.id}
+              actions={offered}
+            />
+          )}
+        </div>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useMatch } from "react-router";
 import { ApiError } from "../../lib/api-client";
 import { useSession } from "../session/use-session";
 import { ErrorState } from "./error-state";
+import { FormPage } from "./form-page";
 import { RecordPage } from "./record-page";
 import { Sidebar } from "./sidebar";
 import { TablePage } from "./table-page";
@@ -101,9 +102,19 @@ export function RuntimeShell({ projectKey }: { projectKey: string }) {
             path="r/:resourceKey"
             element={<TablePage projectKey={projectKey} definition={admin} />}
           />
+          {/* A static segment outranks a dynamic one, so `new` is the form
+              and never a record whose key happens to be that word. */}
+          <Route
+            path="r/:resourceKey/new"
+            element={<FormPage projectKey={projectKey} definition={admin} mode="create" />}
+          />
           <Route
             path="r/:resourceKey/:recordId"
             element={<RecordPage projectKey={projectKey} definition={admin} />}
+          />
+          <Route
+            path="r/:resourceKey/:recordId/edit"
+            element={<FormPage projectKey={projectKey} definition={admin} mode="update" />}
           />
         </Routes>
       </main>

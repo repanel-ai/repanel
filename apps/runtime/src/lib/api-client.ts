@@ -1,4 +1,4 @@
-import type { ErrorEnvelope } from "@repanel/contracts";
+import type { ErrorEnvelope, ValidationError } from "@repanel/contracts";
 
 /**
  * The renderer's own client. It shares the console's conventions and none of
@@ -16,11 +16,21 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /**
+     * What was wrong, one problem at a time, when the failure was a refusal of
+     * something submitted. Every one carries a path (DECISIONS #008), which is
+     * how a form puts a sentence under the input it belongs to; empty for every
+     * other kind of failure.
+     */
+    readonly details: readonly ValidationError[] = [],
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
+
+/** What a write carries. Nothing else in this app sends a body. */
+type Body = Record<string, unknown>;
 
 export const api = {
   get: async <T>(path: string): Promise<T> => {
@@ -33,32 +43,41 @@ export const api = {
   },
 
   /**
-   * No body, and no parameter for one: the only thing this app posts is an
-   * action, and a v0 action carries no inputs — which record and which action
-   * are both in the address.
+   * Running an action, and creating a record. An action carries no body — which
+   * record and which action are both in the address — and a create carries the
+   * values the form was filled in with.
    */
-  post: async <T>(path: string): Promise<T> => {
-    const response = await fetch(`${BASE_URL}${path}`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!response.ok) throw await errorFrom(response);
-    return (await response.json()) as T;
-  },
+  post: <T>(path: string, body?: Body): Promise<T> => send<T>("POST", path, body),
+
+  /**
+   * Correcting a record. `PATCH` rather than `PUT` because the form sends what
+   * changed: a field the write leaves out keeps the value it has.
+   */
+  patch: <T>(path: string, body: Body): Promise<T> => send<T>("PATCH", path, body),
 };
+
+async function send<T>(method: string, path: string, body?: Body): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    credentials: "include",
+    ...(body === undefined
+      ? {}
+      : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as T;
+}
 
 /**
  * Normalizes the API's `ErrorEnvelope`. Anything else — a proxy's HTML, a body
- * that never arrived — still becomes an ApiError. The renderer surfaces code
- * and message only; `details` belongs to the console, which is where a
- * definition is repaired.
+ * that never arrived — still becomes an ApiError.
  */
 async function errorFrom(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => undefined);
   if (!isErrorEnvelope(body)) {
     return new ApiError(response.status, "unexpected_error", `Request failed (${response.status})`);
   }
-  return new ApiError(response.status, body.error.code, body.error.message);
+  return new ApiError(response.status, body.error.code, body.error.message, body.error.details ?? []);
 }
 
 function isErrorEnvelope(body: unknown): body is ErrorEnvelope {

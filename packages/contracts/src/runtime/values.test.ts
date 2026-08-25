@@ -20,6 +20,23 @@ function users(open: readonly string[] = []): Resource {
   return resource;
 }
 
+/**
+ * The same `users`, keyed by whoever fills the form in rather than by the
+ * database — the one shape in which a primary key reaches a write at all.
+ */
+function clientKeyed(): Resource {
+  const definition = validFor((draft) => {
+    const resource = resourceIn(draft, "users");
+    resource.primaryKeyGeneration = "client";
+    const id = fieldIn(resource, "id");
+    id.editable = true;
+    id.required = true;
+  });
+  const resource = definition.resources.find((candidate) => candidate.key === "users");
+  if (!resource) throw new Error("the fixture has no `users`");
+  return resource;
+}
+
 function problems(
   values: Record<string, JsonValue>,
   mode: WriteMode = "update",
@@ -69,7 +86,44 @@ test("the primary key is refused even though the record is addressed by it", () 
   const [error] = checkRecordValues(users(), "update", { id: "u_2" });
 
   assert.equal(error?.path, "values.id");
-  assert.match(error?.message ?? "", /is the primary key of `users` and is never written/);
+  assert.match(error?.message ?? "", /is the primary key of `users` and is issued by the database/);
+});
+
+test("a create may not carry the key of a resource the database issues keys for", () => {
+  const [error, ...rest] = checkRecordValues(users(), "create", {
+    id: "u_2",
+    email: "a@b.test",
+    name: "Ada",
+  });
+
+  assert.equal(rest.length, 0);
+  assert.equal(error?.path, "values.id");
+  assert.match(error?.message ?? "", /is issued by the database/);
+  assert.match(error?.hint ?? "", /"primaryKeyGeneration": "client"/);
+});
+
+test("a create carries the key where the resource says the client issues it", () => {
+  const resource = clientKeyed();
+
+  assert.deepEqual(
+    checkRecordValues(resource, "create", { id: "u_2", email: "a@b.test", name: "Ada" }),
+    [],
+  );
+});
+
+test("a create that leaves out a client-issued key is refused like any other required field", () => {
+  const [error] = checkRecordValues(clientKeyed(), "create", { email: "a@b.test", name: "Ada" });
+
+  assert.equal(error?.path, "values.id");
+  assert.match(error?.message ?? "", /Required field `id` has no value/);
+});
+
+test("an update never carries the key, however the key came to be", () => {
+  const [error] = checkRecordValues(clientKeyed(), "update", { id: "u_2" });
+
+  assert.equal(error?.path, "values.id");
+  assert.match(error?.message ?? "", /addresses the record and is set when it is made/);
+  assert.doesNotMatch(error?.expected ?? "", /\bid\b/);
 });
 
 test("a json field is refused with the reason it is not writable", () => {

@@ -6,7 +6,15 @@ export { ControlShell, type ControlShellProps } from "./control-shell";
 export { CopyButton, type CopyButtonProps } from "./copy-button";
 export { Dialog, type DialogProps } from "./dialog";
 export { EmptyPanel, type EmptyPanelProps } from "./empty-panel";
-export { FieldRow, Fields, type FieldRowProps } from "./fields";
+export {
+  FieldRow,
+  Fields,
+  FormFieldRow,
+  FormFields,
+  type FieldRowProps,
+  type FormControlProps,
+  type FormFieldRowProps,
+} from "./fields";
 export { FormError, type FormErrorProps } from "./form-error";
 export {
   AlertIcon,
@@ -29,8 +37,9 @@ export { NoValue } from "./no-value";
 export { Relation } from "./relation";
 export { RESOURCE_ICON_NAMES, ResourceIcon, type ResourceIconProps } from "./glyphs";
 export { Section, type SectionProps } from "./section";
-export { Select, type SelectProps } from "./select";
+export { FormSelect, Select, type FormSelectProps, type SelectProps } from "./select";
 export { TabBar, tabClasses } from "./tab-bar";
+export { Textarea, type TextareaProps } from "./textarea";
 export { Toaster, useToaster, type Notices, type ToastMessage, type ToastTone } from "./toast";
 export { Skeleton } from "./skeleton";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";

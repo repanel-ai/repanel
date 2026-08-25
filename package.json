@@ -1,6 +1,7 @@
 {
   "name": "repanel",
   "private": true,
+  "description": "An admin runtime: a coding agent describes your application, RePanel renders the interface.",
   "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=22"

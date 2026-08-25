@@ -69,6 +69,9 @@ const ERROR_CASES: ReadonlyArray<(draft: DefinitionInput) => void> = [
     draft.navigation = [{ label: "Billing", resources: ["invoices"] }];
   },
   (draft) => {
+    draft.navigation[0]?.resources.push("orders");
+  },
+  (draft) => {
     fieldIn(resourceIn(draft, "users"), "name").key = "email";
   },
   (draft) => {

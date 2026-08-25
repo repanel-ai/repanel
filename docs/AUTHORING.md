@@ -141,6 +141,11 @@ repanel/
 }
 ```
 
+**Every resource file is named in exactly one group.** The sidebar is built from
+`navigation` alone, so a resource no group lists is offered nowhere — validation
+refuses it rather than letting it be served to nobody. If a table does not
+belong in the sidebar, it does not belong in `resources/` either.
+
 Each file under `resources/` holds **one resource object** — the same object
 that would appear in the `resources` array — and **the filename is the resource
 key**: `candidates.json` contains the resource whose `"key"` is `"candidates"`.

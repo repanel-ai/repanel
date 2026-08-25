@@ -715,3 +715,39 @@ order is the one a human already has in their head, so `resources[2]` in an
 error is the third thing they see; unlisted resources still need a total
 order, and their key is it. AUTHORING.md §3 still describes hand assembly as
 sort-by-filename and is now a step behind the CLI.
+
+047 · 2026-08 · Navigation must reach every resource: validation refuses a
+definition where a resource key is not listed in exactly one navigation group.
+An unlisted resource is reported at the resource, a repeated one at the entry
+that repeats it, and both hints name the repair before the removal (#015).
+
+Why: the sidebar is built from `navigation` alone, so a resource no group lists
+is declared, stored, served — and never offered to the operator the admin was
+built for. That is the silent degradation #008 has no answer for, which is the
+same argument #027 made for the two containment checks it moved into
+validation; what was missing here too was the repairable error that says so.
+The other direction costs nothing to close at the same time: one resource
+listed twice is two sidebar entries onto one page, both lit whenever either is.
+
+**It narrows, and the ratchet is why it lands now.** A definition that relied on
+the gap becomes invalid without a `schemaVersion` bump — legal only while #012's
+ratchet is open, and this is the third narrowing to spend it (#027, #039).
+Revalidation makes it retroactive rather than prospective: `RuntimeService`
+re-validates the stored draft on every read, so a stored admin with one unlisted
+resource does not lose that resource, it stops rendering altogether. That is the
+strongest reason to spend the ratchet now, before an external definition exists
+to break.
+
+**"Offered nowhere", not "reachable by nowhere".** The runtime resolves
+`r/:resourceKey` out of `resources`, never out of `navigation`, so an unlisted
+resource still renders when a relation link or a typed address lands on it. What
+it has no way of is being found. The rule therefore ends the lookup-resource
+pattern — a resource kept out of the sidebar and reached only through a
+relation — which was legal until now and has no opt-out. If that pattern is
+wanted back it returns as an additive flag, never by relaxing the check.
+
+**AUTHORING.md §3 gains the rule; the assembler keeps the unlisted tail.** #046's
+composition order still ends with every unlisted resource by key, and that tail
+is now load-bearing: it is what carries an unlisted resource into `resources[]`
+so validation can refuse it at a path. An assembler that dropped it would delete
+the resource instead, which is the degradation this check exists to close.

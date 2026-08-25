@@ -44,7 +44,7 @@ test("the multi-file layout composes one definition", async () => {
   ]);
 });
 
-test("resources the navigation does not name are composed after it, by key", async () => {
+test("a resource the navigation does not name is still composed, so it can be refused", async () => {
   const { definition, sources } = await assembleLayout({
     "app.json": {
       schemaVersion: "0.1",

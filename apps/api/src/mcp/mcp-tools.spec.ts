@@ -35,13 +35,18 @@ const PROJECT: ProjectDto = {
 /** A definition missing everything below `app`, so validation has plenty to say. */
 const BROKEN = { schemaVersion: "0.1", app: { name: "Acme Admin" } };
 
-/** Structurally sound, but every navigation entry points at nothing. */
+/** Structurally sound, but forty navigation entries point at nothing. */
 const FORTY_PROBLEMS = {
   ...saasDefinition,
-  navigation: Array.from({ length: 40 }, (_unused, index) => ({
-    label: `Group ${index}`,
-    resources: [`missing_${index}`],
-  })),
+  navigation: [
+    // The fixture's own groups stay, so the resources remain reachable and the
+    // forty problems are forty of one kind.
+    ...saasDefinition.navigation,
+    ...Array.from({ length: 40 }, (_unused, index) => ({
+      label: `Group ${index}`,
+      resources: [`missing_${index}`],
+    })),
+  ],
 };
 
 const DOCUMENTATION = "# RePanel definition schema — v0\n\nEvery key, written out.";

@@ -4,7 +4,12 @@
  *
  * Composition order is a contract, not a detail. Problems are reported at
  * paths like `resources[2].fields[0]`, and an index that means a different
- * resource on the next run is an index nobody can act on (AUTHORING.md §3).
+ * resource on the next run is an index nobody can act on (DECISIONS #046).
+ *
+ * The unlisted tail is load-bearing rather than leftover: validation refuses a
+ * resource no navigation group names, and it can only refuse one that reached
+ * the composed array. Dropping the tail would delete the resource here instead,
+ * which is the silent degradation the check exists to close (DECISIONS #047).
  */
 export function orderResourceKeys(
   navigationOrder: readonly string[],

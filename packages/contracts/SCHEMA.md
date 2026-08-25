@@ -29,8 +29,11 @@ Validate a definition with `validateDefinition(input)` from
 |---|---|---|
 | `schemaVersion` | yes | Always `"0.1"` in v0. |
 | `app.name` | yes | Product name shown in the admin shell. |
-| `navigation` | yes, ≥1 | Ordered sidebar groups. |
+| `navigation` | yes, ≥1 | Ordered sidebar groups. Between them they name every resource, exactly once. |
 | `resources` | yes, ≥1 | Every resource the admin exposes. |
+
+The `resources` array is elided above; a complete, valid definition lives in
+`@repanel/contracts/fixtures`.
 
 Unknown keys are rejected everywhere — a typo is an error, never a silently
 ignored setting.
@@ -43,8 +46,14 @@ An ordered list of groups; each group lists resource keys in display order.
 { "label": "Commerce", "resources": ["orders"] }
 ```
 
-A resource does not have to appear in navigation, and the group label is free
-text.
+**Every resource appears in navigation, exactly once.** The sidebar is built
+from these groups and from nothing else, so a resource no group lists is offered
+nowhere: it validates, it is served, and an operator never sees that it is
+there. A resource two groups list is the mirror image — two entries onto one
+page. Both are validation errors: an unlisted resource is reported at the
+resource, a repeated one at the entry that repeats it.
+
+The group label is free text.
 
 ## Resource
 
@@ -352,6 +361,8 @@ Validation runs in two passes. The **structural** pass is the schema parse:
 types, required keys, allowed values, unknown keys. The **referential** pass
 then checks what a schema cannot express:
 
+- every resource is named by exactly one navigation entry: none unreachable,
+  none listed twice;
 - every navigation entry, column, sort field, search field, filter field,
   section field, related list, relationship target, relation-field target,
   primary key, label field, `dbUpdate` field, `httpCall` URL placeholder and

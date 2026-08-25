@@ -14,16 +14,6 @@ test("resource keys must be unique", () => {
   assert.match(error.hint, /Rename `resources\[2\]\.key` or remove the duplicate resource/);
 });
 
-test("navigation may only reference resources that exist", () => {
-  const errors = errorsFor((draft) => {
-    draft.navigation = [{ label: "Billing", resources: ["invoices"] }];
-  });
-
-  const error = errorAt(errors, "navigation[0].resources[0]");
-  assert.equal(error.message, "Navigation references unknown resource `invoices`.");
-  assert.equal(error.hint, "Change `navigation[0].resources[0]` to one of: organizations, users, orders.");
-});
-
 test("independent referential problems are all reported at once", () => {
   const errors = errorsFor((draft) => {
     const users = resourceIn(draft, "users");

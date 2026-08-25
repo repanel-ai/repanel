@@ -9,9 +9,9 @@ internet.
 Every such request is signed with a secret only your project and RePanel hold.
 This document is the whole scheme. It is what the per-stack guides point at, and
 it is checked against the code that produces the signature by a test in this
-repo (`apps/api/src/actions/signing-doc.spec.ts`) — the snippet below is read out
-of this file and run against a request the real signer produced, so it cannot
-drift from what RePanel actually sends.
+repo (`packages/engine/src/actions/signing-doc.spec.ts`) — the snippet below is
+read out of this file and run against a request the real signer produced, so it
+cannot drift from what RePanel actually sends.
 
 ## The secret
 

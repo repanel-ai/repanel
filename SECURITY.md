@@ -75,3 +75,8 @@ application, is **[`docs/SIGNING.md`](docs/SIGNING.md)**.
 
 If your finding contradicts something asserted in either document, say so; a
 wrong claim in the threat model is itself a defect worth reporting.
+
+Self-hosting is one of the answers the threat model gives, so the licence that
+makes it possible is part of the same conversation:
+**[`docs/LICENSING.md`](docs/LICENSING.md)** explains the per-package split in
+plain language.

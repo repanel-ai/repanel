@@ -13,7 +13,8 @@ preview labeling, trust answers one click away) lands here.
   screenshot pair (runtime table light + detail); PUBLIC PREVIEW box —
   what works today (read + actions, the loop, local mode) and the
   Stage-3 roadmap (forms, audit, roles, connector) linked to issues;
-  security & licensing links (022); how it works (five layers, one
+  security & licensing links — `docs/THREAT-MODEL.md` and
+  `docs/LICENSING.md` (022); how it works (five layers, one
   diagram-as-text or image); contributing pointer.
 - docs/DEMO.md: the exact filmable script for the 60-second video
   (scene list against Crewbase), so recording is mechanical.

@@ -147,6 +147,9 @@ by convention, but because the validator refuses a definition that tries.
 >   re-checks the definition on every save.
 > - **The cloud rungs.** `repanel link`, `repanel deploy`, and an MCP server with
 >   five tools for agents that would rather submit than write files.
+> - **Draft and published.** An agent submits freely; the admin serves the
+>   version that was published. A submission that does not validate is stored
+>   with its problems and takes nothing down.
 > - **PostgreSQL**, and one database at a time.
 >
 > **Not yet**
@@ -156,7 +159,6 @@ by convention, but because the validator refuses a definition that tries.
 > | Create and edit forms | [026](docs/tasks/026-forms-contract-engine.md) · [027](docs/tasks/027-forms-ui.md) |
 > | Audit log — who did what, when | [028](docs/tasks/028-audit-log.md) |
 > | Operator accounts and roles | [029](docs/tasks/029-operator-roles.md) |
-> | Draft / published snapshots | [025](docs/tasks/025-publishing.md) |
 > | Supabase and pooled connections | [030](docs/tasks/030-supabase-pooler.md) |
 > | The connector, for databases we cannot reach | [031](docs/tasks/031-connector.md) |
 > | MySQL, bulk actions, CSV, saved views | [the backlog](docs/BACKLOG.md) |

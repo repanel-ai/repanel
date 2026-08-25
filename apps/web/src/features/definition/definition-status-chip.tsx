@@ -11,5 +11,5 @@ export function DefinitionStatusChip({ projectId }: { projectId: string }) {
   const status = useDefinitionStatus(projectId);
 
   if (!status.data) return <Skeleton className="h-[19px] w-24" />;
-  return <DefinitionBadge status={status.data.status} />;
+  return <DefinitionBadge status={status.data.draft.status} />;
 }

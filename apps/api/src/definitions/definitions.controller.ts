@@ -1,5 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Put, UseGuards } from "@nestjs/common";
-import type { DefinitionStatusDto, DefinitionSubmissionDto, UserDto } from "@repanel/contracts";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UseGuards } from "@nestjs/common";
+import type {
+  DefinitionStatusDto,
+  DefinitionSubmissionDto,
+  PublishedDefinitionDto,
+  UserDto,
+} from "@repanel/contracts";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionAuthGuard } from "../auth/session-auth.guard";
 import { DefinitionsService } from "./definitions.service";
@@ -35,5 +40,14 @@ export class DefinitionsController {
     @Body() payload: unknown,
   ): Promise<DefinitionSubmissionDto> {
     return this.definitions.submit(user.id, projectId, payload);
+  }
+
+  /** Makes the draft the version the admin serves. */
+  @Post("publish")
+  publish(
+    @CurrentUser() user: UserDto,
+    @Param("projectId", ParseUUIDPipe) projectId: string,
+  ): Promise<PublishedDefinitionDto> {
+    return this.definitions.publish(user.id, projectId);
   }
 }

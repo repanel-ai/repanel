@@ -1,11 +1,24 @@
-import type { DefinitionStatusDto, DefinitionSubmissionDto, UserDto } from "@repanel/contracts";
+import type {
+  DefinitionStatusDto,
+  DefinitionSubmissionDto,
+  PublishedDefinitionDto,
+  UserDto,
+} from "@repanel/contracts";
 import { DefinitionsController } from "./definitions.controller";
 import type { DefinitionsService } from "./definitions.service";
 
 const USER: UserDto = { id: "user-ada", email: "ada@example.com", name: "Ada" };
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 
-const STATUS: DefinitionStatusDto = { status: "valid", updatedAt: "2026-08-19T09:30:00.000Z" };
+const STATUS: DefinitionStatusDto = {
+  draft: { status: "valid", updatedAt: "2026-08-19T09:30:00.000Z" },
+  published: { version: 1, publishedAt: "2026-08-19T09:31:00.000Z" },
+  unpublishedChanges: false,
+};
+const PUBLISHED: PublishedDefinitionDto = {
+  version: 2,
+  publishedAt: "2026-08-19T10:00:00.000Z",
+};
 const SUBMITTED: DefinitionSubmissionDto = {
   valid: true,
   adminUrl: "https://admin.repanel.test/a/crewbase-a3k9x2",
@@ -23,6 +36,10 @@ describe("DefinitionsController", () => {
       asked.push(["submit", ownerId, projectId, payload]);
       return Promise.resolve(SUBMITTED);
     },
+    publish: (ownerId: string, projectId: string) => {
+      asked.push(["publish", ownerId, projectId]);
+      return Promise.resolve(PUBLISHED);
+    },
   } as unknown as DefinitionsService;
   const controller = new DefinitionsController(definitions);
 
@@ -38,5 +55,13 @@ describe("DefinitionsController", () => {
     await expect(controller.submit(USER, PROJECT_ID, DEFINITION)).resolves.toEqual(SUBMITTED);
 
     expect(asked).toEqual([["submit", "user-ada", PROJECT_ID, DEFINITION]]);
+  });
+
+  it("publishes the signed-in user's draft", async () => {
+    asked.length = 0;
+
+    await expect(controller.publish(USER, PROJECT_ID)).resolves.toEqual(PUBLISHED);
+
+    expect(asked).toEqual([["publish", "user-ada", PROJECT_ID]]);
   });
 });

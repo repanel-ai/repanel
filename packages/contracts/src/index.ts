@@ -13,6 +13,7 @@ export * from "./definition/identifier.js";
 export * from "./definition/schema.js";
 export * from "./definition/validate.js";
 export * from "./definition/views.js";
+export * from "./definitions/published.js";
 export * from "./definitions/status.js";
 export * from "./definitions/submission.js";
 export * from "./errors/envelope.js";

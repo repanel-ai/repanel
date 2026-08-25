@@ -3,7 +3,7 @@ import { saasDefinition } from "@repanel/contracts/fixtures";
 import { QueryBuilder, RecordReader } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
-import type { DefinitionDraft } from "../definitions/definitions.mapper";
+import type { PublishedDefinition, StoredValidation } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import { InvalidQueryError, NotFoundError, QueryTimeoutError } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
@@ -67,20 +67,29 @@ function failure(code: string): Error {
   return Object.assign(new Error("driver said something we do not repeat"), { code });
 }
 
-function draftOf(payload: unknown, valid = true): DefinitionDraft {
-  return { payload, valid, errors: null, updatedAt: "2026-08-19T09:00:00.000Z" };
+function publishedOf(payload: unknown, version = 1): PublishedDefinition {
+  return { payload, version, publishedAt: "2026-08-19T09:00:00.000Z" };
+}
+
+function draftOf(valid: boolean): StoredValidation {
+  return { valid, errors: null, updatedAt: "2026-08-19T09:00:00.000Z" };
 }
 
 describe("RuntimeService", () => {
   let pool: FakePool;
   let projects: { requireOwnedByKey: jest.Mock };
-  let definitions: { getDraft: jest.Mock };
+  let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let runtime: RuntimeService;
 
   beforeEach(() => {
     pool = new FakePool();
     projects = { requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT) };
-    definitions = { getDraft: jest.fn().mockResolvedValue(draftOf(saasDefinition)) };
+    definitions = {
+      getPublished: jest.fn().mockResolvedValue(publishedOf(saasDefinition)),
+      // Only ever asked when there is nothing published, to tell a project
+      // waiting on its first definition from one waiting to be published.
+      getValidationResult: jest.fn().mockResolvedValue(null),
+    };
     runtime = new RuntimeService(
       projects as unknown as ProjectsService,
       definitions as unknown as DefinitionsService,
@@ -119,24 +128,54 @@ describe("RuntimeService", () => {
       const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
-      expect(definitions.getDraft).not.toHaveBeenCalled();
+      expect(definitions.getPublished).not.toHaveBeenCalled();
+    });
+
+    it("renders the published version rather than the draft", async () => {
+      definitions.getPublished.mockResolvedValue(publishedOf(saasDefinition, 3));
+
+      await runtime.definitionFor(OWNER, PROJECT.key);
+
+      // The draft is not read at all on the way to an answer: whatever an agent
+      // submitted a second ago is not what this is serving.
+      expect(definitions.getValidationResult).not.toHaveBeenCalled();
     });
 
     it("says there is nothing to render when nothing has been submitted", async () => {
-      definitions.getDraft.mockResolvedValue(null);
+      definitions.getPublished.mockResolvedValue(null);
+
+      const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(refusal.message).toBe("This project has no definition yet");
+    });
+
+    it("says a draft is waiting to be published rather than repeating the first answer", async () => {
+      definitions.getPublished.mockResolvedValue(null);
+      definitions.getValidationResult.mockResolvedValue(draftOf(true));
+
+      const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(refusal.message).toBe("This admin has not been published yet");
+    });
+
+    it("says the same of a draft that is waiting and did not validate", async () => {
+      definitions.getPublished.mockResolvedValue(null);
+      definitions.getValidationResult.mockResolvedValue(draftOf(false));
+
+      const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
+
+      expect(refusal.message).toBe("This admin has not been published yet");
+    });
+
+    it("stops rendering when a published version no longer validates", async () => {
+      definitions.getPublished.mockResolvedValue(publishedOf({ schemaVersion: "0.1" }));
 
       const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(refusal.message).toBe("This project has no valid definition yet");
-    });
-
-    it("says the same when what was submitted does not validate", async () => {
-      definitions.getDraft.mockResolvedValue(draftOf({ schemaVersion: "0.1" }, false));
-
-      const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
-
-      expect(refusal).toBeInstanceOf(NotFoundError);
     });
   });
 

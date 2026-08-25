@@ -1,5 +1,5 @@
-import type { DefinitionStatusDto } from "@repanel/contracts";
-import { useQuery } from "@tanstack/react-query";
+import type { DefinitionStatusDto, PublishedDefinitionDto } from "@repanel/contracts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 
 /**
@@ -10,7 +10,7 @@ import { api } from "../../lib/api-client";
  */
 const POLL_MS = 10_000;
 
-/** Every cache key this feature reads comes from here. */
+/** Every cache key this feature reads or invalidates comes from here. */
 export const definitionKeys = {
   all: ["definition"] as const,
   status: (projectId: string) => [...definitionKeys.all, projectId, "status"] as const,
@@ -21,5 +21,20 @@ export function useDefinitionStatus(projectId: string) {
     queryKey: definitionKeys.status(projectId),
     queryFn: () => api.get<DefinitionStatusDto>(`/projects/${projectId}/definition/status`),
     refetchInterval: POLL_MS,
+  });
+}
+
+/**
+ * Makes the draft the version operators are served. A mutation because it is
+ * something a human does once, on purpose: nothing about publishing should
+ * happen again on its own when a window regains focus.
+ */
+export function usePublishDefinition(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      api.post<PublishedDefinitionDto>(`/projects/${projectId}/definition/publish`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: definitionKeys.status(projectId) }),
   });
 }

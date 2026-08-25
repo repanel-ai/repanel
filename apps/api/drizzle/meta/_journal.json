@@ -43,6 +43,13 @@
       "when": 1787438983268,
       "tag": "0005_premium_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787674715304,
+      "tag": "0006_gigantic_mentor",
+      "breakpoints": true
     }
   ]
 }

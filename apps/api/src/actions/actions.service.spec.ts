@@ -3,7 +3,7 @@ import { saasDefinition } from "@repanel/contracts/fixtures";
 import { ActionRunner, HttpCall, QueryBuilder, RecordReader } from "@repanel/engine";
 import type { Pool, QueryResult } from "pg";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
-import type { DefinitionDraft } from "../definitions/definitions.mapper";
+import type { PublishedDefinition } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import {
   ActionFailedError,
@@ -79,14 +79,14 @@ function failure(code: string): Error {
   return Object.assign(new Error("driver said something we do not repeat"), { code });
 }
 
-function draftOf(payload: unknown): DefinitionDraft {
-  return { payload, valid: true, errors: null, updatedAt: "2026-08-19T09:00:00.000Z" };
+function publishedOf(payload: unknown): PublishedDefinition {
+  return { payload, version: 1, publishedAt: "2026-08-19T09:00:00.000Z" };
 }
 
 describe("ActionsService", () => {
   let pool: FakePool;
   let projects: { requireOwnedByKey: jest.Mock; actionSecret: jest.Mock };
-  let definitions: { getDraft: jest.Mock };
+  let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let http: { send: jest.Mock };
   let actions: ActionsService;
 
@@ -96,7 +96,10 @@ describe("ActionsService", () => {
       requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT),
       actionSecret: jest.fn().mockResolvedValue(SECRET),
     };
-    definitions = { getDraft: jest.fn().mockResolvedValue(draftOf(saasDefinition)) };
+    definitions = {
+      getPublished: jest.fn().mockResolvedValue(publishedOf(saasDefinition)),
+      getValidationResult: jest.fn().mockResolvedValue(null),
+    };
     http = { send: jest.fn().mockResolvedValue(undefined) };
 
     const queries = new QueryBuilder();
@@ -327,8 +330,8 @@ describe("ActionsService", () => {
       expect(http.send).not.toHaveBeenCalled();
     });
 
-    it("runs nothing against a project whose definition does not validate", async () => {
-      definitions.getDraft.mockResolvedValue(draftOf({ schemaVersion: "0.1" }));
+    it("runs nothing against a project whose published definition does not validate", async () => {
+      definitions.getPublished.mockResolvedValue(publishedOf({ schemaVersion: "0.1" }));
 
       const refusal = await refusalFrom(actions.run(OWNER, PROJECT.key, "users", "u_1", "suspend"));
 

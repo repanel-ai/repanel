@@ -1,32 +1,54 @@
-import { Card, EmptyPanel, FormError, Skeleton, buttonClasses } from "@repanel/ui";
+import { Card, EmptyPanel, FormError, Skeleton } from "@repanel/ui";
 import { useParams } from "react-router";
 import { PageHead } from "../../page-head";
 import { messageOf } from "../../lib/api-client";
-import { formatMoment } from "../../lib/format-date";
 import { useProject } from "../projects/use-projects";
-import { DefinitionErrors } from "./definition-errors";
+import { DraftDefinition } from "./draft-definition";
+import { PublishedDefinition } from "./published-definition";
 import { useDefinitionStatus } from "./use-definition-status";
 
 /**
- * How the project's definition stands, and what to do about it. The three
- * states are three different screens because they are three different moments:
- * before the loop has run, while it is being repaired, and after it works.
+ * How the project's definition stands, and what to do about it.
+ *
+ * Two facts, in the order they matter: the version operators are being served,
+ * and the draft the agent is working on. A project with nothing submitted at
+ * all is neither of those — it is the loop not having run yet, and it gets the
+ * screen it had before any of this existed.
  */
 export function DefinitionPage({ runtimeUrl }: { runtimeUrl: string }) {
   const { id = "" } = useParams();
   const project = useProject(id);
   const status = useDefinitionStatus(id);
 
-  return (
-    <>
-      <PageHead title="Definition" meta="what your agent submitted, and what RePanel renders from it" />
+  const head = (
+    <PageHead
+      title="Definition"
+      meta="what your agent submitted, and what your operators are being served"
+    />
+  );
 
-      <Card className="flex flex-col gap-4 p-5">
-        {status.isPending && <Skeleton className="h-16 w-full" />}
+  if (!status.data) {
+    return (
+      <>
+        {head}
+        <Card className="flex flex-col gap-4 p-5">
+          {status.isError ? (
+            <FormError message={messageOf(status.error)} />
+          ) : (
+            <Skeleton className="h-16 w-full" />
+          )}
+        </Card>
+      </>
+    );
+  }
 
-        {status.isError && <FormError message={messageOf(status.error)} />}
+  const { draft, published, unpublishedChanges } = status.data;
 
-        {status.data?.status === "none" && (
+  if (draft.status === "none") {
+    return (
+      <>
+        {head}
+        <Card>
           <EmptyPanel
             className="py-6"
             title="No definition yet"
@@ -36,32 +58,22 @@ export function DefinitionPage({ runtimeUrl }: { runtimeUrl: string }) {
               "changes on its own when it lands."
             }
           />
-        )}
+        </Card>
+      </>
+    );
+  }
 
-        {status.data?.status === "invalid" && (
-          <>
-            <p className="text-body">
-              The last definition your agent submitted did not validate.{" "}
-              <span className="text-muted-foreground">
-                It is stored as it was sent, so nothing is lost — the agent can read these
-                problems back and repair it.
-              </span>
-            </p>
-            <DefinitionErrors errors={status.data.errors} />
-          </>
-        )}
+  return (
+    <>
+      {head}
 
-        {status.data?.status === "valid" && project.data && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-body text-muted-foreground">
-              Submitted {formatMoment(status.data.updatedAt)}
-            </p>
-            <a className={buttonClasses()} href={`${runtimeUrl}/a/${project.data.key}`}>
-              Open admin
-            </a>
-          </div>
-        )}
-      </Card>
+      <PublishedDefinition
+        published={published}
+        unpublishedChanges={unpublishedChanges}
+        adminUrl={project.data ? `${runtimeUrl}/a/${project.data.key}` : null}
+      />
+
+      <DraftDefinition projectId={id} draft={draft} unpublishedChanges={unpublishedChanges} />
     </>
   );
 }

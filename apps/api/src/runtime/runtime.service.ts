@@ -8,12 +8,21 @@ import {
   type RecordListDto,
 } from "@repanel/contracts";
 import { RecordReader, indexResources, type ReadContext } from "@repanel/engine";
+import type { Principal } from "../auth/principal";
 import { CustomerPoolService } from "../connections/customer-pool.service";
 import { DefinitionsService } from "../definitions/definitions.service";
 import { NotFoundError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 
-const NO_DEFINITION = "This project has no valid definition yet";
+/** Nothing has ever been submitted: the authoring loop has not run. */
+const NO_DEFINITION = "This project has no definition yet";
+
+/** A draft exists and nobody has made it live. Said apart from the above
+ *  because they are two different things to go and do about it. */
+const NOT_PUBLISHED = "This admin has not been published yet";
+
+/** A version is live but no longer validates — a narrowing landed under it. */
+const UNSERVABLE = "This project has no valid definition yet";
 
 /** A project, the definition it is rendered from, and the database behind it. */
 export interface ProjectContext extends ReadContext {
@@ -83,15 +92,19 @@ export class RuntimeService {
    * keeps there being one answer to "may this caller see this admin".
    */
   async readContext(ownerId: string, projectKey: string): Promise<ProjectContext> {
+    const principal: Principal = { kind: "user", userId: ownerId };
     const project = await this.projects.requireOwnedByKey(projectKey, ownerId);
-    const draft = await this.definitions.getDraft({ kind: "user", userId: ownerId }, project.id);
-    if (!draft) throw new NotFoundError(NO_DEFINITION);
+
+    // The published version, never the draft. What an agent submits next is not
+    // a deployment, so an admin being served cannot be taken down by one.
+    const published = await this.definitions.getPublished(principal, project.id);
+    if (!published) throw new NotFoundError(await this.nothingPublished(principal, project.id));
 
     // Validated again rather than trusted: the stored payload is what was
     // submitted, and what the engine needs is what validation makes of it —
     // defaults applied, and a type the query builder can walk.
-    const result = validateDefinition(draft.payload);
-    if (!result.valid) throw new NotFoundError(NO_DEFINITION);
+    const result = validateDefinition(published.payload);
+    if (!result.valid) throw new NotFoundError(UNSERVABLE);
 
     return {
       projectId: project.id,
@@ -102,5 +115,16 @@ export class RuntimeService {
       // database behind it.
       pool: () => this.pools.poolFor(project.id),
     };
+  }
+
+  /**
+   * Why there is nothing to serve. Only asked once there is nothing — a project
+   * waiting on its first definition and one whose draft is waiting to be
+   * published are the same blank screen otherwise, and they are not the same
+   * thing to go and do.
+   */
+  private async nothingPublished(principal: Principal, projectId: string): Promise<string> {
+    const draft = await this.definitions.getValidationResult(principal, projectId);
+    return draft ? NOT_PUBLISHED : NO_DEFINITION;
   }
 }

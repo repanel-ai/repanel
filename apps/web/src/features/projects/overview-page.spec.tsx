@@ -5,6 +5,14 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverviewPage } from "./overview-page";
 
+/** A project nothing has been submitted to, as the API answers it. */
+const NO_DEFINITION: DefinitionStatusDto = {
+  draft: { status: "none" },
+  published: null,
+  unpublishedChanges: false,
+};
+
+
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const API_URL = "https://api.repanel.test";
 
@@ -77,7 +85,7 @@ function show(facts: {
         return facts.connection ? json(facts.connection) : new Response("", { status: 200 });
       }
       if (input.endsWith("/agent-tokens")) return json(facts.tokens);
-      if (input.endsWith("/definition/status")) return json(facts.definition ?? { status: "none" });
+      if (input.endsWith("/definition/status")) return json(facts.definition ?? NO_DEFINITION);
       return new Response("", { status: 404 });
     }),
   );

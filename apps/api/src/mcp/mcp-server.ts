@@ -15,7 +15,9 @@ const INSTRUCTIONS = `Author the RePanel admin definition for the project this t
 Inspect the customer's application and database first, then read get_schema_documentation, then
 get_definition if a draft already exists. Submit with submit_definition: it replaces the whole
 draft, so send the complete definition object every time. Invalid submissions are stored and
-answered with every problem found — repair them and submit again until the definition is valid.`;
+answered with every problem found — repair them and submit again until the definition is valid.
+A definition that validates is published: it becomes the version the live admin serves. One that
+does not is never published, so an admin already running keeps serving while you repair.`;
 
 /** The server one agent talks to, with the tools it may reach and nothing else. */
 export function createMcpServer(agent: AgentPrincipal, deps: ToolDependencies): McpServer {

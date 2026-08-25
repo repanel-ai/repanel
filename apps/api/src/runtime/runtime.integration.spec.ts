@@ -217,8 +217,8 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     runtime = new RuntimeService(
       { requireOwnedByKey: () => Promise.resolve(PROJECT) } as unknown as ProjectsService,
       {
-        getDraft: () =>
-          Promise.resolve({ payload: draft, valid: true, errors: null, updatedAt: "2026-08-19T09:00:00.000Z" }),
+        getPublished: () =>
+          Promise.resolve({ payload: draft, version: 1, publishedAt: "2026-08-19T09:00:00.000Z" }),
       } as unknown as DefinitionsService,
       pools,
       new RecordReader(new QueryBuilder()),

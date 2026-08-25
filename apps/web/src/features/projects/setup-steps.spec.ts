@@ -11,7 +11,25 @@ const UNUSED: AgentTokenDto = {
 };
 const USED: AgentTokenDto = { ...UNUSED, id: "t_2", lastUsedAt: "2026-08-23T08:41:00.000Z" };
 
-const NOTHING: SetupFacts = { connection: null, tokens: [], definition: { status: "none" } };
+const NOTHING: SetupFacts = {
+  connection: null,
+  tokens: [],
+  definition: { draft: { status: "none" }, published: null, unpublishedChanges: false },
+};
+
+/** A definition that validated, submitted and published a minute later. */
+const PUBLISHED: DefinitionStatusDto = {
+  draft: { status: "valid", updatedAt: "2026-08-23T09:14:00.000Z" },
+  published: { version: 1, publishedAt: "2026-08-23T09:15:00.000Z" },
+  unpublishedChanges: false,
+};
+
+/** The same definition, submitted and left waiting for a human to publish it. */
+const UNPUBLISHED: DefinitionStatusDto = {
+  draft: { status: "valid", updatedAt: "2026-08-23T09:14:00.000Z" },
+  published: null,
+  unpublishedChanges: true,
+};
 
 /** The four states, in order, as one string — easier to read than four asserts. */
 function states(facts: Partial<SetupFacts>): Record<StepKey, StepState> {
@@ -51,11 +69,7 @@ describe("setupSteps", () => {
     // A definition cannot have arrived any other way, and a token's last-used
     // stamp can be read a moment late. Step four done over step three undone
     // would report something that never happened.
-    const facts = {
-      connection: CONNECTED,
-      tokens: [UNUSED],
-      definition: { status: "valid", updatedAt: "2026-08-23T09:14:00.000Z" } as DefinitionStatusDto,
-    };
+    const facts = { connection: CONNECTED, tokens: [UNUSED], definition: PUBLISHED };
 
     expect(states(facts)).toEqual({
       database: "done",
@@ -65,11 +79,33 @@ describe("setupSteps", () => {
     });
   });
 
+  it("leaves the last step undone while nothing has been published, and names the way on", () => {
+    // A valid draft is not an admin: nobody can open what has not gone live.
+    const steps = setupSteps({ connection: CONNECTED, tokens: [USED], definition: UNPUBLISHED });
+    const admin = steps.find((step) => step.key === "admin");
+
+    expect(admin?.state).toBe("current");
+    // Not "ask your agent to build one": it built one. What is left is the
+    // reader's own to do, and telling them to wait would be telling them wrong.
+    expect(admin?.note).toContain("Publish it on the Definition page");
+    expect(admin?.note).not.toContain("changes on its own");
+  });
+
+  it("says the admin renders the published version, not the last thing submitted", () => {
+    const steps = setupSteps({ connection: CONNECTED, tokens: [USED], definition: PUBLISHED });
+
+    expect(steps.find((step) => step.key === "admin")?.note).toContain("the version you published");
+  });
+
   it("leaves the last step undone while a definition is invalid, and says why", () => {
     const definition: DefinitionStatusDto = {
-      status: "invalid",
-      errorCount: 1,
-      errors: [{ path: "navigation", message: "Required key `navigation` is missing.", expected: "an array", hint: "Add one." }],
+      draft: {
+        status: "invalid",
+        errorCount: 1,
+        errors: [{ path: "navigation", message: "Required key `navigation` is missing.", expected: "an array", hint: "Add one." }],
+      },
+      published: null,
+      unpublishedChanges: true,
     };
 
     const steps = setupSteps({ connection: CONNECTED, tokens: [USED], definition });
@@ -80,11 +116,7 @@ describe("setupSteps", () => {
   });
 
   it("has nothing current once every step is done", () => {
-    const done = setupSteps({
-      connection: CONNECTED,
-      tokens: [USED],
-      definition: { status: "valid", updatedAt: "2026-08-23T09:14:00.000Z" },
-    });
+    const done = setupSteps({ connection: CONNECTED, tokens: [USED], definition: PUBLISHED });
 
     expect(done.every((step) => step.state === "done")).toBe(true);
   });

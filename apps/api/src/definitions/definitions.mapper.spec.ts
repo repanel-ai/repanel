@@ -1,5 +1,11 @@
 import type { ValidationError } from "@repanel/contracts";
-import { toDefinitionDraft, toDefinitionStatus, toStoredValidation } from "./definitions.mapper";
+import type { DefinitionVersionRow } from "./definition-versions.repository";
+import {
+  toDefinitionDraft,
+  toDefinitionStatus,
+  toPublishedDefinition,
+  toStoredValidation,
+} from "./definitions.mapper";
 import type { DefinitionRow } from "./definitions.repository";
 
 const MISSING_NAVIGATION: ValidationError = {
@@ -20,6 +26,17 @@ const ROW: DefinitionRow = {
 };
 
 const VALID_ROW: DefinitionRow = { ...ROW, valid: true, errors: null };
+
+const VERSION_ROW: DefinitionVersionRow = {
+  id: "b1d0a4f2-77b1-4f0e-9a4a-2c6c7d8e9f00",
+  projectId: ROW.projectId,
+  version: 3,
+  payload: { schemaVersion: "0.1", app: { name: "Acme Admin" } },
+  publishedAt: new Date("2026-08-19T09:00:00.000Z"),
+};
+
+/** The version that is live, as the feature passes it around. */
+const PUBLISHED = toPublishedDefinition(VERSION_ROW);
 
 describe("toDefinitionDraft", () => {
   it("renders the row as the shape the feature hands out", () => {
@@ -72,13 +89,32 @@ describe("toStoredValidation", () => {
   });
 });
 
+describe("toPublishedDefinition", () => {
+  it("renders the row as the shape the feature hands out", () => {
+    expect(toPublishedDefinition(VERSION_ROW)).toEqual({
+      version: 3,
+      publishedAt: "2026-08-19T09:00:00.000Z",
+      payload: VERSION_ROW.payload,
+    });
+  });
+
+  it("leaves the row's own identifiers behind", () => {
+    expect(Object.keys(toPublishedDefinition(VERSION_ROW))).not.toContain("id");
+    expect(Object.keys(toPublishedDefinition(VERSION_ROW))).not.toContain("projectId");
+  });
+});
+
 describe("toDefinitionStatus", () => {
-  it("says nothing has been submitted when nothing has", () => {
-    expect(toDefinitionStatus(null)).toEqual({ status: "none" });
+  it("says nothing has been submitted and nothing is live when nothing is", () => {
+    expect(toDefinitionStatus(null, null)).toEqual({
+      draft: { status: "none" },
+      published: null,
+      unpublishedChanges: false,
+    });
   });
 
   it("hands an invalid draft's problems on in full, and counts them", () => {
-    expect(toDefinitionStatus(toStoredValidation(ROW))).toEqual({
+    expect(toDefinitionStatus(toStoredValidation(ROW), null).draft).toEqual({
       status: "invalid",
       errorCount: 1,
       errors: [MISSING_NAVIGATION],
@@ -86,7 +122,7 @@ describe("toDefinitionStatus", () => {
   });
 
   it("says when a valid draft was submitted, and nothing else", () => {
-    expect(toDefinitionStatus(toStoredValidation(VALID_ROW))).toEqual({
+    expect(toDefinitionStatus(toStoredValidation(VALID_ROW), null).draft).toEqual({
       status: "valid",
       updatedAt: "2026-08-19T09:30:00.000Z",
     });
@@ -95,10 +131,36 @@ describe("toDefinitionStatus", () => {
   it("counts an invalid draft with no error list as no problems rather than crashing", () => {
     // A row can only reach this shape by hand, and a status card is not the
     // place to find out: it renders whatever it is given.
-    expect(toDefinitionStatus({ valid: false, errors: null, updatedAt: "x" })).toEqual({
+    expect(toDefinitionStatus({ valid: false, errors: null, updatedAt: "x" }, null).draft).toEqual({
       status: "invalid",
       errorCount: 0,
       errors: [],
     });
+  });
+
+  it("says which version is live without carrying its payload out", () => {
+    const status = toDefinitionStatus(toStoredValidation(VALID_ROW), PUBLISHED);
+
+    expect(status.published).toEqual({ version: 3, publishedAt: "2026-08-19T09:00:00.000Z" });
+    expect(Object.keys(status.published ?? {})).not.toContain("payload");
+  });
+
+  it("calls a draft submitted after the last publication something new to publish", () => {
+    // The row was submitted at 09:30, half an hour after the version went live.
+    const status = toDefinitionStatus(toStoredValidation(VALID_ROW), PUBLISHED);
+
+    expect(status.unpublishedChanges).toBe(true);
+  });
+
+  it("does not call a draft published at the same instant newer than itself", () => {
+    const published = { ...PUBLISHED, publishedAt: "2026-08-19T09:30:00.000Z" };
+
+    expect(toDefinitionStatus(toStoredValidation(VALID_ROW), published).unpublishedChanges).toBe(
+      false,
+    );
+  });
+
+  it("has nothing new to publish when nothing has ever been submitted", () => {
+    expect(toDefinitionStatus(null, PUBLISHED).unpublishedChanges).toBe(false);
   });
 });

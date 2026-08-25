@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { AgentPrincipal } from "../auth/principal";
 import type { ConnectionsService } from "../connections/connections.service";
 import type { StoredValidation } from "../definitions/definitions.mapper";
-import type { DefinitionsService } from "../definitions/definitions.service";
+import type { DefinitionsService, SubmissionOutcome } from "../definitions/definitions.service";
 import type { ProjectsService } from "../projects/projects.service";
 import type { SchemaDocumentationService } from "./schema-documentation.service";
 import { runTool, toolResult, toolText } from "./tool-result";
@@ -34,6 +34,13 @@ const validationErrorSchema: z.ZodType<ValidationError> = z.object({
 });
 
 const definitionStatusSchema = z.enum(["none", "invalid", "valid"]);
+
+/** Locked to the outcomes the service names, so the three cannot drift apart. */
+const submissionOutcomeSchema: z.ZodType<SubmissionOutcome> = z.enum([
+  "published",
+  "held",
+  "invalid",
+]);
 
 /**
  * Registers the tools an authoring agent works through. Names, descriptions
@@ -164,9 +171,16 @@ assume. If it reports \`invalid\`, call get_validation_result for the full probl
 draft — there are no partial updates, so send the entire object every time. The response says
 whether it validated; if it did not, it carries every problem found, each with the exact path,
 what was expected, and a concrete fix. Invalid submissions are stored, so nothing is lost:
-repair the definition and submit again until \`valid\` is true. A good workflow is: inspect the
-customer's application and database, then get_schema_documentation, then get_definition if one
-already exists, then submit_definition, repairing until valid.`,
+repair the definition and submit again until \`valid\` is true. A definition that does not
+validate is never published, whatever you pass — it is filed as the draft, answered with the
+full problem list, and the live admin carries on serving the version it is already on. When it
+does validate it is published immediately, which is the whole workflow for someone working on
+their own: submit, and the admin your operators open is the definition you just sent. Pass
+\`publish: false\` to store a valid definition as the draft without making it live, for a
+project where a human promotes it in the console instead. \`outcome\` says which of the three
+happened: \`published\`, \`held\` or \`invalid\`. A good workflow is: inspect the customer's application and database, then
+get_schema_documentation, then get_definition if one already exists, then submit_definition,
+repairing until valid.`,
       inputSchema: {
         definition: z
           .looseObject({})
@@ -174,28 +188,56 @@ already exists, then submit_definition, repairing until valid.`,
             "The complete RePanel definition object, matching the schema " +
               "from get_schema_documentation.",
           ),
+        publish: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether a definition that validates should become the version the live admin " +
+              "serves. Defaults to true: submitting is publishing, so the ordinary loop is " +
+              "one call. Pass false to store the draft and leave the admin on the version it " +
+              "is on, for a human to publish in the console. It has no effect on a definition " +
+              "that does not validate — that is stored as the draft and never published.",
+          ),
       },
       outputSchema: {
         valid: z.boolean(),
+        /**
+         * What became of the submission: `published` is live now, `held`
+         * validated but was kept as the draft, `invalid` did not validate.
+         */
+        outcome: submissionOutcomeSchema,
+        /** The version this submission became; null when nothing was published. */
+        version: z.number().int().positive().nullable(),
         errorCount: z.number().int().nonnegative(),
         /** Every problem found, never truncated; empty when valid. */
         errors: z.array(validationErrorSchema),
       },
     },
-    ({ definition }) =>
+    ({ definition, publish }) =>
       runTool(deps.logger, async () => {
-        const result = await deps.definitions.submitDraft(agent, projectId, definition);
-        if (result.valid) {
+        const submission = await deps.definitions.submitDraft(agent, projectId, definition, {
+          publish,
+        });
+        const { result, outcome, version } = submission;
+
+        if (!result.valid) {
           return toolResult(
-            { valid: true, ...reported([]) },
-            "The definition is valid and is now this project's draft.",
+            { valid: false, outcome, version, ...reported(result.errors) },
+            `${renderValidationReport(result.errors)}\n\nNothing was published: a definition ` +
+              "that does not validate never is. It is stored as the draft, and what operators " +
+              "see has not changed.",
           );
         }
 
-        return toolResult(
-          { valid: false, ...reported(result.errors) },
-          renderValidationReport(result.errors),
-        );
+        const payload = { valid: true, outcome, version, ...reported([]) };
+        return outcome === "published"
+          ? toolResult(payload, `The definition is valid and is now live as version ${version}.`)
+          : toolResult(
+              payload,
+              "The definition is valid and is stored as this project's draft. Nothing was " +
+                "published: the live admin is on the version it was on, and a human publishes " +
+                "this one in the console.",
+            );
       }),
   );
 

@@ -10,6 +10,10 @@ import { ConfigService } from "../config/config.service";
 import { ConnectionsService } from "../connections/connections.service";
 import { MAX_PAYLOAD_BYTES } from "../definitions/definition-size";
 import {
+  DefinitionVersionsRepository,
+  type DefinitionVersionRow,
+} from "../definitions/definition-versions.repository";
+import {
   DefinitionsRepository,
   type DefinitionRow,
   type NewDefinitionRow,
@@ -97,6 +101,34 @@ class InMemoryDefinitionsRepository
   }
 }
 
+/** Stands in for the versions table: append-only, newest number wins. */
+class InMemoryDefinitionVersionsRepository
+  implements Pick<DefinitionVersionsRepository, "insertNext" | "findLatest">
+{
+  readonly rows: DefinitionVersionRow[] = [];
+
+  insertNext(projectId: string, payload: unknown): Promise<DefinitionVersionRow> {
+    const published: DefinitionVersionRow = {
+      id: `version-${this.rows.length + 1}`,
+      projectId,
+      version: this.rows.filter((row) => row.projectId === projectId).length + 1,
+      payload: JSON.parse(JSON.stringify(payload)) as unknown,
+      publishedAt: new Date("2026-08-19T11:00:00.000Z"),
+    };
+
+    this.rows.push(published);
+    return Promise.resolve(published);
+  }
+
+  findLatest(projectId: string): Promise<DefinitionVersionRow | undefined> {
+    return Promise.resolve(
+      this.rows
+        .filter((row) => row.projectId === projectId)
+        .sort((a, b) => b.version - a.version)[0],
+    );
+  }
+}
+
 /** Stands in for the projects feature: Crewbase's token reaches Crewbase. */
 class ReachableProjects implements Pick<ProjectsService, "requireAccess"> {
   requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
@@ -137,6 +169,7 @@ describe("MCP tools", () => {
   const logger = { error: (message: string) => logged.push(message) } as unknown as Logger;
 
   let repository: InMemoryDefinitionsRepository;
+  let versions: InMemoryDefinitionVersionsRepository;
   /** The store a test writes to, and the same object as the tools receive it. */
   let connected: ConnectedProjects;
   let definitions: DefinitionsService;
@@ -149,12 +182,14 @@ describe("MCP tools", () => {
     logged.length = 0;
     clients = [];
     repository = new InMemoryDefinitionsRepository();
+    versions = new InMemoryDefinitionVersionsRepository();
     connected = new ConnectedProjects();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         DefinitionsService,
         { provide: DefinitionsRepository, useValue: repository },
+        { provide: DefinitionVersionsRepository, useValue: versions },
         { provide: ConnectionsService, useValue: connected },
         { provide: ProjectsService, useValue: new ReachableProjects() },
         { provide: ConfigService, useValue: { runtimeUrl: RUNTIME_URL } },
@@ -242,6 +277,7 @@ describe("MCP tools", () => {
       expect(submit?.inputSchema.required).toEqual(["definition"]);
       expect(submit?.inputSchema.properties).toEqual({
         definition: expect.objectContaining({ type: "object" }),
+        publish: expect.objectContaining({ type: "boolean", default: true }),
       });
     });
 
@@ -371,13 +407,96 @@ describe("MCP tools", () => {
   });
 
   describe("submit_definition", () => {
-    it("accepts a definition that validates", async () => {
+    /**
+     * The call a client written before publishing existed makes: one argument,
+     * no `publish`. What it did then is what it has to do now — the definition
+     * it submits is the one the admin serves — or the change was not additive,
+     * whatever the schema says.
+     */
+    it("takes the call a client written before publishing existed makes", async () => {
       const client = await connect();
 
       const result = await call(client, "submit_definition", { definition: saasDefinition });
 
-      expect(payloadOf(result)).toEqual({ valid: true, errorCount: 0, errors: [] });
-      expect(textOf(result)).toContain("valid");
+      expect(payloadOf(result)).toMatchObject({ valid: true, errorCount: 0, errors: [] });
+      expect(versions.rows).toHaveLength(1);
+      expect(versions.rows[0]).toMatchObject({ version: 1, payload: saasDefinition });
+    });
+
+    it("accepts a definition that validates, and says it is live", async () => {
+      const client = await connect();
+
+      const result = await call(client, "submit_definition", { definition: saasDefinition });
+
+      expect(payloadOf(result)).toEqual({
+        valid: true,
+        outcome: "published",
+        version: 1,
+        errorCount: 0,
+        errors: [],
+      });
+      expect(textOf(result)).toContain("now live as version 1");
+    });
+
+    it("holds a definition the agent asked not to publish, and says the admin is unchanged", async () => {
+      const client = await connect();
+
+      const result = await call(client, "submit_definition", {
+        definition: saasDefinition,
+        publish: false,
+      });
+
+      expect(payloadOf(result)).toEqual({
+        valid: true,
+        outcome: "held",
+        version: null,
+        errorCount: 0,
+        errors: [],
+      });
+      expect(textOf(result)).toContain("Nothing was published");
+      expect(versions.rows).toEqual([]);
+      // Held, not lost: the draft is there to be published or repaired.
+      expect(payloadOf(await call(client, "get_definition"))).toMatchObject({ status: "valid" });
+    });
+
+    /**
+     * The transcript the whole feature comes from, at the surface an agent
+     * touches: a repair loop over a live admin does not take it down.
+     */
+    it("publishes nothing when a definition does not validate, whatever was asked", async () => {
+      const client = await connect();
+      await call(client, "submit_definition", { definition: saasDefinition });
+
+      const result = await call(client, "submit_definition", {
+        definition: BROKEN,
+        publish: true,
+      });
+
+      const payload = payloadOf(result);
+      expect(payload).toMatchObject({ valid: false, outcome: "invalid", version: null });
+      expect(payload.errors).toEqual(errorsFor(BROKEN));
+      // Still one version, still the definition that validated.
+      expect(versions.rows).toHaveLength(1);
+      expect(versions.rows[0]).toMatchObject({ version: 1, payload: saasDefinition });
+      expect(textOf(result)).toContain("what operators see has not changed");
+    });
+
+    it("names which of the three things happened, every time", async () => {
+      const client = await connect();
+
+      const published = payloadOf(
+        await call(client, "submit_definition", { definition: saasDefinition }),
+      );
+      const held = payloadOf(
+        await call(client, "submit_definition", { definition: saasDefinition, publish: false }),
+      );
+      const invalid = payloadOf(await call(client, "submit_definition", { definition: BROKEN }));
+
+      expect([published.outcome, held.outcome, invalid.outcome]).toEqual([
+        "published",
+        "held",
+        "invalid",
+      ]);
     });
 
     it("answers an invalid definition with every problem validation found", async () => {
@@ -388,6 +507,8 @@ describe("MCP tools", () => {
       const expected = errorsFor(BROKEN);
       expect(payloadOf(result)).toEqual({
         valid: false,
+        outcome: "invalid",
+        version: null,
         errorCount: expected.length,
         errors: expected,
       });
@@ -451,6 +572,7 @@ describe("MCP tools", () => {
       expect(textOf(result)).toContain("too large");
       expect(textOf(result)).toContain(`${MAX_PAYLOAD_BYTES} byte limit`);
       expect(repository.rows).toEqual([]);
+      expect(versions.rows).toEqual([]);
     });
 
     it("answers an agent submitting to a project its token does not name as missing", async () => {
@@ -461,6 +583,7 @@ describe("MCP tools", () => {
       expect(result.isError).toBe(true);
       expect(textOf(result)).toBe("Project not found");
       expect(repository.rows).toEqual([]);
+      expect(versions.rows).toEqual([]);
     });
   });
 

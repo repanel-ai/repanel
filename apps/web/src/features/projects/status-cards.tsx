@@ -35,9 +35,9 @@ export function StatusCards({ connection, tokens, definition }: StatusCardsProps
       <StatusCard
         label="Definition"
         value={definitionValue(definition)}
-        quiet={definition.status === "none"}
-        badge={<DefinitionBadge status={definition.status} />}
-        note={definition.status === "valid" ? "your admin is ready" : "your agent writes this"}
+        quiet={definition.draft.status === "none"}
+        badge={<DefinitionBadge status={definition.draft.status} />}
+        note={definition.published ? "your admin is live" : "your agent writes this"}
       />
 
       <StatusCard
@@ -90,10 +90,10 @@ function StatusCard({ label, value, quiet, badge, note }: StatusCardProps) {
   );
 }
 
-function definitionValue(definition: DefinitionStatusDto): string {
-  if (definition.status === "valid") return `Submitted ${formatMoment(definition.updatedAt)}`;
-  if (definition.status === "invalid") {
-    return `${definition.errorCount} ${definition.errorCount === 1 ? "problem" : "problems"}`;
+function definitionValue({ draft }: DefinitionStatusDto): string {
+  if (draft.status === "valid") return `Submitted ${formatMoment(draft.updatedAt)}`;
+  if (draft.status === "invalid") {
+    return `${draft.errorCount} ${draft.errorCount === 1 ? "problem" : "problems"}`;
   }
   return "Nothing submitted yet";
 }

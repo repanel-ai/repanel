@@ -42,8 +42,14 @@ export function setupSteps({ connection, tokens, definition }: SetupFacts): Setu
    * checklist that showed step four done above step three undone would be
    * reporting something that never happened.
    */
-  const reached = tokens.some((token) => token.lastUsedAt !== null) || definition.status !== "none";
-  const rendered = definition.status === "valid";
+  const reached =
+    tokens.some((token) => token.lastUsedAt !== null) || definition.draft.status !== "none";
+  /*
+   * An admin exists when a version has been published. A valid draft is not one:
+   * until it is published there is nothing an operator can open, and a step that
+   * called that done would be reporting an admin nobody can reach.
+   */
+  const rendered = definition.published !== null;
 
   const done: Record<StepKey, boolean> = {
     database: connected,
@@ -97,10 +103,17 @@ function noteFor(key: StepKey, state: StepState, definition: DefinitionStatusDto
       ? "An agent has reached this project."
       : "Run the setup command where your agent runs. Every client configured by file is on the Agent access page.";
   }
-  if (definition.status === "invalid") {
+  if (definition.draft.status === "invalid") {
     return "The last definition your agent submitted did not validate. It is stored as it was sent, so the agent can read the problems back and repair it.";
   }
+  // A definition that arrived and is waiting to be published is not a project
+  // waiting for its agent: the thing left to do belongs to the person reading
+  // this, and telling them to go and ask for one would be telling them to wait
+  // for a page that will not change on its own.
+  if (state !== "done" && definition.draft.status === "valid") {
+    return "Your agent's definition validated and is waiting as a draft. Publish it on the Definition page and your operators can open the admin.";
+  }
   return state === "done"
-    ? "Your admin is rendered from the definition your agent submitted."
+    ? "Your admin is rendered from the version you published."
     : "“Read my database and build me an admin.” It writes the definition and submits it — this page changes on its own when it lands.";
 }

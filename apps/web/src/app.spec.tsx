@@ -1,9 +1,17 @@
-import type { ProjectDto, UserDto } from "@repanel/contracts";
+import type { DefinitionStatusDto, ProjectDto, UserDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./app";
+
+/** A project nothing has been submitted to, as the API answers it. */
+const NO_DEFINITION: DefinitionStatusDto = {
+  draft: { status: "none" },
+  published: null,
+  unpublishedChanges: false,
+};
+
 
 const ADA: UserDto = { id: "u_1", email: "ada@example.com", name: "Ada" };
 
@@ -108,7 +116,7 @@ function renderAt(path: string, user: UserDto | null) {
       if (input === "/api/auth/me") return json(user);
       if (input === "/api/projects") return json([CREWBASE]);
       if (input === `/api/projects/${CREWBASE.id}`) return json(CREWBASE);
-      if (input === `/api/projects/${CREWBASE.id}/definition/status`) return json({ status: "none" });
+      if (input === `/api/projects/${CREWBASE.id}/definition/status`) return json(NO_DEFINITION);
       if (input === `/api/projects/${CREWBASE.id}/connection`) return new Response("", { status: 200 });
       if (input === `/api/projects/${CREWBASE.id}/agent-tokens`) return json([]);
       return new Response(JSON.stringify({ error: { code: "not_found", message: "Not found" } }), {

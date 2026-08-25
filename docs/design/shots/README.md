@@ -266,6 +266,61 @@ Tests: 13 passed, 13 total
 
 ---
 
+# Task E-1 · the notice, rebuilt
+
+`toasts-e1/` — the owned toast (`packages/ui/src/toast.tsx`) on the same record
+the 012 shots use, against the same stubbed API. 1440×900 at 2×, light and dark.
+The `action-success-*` and `action-failure-*` shots above are kept as they are:
+they record the bottom-right notice 012 shipped, which is what this replaced.
+
+| | light | dark |
+|---|---|---|
+| It ran | `toast-success-light.png` | `toast-success-dark.png` |
+| It did not, and the one line the runtime can add | `toast-failure-light.png` | `toast-failure-dark.png` |
+| Three at once, newest on top | `toast-stacked-light.png` | `toast-stacked-dark.png` |
+
+`toast-failure-*` is a refusal the application made the way it refuses a call it
+cannot verify — a 401 — so it carries the coaching line DESIGN.md §10 specifies
+and nothing else of RePanel's own. The shots are of the notice as it now is: one
+card, no tint, §2's one shadow under it, and the tone in the mark and the title
+(DECISIONS #052). The exit is the one thing here no shot can show. `toast-stacked-*` is the bound working: three
+notices, the newest at the top, both tones in one column, and the stack held by
+a pointer so the shot is of a full stack rather than of one clearing.
+
+**The stack lands on the record's action row, and the shots are the evidence.**
+It is legible in `toast-stacked-*`, where `Suspend`, `Deactivate` and `Resend
+invite` show between two notices, and total in `toast-failure-*`, where the
+button an operator would retry with is underneath the notice telling them to.
+DESIGN.md's open items carries the question; nothing here answers it.
+
+## Measured, from the rendered DOM
+
+Read out of the running app with each notice on screen, both themes.
+
+```
+toast tones   positive  title 5.41 / 5.61                          (light / dark)
+              critical  title 6.09 / 5.45   description 19.71 / 14.54
+              neutral   title 16.88 / 14.20
+              hairline  1.31 / 1.29
+              (every one better than the tinted version 012 shipped, and for one
+               reason: a tint is a step toward the ink standing on it, so taking
+               it away gives that ink the whole of the card)
+
+surface       one card in all three tones — `--card`, `--border`, and §2's one
+              shadow. The tone is the mark and the title and nothing else.
+              light  #ffffff on a #ffffff panel — the shadow is the whole edge
+              dark   #222324 on a #1a1a1b panel — a rung and a shadow
+
+width         416px, the dialog's own, in both themes and all three tones
+radius        `--radius-xl` 10.08px, the dialog's and the panel's
+
+roles         success `status`, failure `alert`, the stack a `region` named
+              `Notices` — one waits for a gap, one is read out on arrival, and
+              one is somewhere to go back to
+```
+
+---
+
 # Task 014b · the console, on its own layer
 
 `console-014b/` — the rebuilt console (`apps/web`), rendered against a stubbed

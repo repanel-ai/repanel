@@ -142,6 +142,21 @@ describe("HttpCall", () => {
     });
 
     /**
+     * The status is the only thing about the refusal that survives being put
+     * into a category, and the renderer reads it back out of this sentence to
+     * tell a call the application could not verify from one it simply refused
+     * (`apps/runtime`'s record actions). Named here so that rewording it
+     * breaks a test rather than a screen.
+     */
+    it("names the status of a call the application would not verify", async () => {
+      application.answer = () => ({ status: 401 });
+
+      const refusal = await refusalFrom(http.send({ method: "POST", url: application.url(), secret: SECRET }));
+
+      expect(refusal.message).toBe("The application answered 401, so the action did not report success.");
+    });
+
+    /**
      * The body is the customer's own data on its way into an operator's
      * browser, and RePanel has no idea what is in it.
      */

@@ -202,6 +202,17 @@ Dark **must** keep the panel above the chrome in lightness — shadcn's own
 `sidebar-inset` variant puts it below, which reads as recessed and was
 corrected here.
 
+**One shadow exists, and it is spent on what is not on the ladder.** The rule
+above is about elevation *within* the page, where a step of lightness and a
+hairline say it better than a blur does. A notice is not in the page — it is
+over it, briefly, and then gone — so the ladder has no rung to give it. In light
+it has no lightness to give either: `--card` and the panel are both `#ffffff`,
+so a hairline would be the whole of the edge and a white card on white would
+read as a rectangle drawn on the panel rather than as something above it.
+`--shadow-lifted` is that one exception, declared once in the contract, and the
+toast is the only thing that spends it (DECISIONS #052). Nothing that sits on
+the ladder may take it.
+
 ---
 
 ## 3. Type
@@ -453,6 +464,7 @@ component composition are untouched.**
 | Table cell | `p-2` -> 8, ~40 row | 36 / 10 |
 | Badge | `px-2 py-0.5 text-xs` -> 8 / 2 / 12 | 7 / 1 / 11.5 |
 | Inset panel | `m-2 rounded-xl shadow-sm` | `m-2 rounded-xl`, no shadow |
+| Toast | `sonner`, an installed dependency | owned; 416 wide, 14 / 12, `--t-body` 13.5, `--radius-xl` |
 
 Rhythm tokens: `--h-nav 30px`, `--h-control 32px`, `--h-row 36px`,
 `--h-head 34px`, `--h-top 48px`. 18 records visible at 1440x900.
@@ -658,30 +670,90 @@ is nothing left to cancel — the dialog says `Running…` in `--t-small`
 
 ### The notice
 
-A toast, bottom right, in §4's own two tones — a state that went well and one
-that did not are the same kind of object as the badges, told apart the same way.
+A toast, top right, in §4's own tones — a state that went well and one that did
+not are the same kind of object as the badges, told apart the same way. It is
+RePanel's own component (`packages/ui/src/toast.tsx`) rather than an installed
+one, which is why its corner, its stack and its clocks are specified here
+instead of inherited.
 
-| tone | fill / hairline / title | used for |
-|---|---|---|
-| `positive` | `--positive-soft` / `--positive-line` / `--positive-text` | it ran |
-| `critical` | `--destructive-soft` / `--destructive-line` / `--destructive-text` | it did not |
+**It moved from bottom right to top right, and it clears the topbar.** Both of
+RePanel's shells put the same chrome in the panel's top-right corner — a theme
+toggle, and either `Refresh` or the way out — so the stack begins under the bar
+and inside the panel's own gutter rather than over it. A notice landing on a
+control is a control nobody can press for as long as the notice is up.
 
-Measured on their own tints: title 4.74 / 4.94 positive and 5.12 / 4.79
-critical (light / dark), and the description 16.56 / 12.78 — the same numbers
-§4 records, because they are the same tokens. Hairlines measure 1.30–1.65
-against the fill, inside the band `--border` occupies.
+**The tone is ink, not paint.** Every notice is the same surface — `--card`,
+`--border`, and §2's one shadow under it — and what differs is the mark and the
+title. A tinted block floating over a data panel reads as a coloured hole in the
+page rather than as something above it, and the fills were doing that job badly
+in exchange for the contrast they cost (DECISIONS #052).
 
-**A success clears itself after five seconds; a failure does not.** A success
-is a receipt for something the operator can already see — the badge behind it
-has changed — so it may go. A failure carries the only account of what
-happened that will ever reach that browser, and something a person has to read
-is something they get to dismiss. A success is a `status`; a failure is an
-`alert`, which is read out the moment it arrives.
+| tone | mark | title | used for |
+|---|---|---|---|
+| `positive` | check | `--positive-text` | it ran |
+| `critical` | alert | `--destructive-text` | it did not |
+| `neutral` | info | `--secondary-foreground` | neither |
 
-The failure's second line is the API's own message and nothing else. The
-runtime writes no sentence about what went wrong upstream of it: it does not
-know, and the four categories it is told are exactly what a customer's
-application is willing to say through it.
+| | value |
+|---|---|
+| corner | top right — `--spacing-top` + 16px down, 16px in |
+| surface | `--card`, `--border` hairline, `--shadow-lifted` |
+| width | 416px (`min(26rem, 100vw - 2rem)`), the dialog's own |
+| radius | `--radius-xl` 10.08px, the dialog's and the panel's |
+| padding | 14 / 12 |
+| gap between notices | 8px |
+| mark | 16px, in the title's own colour |
+| title | `--t-body` 13.5 / 500, the tone's own text colour |
+| description | `--t-body` 13.5, `--foreground` |
+| at most | three, newest on top; a fourth takes the oldest's place |
+| clears itself | `positive` and `neutral` 4s, `critical` 8s |
+| leaves over | `--motion-fast` 120ms, back down the 4px it came up |
+
+Measured off the running app, both themes, on the shots below (light / dark):
+title **5.41 / 5.61** positive, **6.09 / 5.45** critical and **16.88 / 14.20**
+neutral; description **19.71 / 14.54**; hairline 1.31 / 1.29. Every one of them
+is better than the tinted version it replaced — a tint is a step toward the ink
+that sits on it, and taking it away gives that ink the whole of the card.
+
+**Every notice clears itself now, and 012's failure that never did is
+reversed.** This section first ruled that a success goes after five seconds and
+a failure stays until it is dismissed, on the grounds that something a person
+has to read is something they get to dismiss. They still get to — every notice
+carries its own dismiss — but the stack is bounded at three, and a notice with
+no clock on it holds one of those three against every notice after it. So a
+failure is given twice a success's time rather than none.
+
+**Pointing at the stack, or tabbing into it, stops every clock in it**, and
+letting go resumes what was left rather than restarting. That is what makes the
+shorter failure honest: its eight seconds are eight seconds of nobody reading
+it.
+
+**The mark says which before the colour does.** A check, an alert triangle and
+an info disc, 16px, in the title's own colour — so the tone is a second signal
+rather than the only one (§7). With the fills gone the mark is carrying more
+than it used to, which is the right thing to be carrying it: a shape is legible
+to a reader a colour is not.
+
+**A success is a `status` and a failure is an `alert`**, which is read out the
+moment it arrives. The stack itself is a `region` labelled `Notices`, so a
+notice still up is something a screen reader can go back to.
+
+The failure's second line is the API's own message and nothing else. The runtime
+writes no sentence about what went wrong upstream of it: it does not know, and
+the four categories it is told are exactly what a customer's application is
+willing to say through it.
+
+**One exception, and it is about RePanel rather than about the customer.** When
+the application refuses a call the way it refuses one it cannot verify — a 401
+or a 403, named in that sentence — the notice gains a second, quieter line:
+
+> If running locally: set the dev action secret printed at repanel dev's boot.
+
+Every outbound action is signed (`docs/SIGNING.md`), `repanel dev` generates
+that secret per run and prints it at boot, and an application that has not been
+given it answers in exactly this way. The line says *if* because the runtime
+cannot know where it is running: `repanel dev` serves the same bundle the hosted
+product serves (DECISIONS #048).
 
 ---
 
@@ -844,14 +916,31 @@ Motion appears in these places and nowhere else:
 | the dialog, and its backdrop | base | fade up over 4px; the backdrop fades |
 | the date-range popover | base | fade up over 4px |
 | a dropdown, when RePanel owns one | base | the same enter, by the same rule |
-| a toast | base | fade up over 4px |
+| a toast arriving | base | fade up over 4px |
+| a toast leaving | fast | fade back down over the same 4px |
+| the stack closing over a notice that has gone | — | nothing moves; it is instant |
 | the theme toggle | fast | the colours of the whole screen cross |
 | a checklist step turning done | fast | the mark's and the title's colour |
 
-**Enters only.** A dialog, a popover and a toast arrive; not one of them leaves.
-An exit is time an operator spends watching something they have already
-finished with, and the answer to "I am done with this" is for it to be gone.
-This is not a simplification to be revisited: it is the rule.
+**Enters only, and a notice is the one thing that also leaves.** A dialog and a
+popover arrive and do not go: an exit there is time an operator spends watching
+something they have already finished with, and the answer to "I am done with
+this" is for it to be gone. That rule stands, and it stands for the same reason
+it always did.
+
+A notice is not that, and the difference is who ended it. A dialog closes
+because somebody closed it, and they are already looking at what was behind it.
+A notice mostly ends **on its own clock, without anybody asking** — and a thing
+that vanishes unbidden, between two frames, reads as a glitch rather than as an
+ending. The 120ms it takes to go is not time spent waiting; it is the only
+signal that something ended rather than broke. DECISIONS #052.
+
+It is bounded to keep it honest: `--motion-fast`, the shorter of the two steps,
+because leaving is quicker than arriving; the same single ease-out; and the
+exact reverse of the enter, so the two are one gesture and its undo rather than
+two ideas. **The stack does not animate closed** — the notice holds its place
+until it has gone, and the ones under it come up instantly, because that is
+layout and layout is still banned from motion.
 
 **A dropdown has no owned implementation today.** RePanel's only dropdown is a
 real `<select>`, whose popup the browser draws and the browser animates. The row
@@ -915,6 +1004,14 @@ answered twice on purpose, because the two halves reach different things:
    `scroll-behavior: auto`, all `!important`, which catches anything that never
    asked the vocabulary for a number.
 
+**It takes the movement and leaves the function.** A notice clears itself on a
+timer rather than on the end of its animation, so both halves above can collapse
+to `0ms` and a toast still goes when it is done — reduced motion is not reduced
+function, and somebody who asked their machine for less movement did not ask for
+a corner that fills up (§10). The exit is asked about rather than assumed: where
+reduced motion is set there is no 120ms to sit through, so a dismissed notice
+goes at once instead of holding a place for an animation that is not playing.
+
 The rule predates this section and, until it, had almost nothing to collapse.
 It has something to collapse now, which is the point at which it had to be
 checked rather than assumed.
@@ -965,6 +1062,17 @@ stated here is Stage 2's to propose, not to assume.
 Questions this record has not answered. Each is additive by construction — the
 runtime's behaviour today is what happens while the answer is absent — and each
 needs its own decision entry before it is built.
+
+**Whether the notice's corner is the right corner.** §10 puts the stack at the
+top right of the panel, clear of the topbar. The record header's action row is
+right there too (§10's own action row rule), so for as long as a notice is up it
+covers the buttons it is a notice about — visible in `toast-stacked-*` below,
+and worst on a failure, where the control an operator would retry with is the
+one under the notice. Three corners are already spoken for: the topbar's chrome
+is above, the breadcrumb is top left, and `repanel dev`'s problems overlay is
+bottom left. Bottom right — where 012 put it — is the only corner nothing else
+claims. The answer is a placement ruling, not a component change: the stack is
+one class either way.
 
 **A money field type.** Numbers are set flush right in tabular figures, and that
 is all the runtime does with them. It does not read `total_cents` and conclude

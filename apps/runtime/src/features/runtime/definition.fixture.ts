@@ -17,6 +17,25 @@ export function resourceIn(key: string): Resource {
   return resource;
 }
 
+/**
+ * The same admin with one resource offering only the actions named.
+ *
+ * The shared fixture's `users` declares three actions and only one of them says
+ * when it applies, so it can never reach the state a record is in when there is
+ * nothing left to do to it. That state is where the header stops drawing an
+ * action row at all, and a spec has to be able to get to it.
+ */
+export function adminOffering(resourceKey: string, actionKeys: readonly string[]): Definition {
+  return {
+    ...adminDefinition,
+    resources: adminDefinition.resources.map((resource) =>
+      resource.key === resourceKey
+        ? { ...resource, actions: resource.actions.filter((action) => actionKeys.includes(action.key)) }
+        : resource,
+    ),
+  };
+}
+
 /** Two users, covering an enum, a relation, a boolean and a timestamp. */
 export const userRecords: RecordDto[] = [
   {
@@ -136,3 +155,4 @@ export const organizationRecord: RecordDto = {
     created_at: "2025-11-02T14:30:00.000Z",
   },
 };
+

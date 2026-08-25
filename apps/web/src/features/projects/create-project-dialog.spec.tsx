@@ -1,5 +1,6 @@
 import type { ProjectDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@repanel/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -47,6 +48,20 @@ describe("CreateProjectDialog", () => {
     expect(await screen.findByText(`project ${CREWBASE.id}`)).toBeDefined();
   });
 
+  /**
+   * The dialog is closed and the browser is on another page by the time this
+   * is known, so the account of it cannot live on the screen that asked.
+   */
+  it("says the project was created, on the page creating it landed on", async () => {
+    open();
+
+    name("Crewbase");
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    await screen.findByText(`project ${CREWBASE.id}`);
+    expect(screen.getByText("Crewbase created")).toBeDefined();
+  });
+
   it("says what the API refused, and stays open to be corrected", async () => {
     open(
       new Response(
@@ -80,11 +95,13 @@ function open(answer?: Response) {
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<CreateProjectDialog open onClose={() => undefined} />} />
-          {/* Where creating one lands: the page that has its key and its setup. */}
-          <Route path="/p/:id" element={<Landed />} />
-        </Routes>
+        <Toaster>
+          <Routes>
+            <Route path="/" element={<CreateProjectDialog open onClose={() => undefined} />} />
+            {/* Where creating one lands: the page that has its key and its setup. */}
+            <Route path="/p/:id" element={<Landed />} />
+          </Routes>
+        </Toaster>
       </MemoryRouter>
     </QueryClientProvider>,
   );

@@ -1,4 +1,4 @@
-import { Dialog, Input, Label } from "@repanel/ui";
+import { Dialog, Input, Label, useToaster } from "@repanel/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { messageOf } from "../../lib/api-client";
@@ -11,10 +11,15 @@ import { useCreateProject } from "./use-projects";
  * The dialog's body is a paragraph, so what goes in it is phrasing content: a
  * label, a field, and a failure said in a span rather than the `FormError`
  * paragraph every other form uses.
+ *
+ * A failure is said here because the dialog is still open to say it in. A
+ * success is not: it closes the dialog and leaves for the new project, so the
+ * only place left to say it is the notice stack (DECISIONS #050).
  */
 export function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const create = useCreateProject();
+  const { notify } = useToaster();
   const [name, setName] = useState("");
 
   function submit() {
@@ -25,6 +30,7 @@ export function CreateProjectDialog({ open, onClose }: { open: boolean; onClose:
           setName("");
           onClose();
           navigate(`/p/${project.id}`);
+          notify({ tone: "positive", title: `${project.name} created` });
         },
       },
     );

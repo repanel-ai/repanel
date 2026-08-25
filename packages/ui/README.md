@@ -15,8 +15,13 @@ promise we cannot make on top of someone else's release schedule
 
 The line is drawn at behaviour: **interactive behaviour always sits on Radix
 primitives — focus traps, roving tabindex, ARIA wiring — and we own every
-pixel.** None of the five components here need one yet; the first component
-that does (dialog, select, dropdown) takes the Radix primitive rather than
+pixel.** Nothing here has needed one yet, and twice that has been checked rather
+than assumed. The dialog takes the browser's own `<dialog>`, which owns the top
+layer, the backdrop, the focus trap and the escape key. The toast owns a stack,
+three clocks and a hover that pauses them, and manages no focus at all — there
+is nothing to trap and no roving anything, so a primitive would be a dependency
+bought for its ARIA and given none of it to do. The first component that really
+needs one — a dropdown, a combobox — takes the Radix primitive rather than
 hand-rolling the behaviour.
 
 ## Tokens

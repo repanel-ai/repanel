@@ -1,23 +1,24 @@
 import type { Action, RecordId } from "@repanel/contracts";
-import { Button, Dialog, Toast, ToastViewport } from "@repanel/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Dialog, useToaster, type ToastMessage } from "@repanel/ui";
+import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { useRunAction } from "./use-runtime";
 
 /**
- * How long a success stays up. A failure has no timer at all: the operator has
- * to be able to read what went wrong, and something they have to read is
- * something they get to dismiss.
+ * What to tell somebody whose action was refused the way an unverified request
+ * is refused.
+ *
+ * RePanel signs every outbound action (docs/SIGNING.md), and an application
+ * that answers 401 or 403 is usually one that has not been given the secret to
+ * check it with. On a developer's own machine that secret is the one
+ * `repanel dev` printed when it booted, and it is generated per run — so it is
+ * new every time, and this is the sentence that says where to find it.
+ *
+ * It hedges because the runtime genuinely cannot know: `repanel dev` serves the
+ * same bundle the hosted product serves (`packages/cli/src/dev/spa.ts`), and a
+ * screen that guessed would be telling half its operators something false.
  */
-const ACKNOWLEDGED_MS = 5_000;
-
-/** One notice about something that has already happened, and how it is said. */
-interface Notice {
-  id: number;
-  tone: "positive" | "critical";
-  title: string;
-  description?: string;
-}
+const DEV_SECRET_HINT = "If running locally: set the dev action secret printed at repanel dev's boot.";
 
 export interface RecordActionsProps {
   projectKey: string;
@@ -37,22 +38,16 @@ export interface RecordActionsProps {
  * (DECISIONS #029). What the definition does say is `confirm`, and that
  * sentence is the whole of the dialog: it is the author's warning, in the
  * author's words, and the runtime adds nothing to it.
+ *
+ * The notice about how it went is raised into the app's own stack rather than
+ * held here, because a success can take this whole component off the screen: an
+ * action the record has moved past stops being offered, and a record with
+ * nothing left to do to it wears no action row at all (DECISIONS #050).
  */
 export function RecordActions({ projectKey, resourceKey, recordId, actions }: RecordActionsProps) {
   const [asking, setAsking] = useState<Action | null>(null);
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const nextNotice = useRef(0);
+  const { notify } = useToaster();
   const run = useRunAction(projectKey, resourceKey, recordId);
-
-  const dismiss = useCallback(
-    (id: number) => setNotices((open) => open.filter((notice) => notice.id !== id)),
-    [],
-  );
-
-  const announce = (notice: Omit<Notice, "id">) => {
-    nextNotice.current += 1;
-    setNotices((open) => [...open, { ...notice, id: nextNotice.current }]);
-  };
 
   const confirm = (action: Action) => {
     run.mutate(action.key, {
@@ -60,18 +55,11 @@ export function RecordActions({ projectKey, resourceKey, recordId, actions }: Re
         setAsking(null);
         // The definition's own word for it, so the notice is headed the way the
         // button that caused it was.
-        announce({ tone: "positive", title: `${result.label} done` });
+        notify({ tone: "positive", title: `${result.label} done` });
       },
       onError: (error) => {
         setAsking(null);
-        announce({
-          tone: "critical",
-          title: `${action.label} failed`,
-          // The API's words. The runtime has nothing to add: whatever failed
-          // happened on the far side of it.
-          description:
-            error instanceof ApiError ? error.message : "Something went wrong running this action.",
-        });
+        notify(failureNotice(action, error));
       },
     });
   };
@@ -99,38 +87,50 @@ export function RecordActions({ projectKey, resourceKey, recordId, actions }: Re
           {asking.confirm}
         </Dialog>
       )}
-
-      <ToastViewport>
-        {notices.map((notice) => (
-          <Acknowledgement key={notice.id} notice={notice} onDismiss={dismiss} />
-        ))}
-      </ToastViewport>
     </>
   );
 }
 
-/** A notice, and — for one that went well — the clock it goes away on. */
-function Acknowledgement({
-  notice,
-  onDismiss,
-}: {
-  notice: Notice;
-  onDismiss: (id: number) => void;
-}) {
-  const { id, tone } = notice;
+/**
+ * How an action that did not go through is said.
+ *
+ * The first line is the API's words and nothing else: whatever failed happened
+ * on the far side of the runtime, which has no account of it to add. The second
+ * is the one thing it can add — the likeliest reason for this particular
+ * refusal, on the one machine where the fix is a line in a terminal.
+ */
+function failureNotice(action: Action, error: unknown): ToastMessage {
+  const message =
+    error instanceof ApiError ? error.message : "Something went wrong running this action.";
 
-  useEffect(() => {
-    if (tone !== "positive") return;
-    const timer = window.setTimeout(() => onDismiss(id), ACKNOWLEDGED_MS);
-    return () => window.clearTimeout(timer);
-  }, [id, tone, onDismiss]);
+  return {
+    tone: "critical",
+    title: `${action.label} failed`,
+    description: unverified(error) ? (
+      <>
+        {message}
+        <span className="mt-1 block text-muted-foreground">{DEV_SECRET_HINT}</span>
+      </>
+    ) : (
+      message
+    ),
+  };
+}
 
+/**
+ * Whether the application refused the call the way it refuses one it cannot
+ * verify.
+ *
+ * The status is read out of the sentence the engine wrote, which is the only
+ * place it survives: what reaches a browser is one of four coarse categories,
+ * and a customer's own response body is never forwarded through them
+ * (`ActionFailureCode`, and DESIGN.md §10). `packages/engine`'s http-call spec
+ * holds that sentence to naming the status, from the other end.
+ */
+function unverified(error: unknown): boolean {
   return (
-    <Toast
-      tone={tone}
-      title={notice.title}
-      description={notice.description}
-      onDismiss={() => onDismiss(id)}
-    />
+    error instanceof ApiError &&
+    error.code === "action_rejected" &&
+    /\banswered (?:401|403)\b/.test(error.message)
   );
 }

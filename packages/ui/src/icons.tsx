@@ -114,6 +114,32 @@ export function SignOutIcon(props: IconProps) {
   );
 }
 
+/**
+ * Something went wrong and it is worth stopping for: the sign a road uses for
+ * the same thing. A notice is told apart by its glyph before its colour, which
+ * is what keeps the tones a second signal rather than the only one (§7).
+ */
+export function AlertIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 4.5 2.8 20h18.4z" />
+      <path d="M12 10v4.5" />
+      <path d="M12 17.4v.2" />
+    </Glyph>
+  );
+}
+
+/** Something worth knowing, and nothing to answer. */
+export function InfoIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11.5V16" />
+      <path d="M12 8v.2" />
+    </Glyph>
+  );
+}
+
 /** A dismissal: the thing goes away, nothing else happens. */
 export function CloseIcon(props: IconProps) {
   return (

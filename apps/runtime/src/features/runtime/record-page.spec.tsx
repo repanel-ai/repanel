@@ -1,4 +1,4 @@
-import type { RecordDto, UserDto } from "@repanel/contracts";
+import type { Definition, RecordDto, UserDto } from "@repanel/contracts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app";
 import {
   adminDefinition,
+  adminOffering,
   orderRecords,
   organizationRecord,
   organizationRecords,
@@ -435,6 +436,32 @@ describe("the record page", () => {
       expect(screen.queryByText("active")).toBeNull();
     });
 
+    /**
+     * And the notice outlives the row it came from. A success can leave a
+     * record with nothing left to do to it, which takes the whole action row
+     * off the header — the notice is about something that has already
+     * happened, so it is not the action row's to take with it.
+     */
+    it("goes on saying it is done when the success left nothing to do to the record", async () => {
+      const suspended: RecordDto = {
+        ...userRecord,
+        values: { ...userRecord.values, status: "suspended" },
+      };
+      await loaded(
+        renderAdmin("/a/acme/r/users/u_1", {
+          definition: adminOffering("users", ["suspend"]),
+          recordAfterAction: suspended,
+        }),
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+      fireEvent.click(dialog().getByRole("button", { name: "Suspend" }));
+
+      await screen.findByText("suspended");
+      expect(screen.queryByRole("button", { name: "Suspend" })).toBeNull();
+      expect(screen.getByText("Suspend done")).toBeDefined();
+    });
+
     /** And with the state, what may be done to the record in it. */
     it("stops offering an action once the record has moved past it", async () => {
       const suspended: RecordDto = {
@@ -473,6 +500,56 @@ describe("the record page", () => {
             "The application answered 500, so the action did not report success.",
           ),
         ).toBeDefined();
+      });
+
+      /**
+       * The one thing the runtime can add to an account it did not write. An
+       * application that refuses a call it cannot verify is usually one that
+       * has not been given the secret to check it with, and on a developer's
+       * own machine that secret was printed at boot and is new every run.
+       *
+       * It says "if" because the runtime cannot know where it is running: the
+       * bundle `repanel dev` serves is the bundle the hosted product serves.
+       */
+      it("says where the dev action secret is when the application would not verify the call", async () => {
+        await loaded(
+          renderAdmin("/a/acme/r/users/u_1", {
+            actionFails: {
+              status: 502,
+              code: "action_rejected",
+              message: "The application answered 401, so the action did not report success.",
+            },
+          }),
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Resend invite" }));
+        fireEvent.click(dialog().getByRole("button", { name: "Resend invite" }));
+
+        const notice = await screen.findByRole("alert");
+        expect(
+          within(notice).getByText(
+            "If running locally: set the dev action secret printed at repanel dev's boot.",
+          ),
+        ).toBeDefined();
+      });
+
+      /** A refusal the application made on its own business is not that. */
+      it("keeps the coaching off a refusal that says nothing about a signature", async () => {
+        await loaded(
+          renderAdmin("/a/acme/r/users/u_1", {
+            actionFails: {
+              status: 502,
+              code: "action_rejected",
+              message: "The application answered 422, so the action did not report success.",
+            },
+          }),
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Resend invite" }));
+        fireEvent.click(dialog().getByRole("button", { name: "Resend invite" }));
+
+        const notice = await screen.findByRole("alert");
+        expect(notice.textContent).not.toContain("repanel dev");
       });
 
       it("leaves the record as it was, because nothing about it changed", async () => {
@@ -567,6 +644,8 @@ describe("the record page", () => {
 });
 
 interface AdminOptions {
+  /** The admin being rendered, when a spec needs one the shared fixture is not. */
+  definition?: Definition;
   record?: RecordDto;
   recordMissing?: boolean;
   recordFails?: string;
@@ -605,7 +684,7 @@ function renderAdmin(path: string, options: AdminOptions = {}): () => string[] {
   const fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/auth/me")) return json(ADA);
-    if (url.endsWith("/definition")) return json(adminDefinition);
+    if (url.endsWith("/definition")) return json(options.definition ?? adminDefinition);
 
     if (url.includes("/actions/")) {
       if (init?.method !== "POST") throw new Error("an action is run with POST");

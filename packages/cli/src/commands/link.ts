@@ -117,7 +117,7 @@ async function chooseProject(
     const found = projects.find((project) => project.key === named);
     if (!found) {
       throw new CloudError(
-        `No project with the key \`${named}\` in this account.`,
+        `No project with the key \`${named}\` that this account owns.`,
         `Run \`repanel link\` without \`--project\` to choose from the ${count(projects.length, "project")} this account has, or to create one.`,
       );
     }

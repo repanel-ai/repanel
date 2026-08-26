@@ -35,7 +35,7 @@ export class AgentTokensService {
     projectId: string,
     { label }: CreateAgentTokenRequest,
   ): Promise<MintedAgentTokenDto> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireMember(projectId, ownerId, "owner");
 
     const token = createAgentToken();
     const created = await this.repository.create({
@@ -49,7 +49,7 @@ export class AgentTokensService {
 
   /** A project's tokens as their owner sees them: labels and dates, no secrets. */
   async list(ownerId: string, projectId: string): Promise<AgentTokenDto[]> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireMember(projectId, ownerId, "owner");
 
     const tokens = await this.repository.listByProjectId(projectId);
     return tokens.map(toAgentTokenDto);

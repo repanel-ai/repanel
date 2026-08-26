@@ -3,73 +3,10 @@ import type { Principal } from "../auth/principal";
 import { ConfigModule } from "../config/config.module";
 import { CryptoModule } from "../crypto/crypto.module";
 import { CryptoService } from "../crypto/crypto.service";
-import { ConflictError, NotFoundError } from "../errors/domain-errors";
-import { ProjectsRepository, type NewProjectRow, type ProjectRow } from "./projects.repository";
+import { ConflictError, ForbiddenError, NotFoundError } from "../errors/domain-errors";
+import { ProjectsRepository } from "./projects.repository";
+import { InMemoryProjectsRepository } from "./projects.test-helpers";
 import { ProjectsService } from "./projects.service";
-
-type ProjectStore = Pick<
-  ProjectsRepository,
-  "create" | "findById" | "findByKey" | "listByOwner" | "claimActionSecret"
->;
-
-/** Stands in for Postgres: same behavior, including how a taken key is refused. */
-class InMemoryProjectsRepository implements ProjectStore {
-  readonly projects: ProjectRow[] = [];
-  /** Every key the service has offered, in the order it offered them. */
-  readonly attemptedKeys: string[] = [];
-  private refusals = 0;
-
-  create(project: NewProjectRow): Promise<ProjectRow> {
-    this.attemptedKeys.push(project.key);
-    if (this.refusals > 0) {
-      this.refusals -= 1;
-      return Promise.reject(new ConflictError("Project key is already taken"));
-    }
-    if (this.projects.some((existing) => existing.key === project.key)) {
-      return Promise.reject(new ConflictError("Project key is already taken"));
-    }
-
-    const created: ProjectRow = {
-      id: `project-${this.projects.length + 1}`,
-      userId: project.userId,
-      name: project.name,
-      key: project.key,
-      actionSecret: null,
-      createdAt: new Date(),
-    };
-    this.projects.push(created);
-    return Promise.resolve(created);
-  }
-
-  findById(id: string): Promise<ProjectRow | undefined> {
-    return Promise.resolve(this.projects.find((project) => project.id === id));
-  }
-
-  findByKey(key: string): Promise<ProjectRow | undefined> {
-    return Promise.resolve(this.projects.find((project) => project.key === key));
-  }
-
-  listByOwner(ownerId: string): Promise<ProjectRow[]> {
-    return Promise.resolve(this.projects.filter((project) => project.userId === ownerId));
-  }
-
-  /** The same `is null` predicate Postgres applies: the first write wins. */
-  claimActionSecret(projectId: string, encrypted: string): Promise<string | undefined> {
-    const project = this.projects.find((candidate) => candidate.id === projectId);
-    if (!project) return Promise.resolve(undefined);
-    project.actionSecret ??= encrypted;
-    this.claims += 1;
-    return Promise.resolve(project.actionSecret);
-  }
-
-  /** How many times a secret was written for, however many were stored. */
-  claims = 0;
-
-  /** Stands in for the collision the suffix exists to make unlikely. */
-  refuseNextKeys(count: number): void {
-    this.refusals = count;
-  }
-}
 
 const ADA = "user-ada";
 const GRACE = "user-grace";
@@ -150,7 +87,7 @@ describe("ProjectsService", () => {
   });
 
   describe("list", () => {
-    it("answers with the caller's own projects and nobody else's", async () => {
+    it("answers with what the caller may reach, and what they may do there", async () => {
       const crewbase = await service.create(ADA, { name: "Crewbase" });
       const ledger = await service.create(ADA, { name: "Ledger" });
       await service.create(GRACE, { name: "Compiler" });
@@ -158,27 +95,63 @@ describe("ProjectsService", () => {
       const listed = await service.list(ADA);
 
       expect(listed).toHaveLength(2);
-      expect(listed).toEqual(expect.arrayContaining([crewbase, ledger]));
+      expect(listed).toEqual(
+        expect.arrayContaining([
+          { project: crewbase, role: "owner" },
+          { project: ledger, role: "owner" },
+        ]),
+      );
     });
 
-    it("answers a user who owns nothing with an empty list", async () => {
+    it("puts a project the caller only operates on the same list", async () => {
+      const compiler = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: compiler.id, userId: ADA, role: "operator" });
+
+      await expect(service.list(ADA)).resolves.toEqual([{ project: compiler, role: "operator" }]);
+    });
+
+    it("answers a user who is on nothing with an empty list", async () => {
       await service.create(GRACE, { name: "Compiler" });
 
       await expect(service.list(ADA)).resolves.toEqual([]);
     });
   });
 
-  describe("requireOwned", () => {
-    it("answers with the project when it is the caller's", async () => {
+  describe("requireMember", () => {
+    it("answers with the project when the caller owns it", async () => {
       const project = await service.create(ADA, { name: "Crewbase" });
 
-      await expect(service.requireOwned(project.id, ADA)).resolves.toEqual(project);
+      await expect(service.requireMember(project.id, ADA, "owner")).resolves.toEqual(project);
     });
 
-    it("answers another user's project as missing, not as forbidden", async () => {
+    it("lets an owner through a door that only asks for an operator", async () => {
+      const project = await service.create(ADA, { name: "Crewbase" });
+
+      await expect(service.requireMember(project.id, ADA, "operator")).resolves.toEqual(project);
+    });
+
+    it("lets an operator through the doors that ask for an operator", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+
+      await expect(service.requireMember(project.id, ADA, "operator")).resolves.toEqual(project);
+    });
+
+    it("refuses an operator at an owner's door, plainly rather than as missing", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+
+      const refusal = await refusalFrom(service.requireMember(project.id, ADA, "owner"));
+
+      // They work in this project every day: hiding it would be a lie they
+      // could disprove, and it would not hide anything they do not know.
+      expect(refusal).toBeInstanceOf(ForbiddenError);
+    });
+
+    it("answers a project the caller is not on as missing, not as forbidden", async () => {
       const project = await service.create(GRACE, { name: "Compiler" });
 
-      const refusal = await refusalFrom(service.requireOwned(project.id, ADA));
+      const refusal = await refusalFrom(service.requireMember(project.id, ADA, "operator"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
@@ -186,35 +159,60 @@ describe("ProjectsService", () => {
     it("answers an id no project carries the same way", async () => {
       const project = await service.create(GRACE, { name: "Compiler" });
 
-      const somebodyElses = await refusalFrom(service.requireOwned(project.id, ADA));
-      const nothingAtAll = await refusalFrom(service.requireOwned("project-404", ADA));
+      const somebodyElses = await refusalFrom(service.requireMember(project.id, ADA, "owner"));
+      const nothingAtAll = await refusalFrom(service.requireMember("project-404", ADA, "owner"));
 
       expect(nothingAtAll).toBeInstanceOf(NotFoundError);
       // Told apart, the two would let a caller probe for other people's ids.
       expect(nothingAtAll.message).toBe(somebodyElses.message);
     });
-  });
 
-  describe("requireOwnedByKey", () => {
-    it("answers with the project when the key is the caller's", async () => {
-      const project = await service.create(ADA, { name: "Crewbase" });
-
-      await expect(service.requireOwnedByKey(project.key, ADA)).resolves.toEqual(project);
-    });
-
-    it("answers another user's key as missing, not as forbidden", async () => {
+    it("refuses somebody whose membership has been revoked", async () => {
       const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+      await repository.removeMember(project.id, ADA);
 
-      const refusal = await refusalFrom(service.requireOwnedByKey(project.key, ADA));
+      const refusal = await refusalFrom(service.requireMember(project.id, ADA, "operator"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("requireMemberByKey", () => {
+    it("answers with the project when the key names one the caller is on", async () => {
+      const project = await service.create(ADA, { name: "Crewbase" });
+
+      await expect(service.requireMemberByKey(project.key, ADA, "operator")).resolves.toEqual(
+        project,
+      );
+    });
+
+    it("answers a key for a project the caller is not on as missing", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+
+      const refusal = await refusalFrom(service.requireMemberByKey(project.key, ADA, "operator"));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+    });
+
+    it("refuses an operator's key at an owner's door", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+
+      const refusal = await refusalFrom(service.requireMemberByKey(project.key, ADA, "owner"));
+
+      expect(refusal).toBeInstanceOf(ForbiddenError);
     });
 
     it("answers a key no project carries the same way", async () => {
       const project = await service.create(GRACE, { name: "Compiler" });
 
-      const somebodyElses = await refusalFrom(service.requireOwnedByKey(project.key, ADA));
-      const nothingAtAll = await refusalFrom(service.requireOwnedByKey("compiler-zzzzzz", ADA));
+      const somebodyElses = await refusalFrom(
+        service.requireMemberByKey(project.key, ADA, "operator"),
+      );
+      const nothingAtAll = await refusalFrom(
+        service.requireMemberByKey("compiler-zzzzzz", ADA, "operator"),
+      );
 
       expect(nothingAtAll).toBeInstanceOf(NotFoundError);
       // A key is guessable in a way an id is not, so telling the two apart here
@@ -305,13 +303,15 @@ describe("ProjectsService", () => {
     it("answers a user with the project they own", async () => {
       const project = await service.create(ADA, { name: "Crewbase" });
 
-      await expect(service.requireAccess(asUser(ADA), project.id)).resolves.toEqual(project);
+      await expect(service.requireAccess(asUser(ADA), project.id, "owner")).resolves.toEqual(
+        project,
+      );
     });
 
     it("answers a user asking after someone else's project as missing", async () => {
       const project = await service.create(GRACE, { name: "Compiler" });
 
-      const refusal = await refusalFrom(service.requireAccess(asUser(ADA), project.id));
+      const refusal = await refusalFrom(service.requireAccess(asUser(ADA), project.id, "owner"));
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
@@ -319,7 +319,7 @@ describe("ProjectsService", () => {
     it("answers an agent with the project its token names", async () => {
       const project = await service.create(ADA, { name: "Crewbase" });
 
-      await expect(service.requireAccess(asAgent(project.id), project.id)).resolves.toEqual(
+      await expect(service.requireAccess(asAgent(project.id), project.id, "owner")).resolves.toEqual(
         project,
       );
     });
@@ -328,7 +328,9 @@ describe("ProjectsService", () => {
       const crewbase = await service.create(ADA, { name: "Crewbase" });
       const compiler = await service.create(GRACE, { name: "Compiler" });
 
-      const refusal = await refusalFrom(service.requireAccess(asAgent(crewbase.id), compiler.id));
+      const refusal = await refusalFrom(
+        service.requireAccess(asAgent(crewbase.id), compiler.id, "owner"),
+      );
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
@@ -336,17 +338,37 @@ describe("ProjectsService", () => {
     it("answers an agent whose project has since been deleted as missing", async () => {
       // The token outlives nothing: a project that is gone is gone for it too.
       const refusal = await refusalFrom(
-        service.requireAccess(asAgent("project-deleted"), "project-deleted"),
+        service.requireAccess(asAgent("project-deleted"), "project-deleted", "owner"),
       );
 
       expect(refusal).toBeInstanceOf(NotFoundError);
     });
 
+    it("answers an operator at a door that asks for an operator", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+
+      await expect(service.requireAccess(asUser(ADA), project.id, "operator")).resolves.toEqual(
+        project,
+      );
+    });
+
+    it("refuses an operator at a door that asks for an owner", async () => {
+      const project = await service.create(GRACE, { name: "Compiler" });
+      await repository.addMember({ projectId: project.id, userId: ADA, role: "operator" });
+
+      const refusal = await refusalFrom(service.requireAccess(asUser(ADA), project.id, "owner"));
+
+      expect(refusal).toBeInstanceOf(ForbiddenError);
+    });
+
     it("does not tell a user and an agent apart when refusing", async () => {
       const compiler = await service.create(GRACE, { name: "Compiler" });
 
-      const asHuman = await refusalFrom(service.requireAccess(asUser(ADA), compiler.id));
-      const asToken = await refusalFrom(service.requireAccess(asAgent("project-404"), compiler.id));
+      const asHuman = await refusalFrom(service.requireAccess(asUser(ADA), compiler.id, "owner"));
+      const asToken = await refusalFrom(
+        service.requireAccess(asAgent("project-404"), compiler.id, "owner"),
+      );
 
       expect(asToken.message).toBe(asHuman.message);
     });

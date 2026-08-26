@@ -1,6 +1,5 @@
-import { Button, FormError } from "@repanel/ui";
+import { Button, FormError, Snippet } from "@repanel/ui";
 import { messageOf } from "../../lib/api-client";
-import { Snippet } from "./snippet";
 import { useActionSecret } from "./use-agent-access";
 
 /** Where the scheme this secret signs is written down, in full. */

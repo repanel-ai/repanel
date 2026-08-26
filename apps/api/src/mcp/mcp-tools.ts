@@ -88,7 +88,7 @@ string themselves. Never ask for a connection string and never handle one.`,
     },
     () =>
       runTool(deps.logger, async () => {
-        const project = await deps.projects.requireAccess(agent, projectId);
+        const project = await deps.projects.requireAccess(agent, projectId, "owner");
         const hasConnection = await deps.connections.hasConnection(agent, projectId);
         const stored = await deps.definitions.getValidationResult(agent, projectId);
         const connectionSetupUrl = hasConnection ? null : `${deps.consoleUrl}/p/${projectId}`;

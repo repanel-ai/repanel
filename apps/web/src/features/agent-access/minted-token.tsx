@@ -1,5 +1,4 @@
-import { Button } from "@repanel/ui";
-import { Snippet } from "./snippet";
+import { Button, Snippet } from "@repanel/ui";
 
 export interface MintedTokenProps {
   label: string;

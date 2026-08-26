@@ -30,7 +30,7 @@ export class ConnectionsService {
     projectId: string,
     { dsn }: SetConnectionRequest,
   ): Promise<ConnectionDto> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireMember(projectId, ownerId, "owner");
 
     const saved = await this.repository.save({
       projectId,
@@ -48,7 +48,7 @@ export class ConnectionsService {
    * the database name, which is what a human needs to recognize it by.
    */
   async get(ownerId: string, projectId: string): Promise<ConnectionDto | null> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireMember(projectId, ownerId, "owner");
 
     const connection = await this.repository.findByProjectId(projectId);
     if (!connection) return null;
@@ -58,7 +58,7 @@ export class ConnectionsService {
 
   /** Whether the stored connection actually works, answered in categories. */
   async test(ownerId: string, projectId: string): Promise<ConnectionTestDto> {
-    await this.projects.requireOwned(projectId, ownerId);
+    await this.projects.requireMember(projectId, ownerId, "owner");
     const connection = await this.requireConnection(projectId);
 
     return this.probe.check(this.crypto.decrypt(connection.encryptedDsn));
@@ -70,7 +70,7 @@ export class ConnectionsService {
    * a caller is told — where the database is is a human's business.
    */
   async hasConnection(principal: Principal, projectId: string): Promise<boolean> {
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "owner");
 
     return (await this.repository.findByProjectId(projectId)) !== undefined;
   }

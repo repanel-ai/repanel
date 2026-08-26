@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
-import type { ProjectDto } from "@repanel/contracts";
-import { NotFoundError, UnauthorizedError } from "../errors/domain-errors";
+import type { ProjectDto, ProjectRole } from "@repanel/contracts";
+import { ForbiddenError, NotFoundError, UnauthorizedError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 import { AGENT_TOKEN_PATTERN, hashAgentToken } from "./agent-token";
 import {
@@ -12,6 +12,8 @@ import { AgentTokensService } from "./agent-tokens.service";
 
 const ADA = "user-ada";
 const GRACE = "user-grace";
+/** On Crewbase, but only to use its admin. */
+const RAVI = "user-ravi";
 const CREWBASE = "project-crewbase";
 
 const PROJECT: ProjectDto = {
@@ -62,13 +64,16 @@ class InMemoryAgentTokensRepository implements TokenStore {
   }
 }
 
-/** Stands in for the projects feature: Ada owns Crewbase, nobody else does. */
-class OwnedProjects implements Pick<ProjectsService, "requireOwned"> {
-  requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
-    if (projectId !== CREWBASE || ownerId !== ADA) {
-      return Promise.reject(new NotFoundError("Project not found"));
-    }
-    return Promise.resolve(PROJECT);
+/** Stands in for the projects feature: Ada owns Crewbase, Ravi operates it. */
+class MemberProjects implements Pick<ProjectsService, "requireMember"> {
+  requireMember(projectId: string, userId: string, role: ProjectRole): Promise<ProjectDto> {
+    if (projectId !== CREWBASE) return Promise.reject(new NotFoundError("Project not found"));
+    if (userId === ADA) return Promise.resolve(PROJECT);
+    if (userId !== RAVI) return Promise.reject(new NotFoundError("Project not found"));
+
+    return role === "operator"
+      ? Promise.resolve(PROJECT)
+      : Promise.reject(new ForbiddenError("Only this project's owner can do that"));
   }
 }
 
@@ -92,7 +97,7 @@ describe("AgentTokensService", () => {
       providers: [
         AgentTokensService,
         { provide: AgentTokensRepository, useValue: repository },
-        { provide: ProjectsService, useValue: new OwnedProjects() },
+        { provide: ProjectsService, useValue: new MemberProjects() },
       ],
     }).compile();
 

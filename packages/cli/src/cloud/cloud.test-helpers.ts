@@ -31,6 +31,8 @@ export class FakeCloud {
   readonly submitted: unknown[] = [];
   /** The session tokens it recognizes. */
   readonly sessions = new Set<string>();
+  /** Projects this account only operates. They are on the route's answer too. */
+  readonly operated: ProjectDto[] = [];
 
   private readonly server: Server;
   private port = 0;
@@ -59,6 +61,12 @@ export class FakeCloud {
 
   add(project: ProjectDto): ProjectDto {
     this.projects.push(project);
+    return project;
+  }
+
+  /** A project this account may use but not configure: an operator's admin. */
+  addOperated(project: ProjectDto): ProjectDto {
+    this.operated.push(project);
     return project;
   }
 
@@ -92,7 +100,13 @@ export class FakeCloud {
     if (method === "GET" && path === "/auth/me") {
       return send(response, 200, { id: "user-ada", email: "ada@example.com", name: "Ada" });
     }
-    if (method === "GET" && path === "/projects") return send(response, 200, this.projects);
+    // The route answers with memberships, and the CLI keeps the owned ones.
+    if (method === "GET" && path === "/projects") {
+      return send(response, 200, [
+        ...this.projects.map((project) => ({ project, role: "owner" })),
+        ...this.operated.map((project) => ({ project, role: "operator" })),
+      ]);
+    }
     if (method === "POST" && path === "/projects") {
       const name = (body as { name?: string }).name ?? "";
       const project: ProjectDto = {

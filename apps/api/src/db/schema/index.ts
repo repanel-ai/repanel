@@ -4,6 +4,7 @@ export * from "./audit-events";
 export * from "./connections";
 export * from "./definition-versions";
 export * from "./definitions";
+export * from "./project-members";
 export * from "./projects";
 export * from "./sessions";
 export * from "./users";

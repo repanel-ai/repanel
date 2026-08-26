@@ -17,6 +17,8 @@ export * from "./definitions/published.js";
 export * from "./definitions/status.js";
 export * from "./definitions/submission.js";
 export * from "./errors/envelope.js";
+export * from "./projects/membership.js";
+export * from "./projects/person.js";
 export * from "./projects/project.js";
 export * from "./projects/requests.js";
 export * from "./runtime/actions.js";

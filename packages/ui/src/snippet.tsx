@@ -1,4 +1,4 @@
-import { CopyButton } from "@repanel/ui";
+import { CopyButton } from "./copy-button";
 
 export interface SnippetProps {
   /** Exactly what lands on the clipboard, and exactly what is shown. */

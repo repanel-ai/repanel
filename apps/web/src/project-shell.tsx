@@ -8,12 +8,12 @@ import { Screen } from "./screen";
 import { messageOf } from "./lib/api-client";
 
 /**
- * One project, and the four pages it has. The shell is the runtime's own —
+ * One project, and the five pages it has. The shell is the runtime's own —
  * navigation on the left, a panel inset off the same ground, one screen inside
  * it — because the console and the admin are one product and this is where that
  * is felt (DESIGN.md §11).
  *
- * The four pages are routed children rather than sections stacked in a column:
+ * The pages are routed children rather than sections stacked in a column:
  * a person in a console is *somewhere*, and a page that scrolls past everything
  * else has nowhere to say so.
  */

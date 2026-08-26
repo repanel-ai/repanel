@@ -9,8 +9,12 @@ const PASSWORD_MAX = 72;
 /**
  * Normalized before it is validated: the address is the account's identity, so
  * `Ada@Example.com ` and `ada@example.com` must not become two users.
+ *
+ * Exported because a second request names an account by address — adding an
+ * operator to a project — and an address that normalizes one way there and
+ * another way here would look up an account that does not exist.
  */
-const emailField = z
+export const emailField = z
   .string()
   .trim()
   .toLowerCase()

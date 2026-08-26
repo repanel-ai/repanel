@@ -36,6 +36,22 @@ test("a session RePanel does not know is an answer to `whoami`, not a failure", 
   });
 });
 
+test("an admin this account only operates is not a project it can deploy to", async () => {
+  const operated = cloud.addOperated({
+    id: "id-ledger",
+    name: "Ledger",
+    key: "ledger-d2s7u4",
+    createdAt: "2026-08-25T09:00:00.000Z",
+  });
+
+  const listed = await client().projects();
+
+  // `repanel link` and `repanel deploy` are the owner's; offering somebody
+  // else's admin here would be offering a refusal one command later.
+  assert.equal(listed.some((project) => project.key === operated.key), false);
+  assert.ok(listed.length > 0);
+});
+
 test("a refusal anywhere else names the fix, and it is signing in again", async () => {
   const refusal = await refusalFrom(client("not-a-session").projects());
 

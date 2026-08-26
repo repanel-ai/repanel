@@ -49,12 +49,12 @@ function row(overrides: Partial<AuditEventRow> = {}): AuditEventRow {
 }
 
 describe("ActivityService", () => {
-  let projects: { requireOwnedByKey: jest.Mock };
+  let projects: { requireMemberByKey: jest.Mock };
   let repository: { insert: jest.Mock; listForRecord: jest.Mock };
   let activity: ActivityService;
 
   beforeEach(() => {
-    projects = { requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT) };
+    projects = { requireMemberByKey: jest.fn().mockResolvedValue(PROJECT) };
     repository = {
       insert: jest.fn().mockResolvedValue(row()),
       listForRecord: jest.fn().mockResolvedValue({ rows: [row()], total: 1 }),
@@ -115,7 +115,7 @@ describe("ActivityService", () => {
     it("asks nobody's permission to file what has already happened", async () => {
       await activity.record(OPERATOR, PROJECT.id, APPROVED);
 
-      expect(projects.requireOwnedByKey).not.toHaveBeenCalled();
+      expect(projects.requireMemberByKey).not.toHaveBeenCalled();
     });
 
     it("does not swallow a log that could not be written", async () => {
@@ -143,7 +143,7 @@ describe("ActivityService", () => {
 
     /** Someone else's project reads as missing, exactly as every other read. */
     it("asks whether this owner has the project before anything else", async () => {
-      projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
+      projects.requireMemberByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
       await expect(
         activity.listForRecord(OPERATOR.id, PROJECT.key, "airlines", "air-1", { page: 1, pageSize: 5 }),

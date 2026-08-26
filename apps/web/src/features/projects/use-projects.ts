@@ -1,4 +1,4 @@
-import type { CreateProjectRequest, ProjectDto } from "@repanel/contracts";
+import type { CreateProjectRequest, ProjectDto, ProjectMembershipDto } from "@repanel/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api-client";
 
@@ -9,11 +9,15 @@ export const projectKeys = {
   one: (projectId: string) => [...projectKeys.all, projectId] as const,
 };
 
-/** Everything the console owns: the projects this account has created. */
-export function useProjects() {
+/**
+ * Everywhere this account may go, and what it may do there. Projects it owns
+ * and admins it merely operates come back on one list, because "where may I
+ * go" is one question and the console is what answers it after signing in.
+ */
+export function useMemberships() {
   return useQuery({
     queryKey: projectKeys.list(),
-    queryFn: () => api.get<ProjectDto[]>("/projects"),
+    queryFn: () => api.get<ProjectMembershipDto[]>("/projects"),
   });
 }
 

@@ -2,9 +2,12 @@ import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 /**
- * A project is what everything else hangs off. Ownership is flat for now: one
- * user, one project, and the project goes when the user does. The key is the
- * routing identity, unique across the install and never reissued.
+ * A project is what everything else hangs off. `user_id` is who made it: the
+ * project goes when they do, and it is the row an owner membership is written
+ * from. Who may reach a project — and as what — is `project_members`, which is
+ * where every authorization decision is read (DECISIONS #062).
+ *
+ * The key is the routing identity, unique across the install and never reissued.
  */
 export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -28,17 +28,39 @@ export class AuthService {
   ) {}
 
   async signup(request: SignupRequest): Promise<AuthenticatedSession> {
+    const user = await this.createAccount(request);
+    return { user, ...(await this.mintSession(user.id)) };
+  }
+
+  /**
+   * An account, without a session for it. Signing up is one caller; an owner
+   * putting an operator on a project is the other, and what that owner is
+   * handed is the person, never a way to act as them.
+   */
+  async createAccount(request: SignupRequest): Promise<UserDto> {
     if (await this.repository.findUserByEmail(request.email)) {
       throw new ConflictError("Email already registered");
     }
 
-    const user = await this.repository.createUser({
-      email: request.email,
-      name: request.name,
-      passwordHash: await this.passwords.hash(request.password),
-    });
+    return toUserDto(
+      await this.repository.createUser({
+        email: request.email,
+        name: request.name,
+        passwordHash: await this.passwords.hash(request.password),
+      }),
+    );
+  }
 
-    return this.startSession(user);
+  /** The account at this address, or null. Nothing about it but who they are. */
+  async findAccountByEmail(email: string): Promise<UserDto | null> {
+    const user = await this.repository.findUserByEmail(email);
+    return user ? toUserDto(user) : null;
+  }
+
+  /** The people these ids name, for a caller that holds ids and needs names. */
+  async accountsFor(userIds: string[]): Promise<UserDto[]> {
+    const users = await this.repository.findUsersByIds(userIds);
+    return users.map(toUserDto);
   }
 
   async login({ email, password }: LoginRequest): Promise<AuthenticatedSession> {

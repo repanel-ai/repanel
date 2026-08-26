@@ -47,57 +47,57 @@ export class RuntimeService {
   ) {}
 
   /** The definition the renderer draws, or nothing to draw it from. */
-  async definitionFor(ownerId: string, projectKey: string): Promise<Definition> {
-    return (await this.readContext(ownerId, projectKey)).definition;
+  async definitionFor(userId: string, projectKey: string): Promise<Definition> {
+    return (await this.readContext(userId, projectKey)).definition;
   }
 
   async listRecords(
-    ownerId: string,
+    userId: string,
     projectKey: string,
     resourceKey: string,
     query: ListRecordsQuery,
   ): Promise<RecordListDto> {
-    const context = await this.readContext(ownerId, projectKey);
+    const context = await this.readContext(userId, projectKey);
 
     return this.reader.listRecords(context, resourceKey, query);
   }
 
   async getRecord(
-    ownerId: string,
+    userId: string,
     projectKey: string,
     resourceKey: string,
     id: RecordId,
   ): Promise<RecordDto> {
-    const context = await this.readContext(ownerId, projectKey);
+    const context = await this.readContext(userId, projectKey);
 
     return this.reader.getRecord(context, resourceKey, id);
   }
 
   /**
    * The records a relation may be pointed at. It is a read like any other here
-   * — the same owner check, the same published definition — and what a picker
+   * — the same membership check, the same published definition — and what a picker
    * is allowed to see is the engine's answer, not this one's.
    */
   async listOptions(
-    ownerId: string,
+    userId: string,
     projectKey: string,
     resourceKey: string,
     query: OptionsQuery,
   ): Promise<RecordOptionDto[]> {
-    const context = await this.readContext(ownerId, projectKey);
+    const context = await this.readContext(userId, projectKey);
 
     return this.reader.listOptions(context, resourceKey, query);
   }
 
   async listRelated(
-    ownerId: string,
+    userId: string,
     projectKey: string,
     resourceKey: string,
     id: RecordId,
     relationshipKey: string,
     query: ListRecordsQuery,
   ): Promise<RecordListDto> {
-    const context = await this.readContext(ownerId, projectKey);
+    const context = await this.readContext(userId, projectKey);
 
     return this.reader.listRelated(context, resourceKey, id, relationshipKey, query);
   }
@@ -105,13 +105,16 @@ export class RuntimeService {
   /**
    * A project's definition and its database, with ownership already
    * established. Public because acting on a record starts exactly where reading
-   * one does — the same owner check, the same revalidated definition — and the
-   * actions feature reaching for this instead of assembling its own is what
+   * one does — the same membership check, the same revalidated definition — and
+   * the actions feature reaching for this instead of assembling its own is what
    * keeps there being one answer to "may this caller see this admin".
+   *
+   * `operator` is the floor, and this is the door operators come through: the
+   * whole of an operator's account is the admin behind this method.
    */
-  async readContext(ownerId: string, projectKey: string): Promise<ProjectContext> {
-    const principal: Principal = { kind: "user", userId: ownerId };
-    const project = await this.projects.requireOwnedByKey(projectKey, ownerId);
+  async readContext(userId: string, projectKey: string): Promise<ProjectContext> {
+    const principal: Principal = { kind: "user", userId };
+    const project = await this.projects.requireMemberByKey(projectKey, userId, "operator");
 
     // The published version, never the draft. What an agent submits next is not
     // a deployment, so an admin being served cannot be taken down by one.

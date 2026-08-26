@@ -1,5 +1,5 @@
+import { Snippet } from "@repanel/ui";
 import { mcpCommand, TOKEN_PLACEHOLDER } from "./setup-command";
-import { Snippet } from "./snippet";
 
 export interface McpSetupProps {
   /** Where the API answers from outside the browser — the address an agent dials. */

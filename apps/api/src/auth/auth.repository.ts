@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { DbService } from "../db/db.service";
 import { sessions, users } from "../db/schema";
 import { isUniqueViolation } from "../db/unique-violation";
@@ -35,6 +35,18 @@ export class AuthRepository {
    * concurrent signups both clear the service's check, and the one Postgres
    * refuses must still read as a conflict rather than a failure.
    */
+  /**
+   * The accounts these ids name, in no particular order. Asked for by the
+   * console's People page, which holds memberships and needs the people behind
+   * them: the `users` table is this feature's, so the lookup is too.
+   */
+  async findUsersByIds(ids: string[]): Promise<UserRow[]> {
+    // `in ()` is not a query. No ids is not a question, and answers as one.
+    if (ids.length === 0) return [];
+
+    return this.database.db.select().from(users).where(inArray(users.id, ids));
+  }
+
   async createUser(user: NewUserRow): Promise<UserRow> {
     try {
       const [created] = await this.database.db.insert(users).values(user).returning();

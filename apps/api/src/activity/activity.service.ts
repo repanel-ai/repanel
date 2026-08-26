@@ -47,19 +47,19 @@ export class ActivityService {
   /**
    * One record's own history, newest first.
    *
-   * It asks the same question of ownership every other runtime read asks, and
+   * It asks the same question of membership every other runtime read asks, and
    * asks nothing about the definition: a project's log is readable whether or
    * not there is a published admin to read it beside, because the case where
    * one has just been taken down is exactly the case somebody wants the log.
    */
   async listForRecord(
-    ownerId: string,
+    userId: string,
     projectKey: string,
     resourceKey: string,
     id: RecordId,
     query: ActivityQuery,
   ): Promise<ActivityListDto> {
-    const project = await this.projects.requireOwnedByKey(projectKey, ownerId);
+    const project = await this.projects.requireMemberByKey(projectKey, userId, "operator");
 
     const { rows, total } = await this.repository.listForRecord(
       project.id,

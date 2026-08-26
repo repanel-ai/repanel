@@ -57,6 +57,13 @@
       "when": 1787697672137,
       "tag": "0007_lovely_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787701625035,
+      "tag": "0008_complex_vargas",
+      "breakpoints": true
     }
   ]
 }

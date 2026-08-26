@@ -44,4 +44,5 @@ export { TONE_INK } from "./tone-ink";
 export { Textarea, type TextareaProps } from "./textarea";
 export { Toaster, useToaster, type Notices, type ToastMessage, type ToastTone } from "./toast";
 export { Skeleton } from "./skeleton";
+export { Snippet, type SnippetProps } from "./snippet";
 export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";

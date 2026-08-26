@@ -77,13 +77,13 @@ function draftOf(valid: boolean): StoredValidation {
 
 describe("RuntimeService", () => {
   let pool: FakePool;
-  let projects: { requireOwnedByKey: jest.Mock };
+  let projects: { requireMemberByKey: jest.Mock };
   let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let runtime: RuntimeService;
 
   beforeEach(() => {
     pool = new FakePool();
-    projects = { requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT) };
+    projects = { requireMemberByKey: jest.fn().mockResolvedValue(PROJECT) };
     definitions = {
       getPublished: jest.fn().mockResolvedValue(publishedOf(saasDefinition)),
       // Only ever asked when there is nothing published, to tell a project
@@ -116,14 +116,16 @@ describe("RuntimeService", () => {
       expect(definition.resources[0]?.actions).toHaveLength(1);
     });
 
-    it("asks whether this owner has the project before reading anything", async () => {
+    it("asks whether this caller is on the project before reading anything", async () => {
       await runtime.definitionFor(OWNER, PROJECT.key);
 
-      expect(projects.requireOwnedByKey).toHaveBeenCalledWith(PROJECT.key, OWNER);
+      // `operator` is the floor the admin is served at: an owner clears it, and
+      // it is the whole of what an operator was put on the project for.
+      expect(projects.requireMemberByKey).toHaveBeenCalledWith(PROJECT.key, OWNER, "operator");
     });
 
-    it("does not answer for a project this owner does not have", async () => {
-      projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
+    it("does not answer for a project this caller is not on", async () => {
+      projects.requireMemberByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
       const refusal = await refusalFrom(runtime.definitionFor(OWNER, PROJECT.key));
 

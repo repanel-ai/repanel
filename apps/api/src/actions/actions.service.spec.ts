@@ -112,7 +112,7 @@ function publishedOf(payload: unknown): PublishedDefinition {
 
 describe("ActionsService", () => {
   let pool: FakePool;
-  let projects: { requireOwnedByKey: jest.Mock; actionSecret: jest.Mock };
+  let projects: { requireMemberByKey: jest.Mock; actionSecret: jest.Mock };
   let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let http: { send: jest.Mock };
   let activity: { record: jest.Mock };
@@ -126,7 +126,7 @@ describe("ActionsService", () => {
   beforeEach(() => {
     pool = new FakePool();
     projects = {
-      requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT),
+      requireMemberByKey: jest.fn().mockResolvedValue(PROJECT),
       actionSecret: jest.fn().mockResolvedValue(SECRET),
     };
     definitions = {
@@ -357,7 +357,7 @@ describe("ActionsService", () => {
     });
 
     it("asks whether this owner has the project before anything else", async () => {
-      projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
+      projects.requireMemberByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
       const refusal = await refusalFrom(actions.run(OPERATOR, PROJECT.key, "users", "u_1", "suspend"));
 

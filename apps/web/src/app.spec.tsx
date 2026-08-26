@@ -38,7 +38,7 @@ describe("App", () => {
     expect(await screen.findByText("crewbase-a3k9x2")).toBeDefined();
   });
 
-  it("opens a project on where it stands, and names its four pages", async () => {
+  it("opens a project on where it stands, and names its five pages", async () => {
     renderAt(`/p/${CREWBASE.id}`, ADA);
 
     // `/p/:id` is not a page: it is the way in, and where a project stands is
@@ -46,7 +46,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Overview" })).toBeDefined();
 
     const nav = screen.getByRole("navigation", { name: "Project" });
-    for (const page of ["Overview", "Connection", "Agent access", "Definition"]) {
+    for (const page of ["Overview", "Connection", "Agent access", "Definition", "People"]) {
       expect(within(nav).getByText(page)).toBeDefined();
     }
     // Which project, said once, where the runtime says which app.
@@ -89,11 +89,12 @@ describe("App", () => {
     ).toBeDefined();
   });
 
-  it("gives each of the four pages its own address", async () => {
+  it("gives each of the five pages its own address", async () => {
     for (const [path, heading] of [
       ["connection", "Connection"],
       ["agents", "Agent access"],
       ["definition", "Definition"],
+      ["people", "People"],
     ]) {
       const view = renderAt(`/p/${CREWBASE.id}/${path}`, ADA);
 
@@ -114,11 +115,14 @@ function renderAt(path: string, user: UserDto | null) {
     vi.fn(async (input: string) => {
       if (!user) return unauthorized();
       if (input === "/api/auth/me") return json(user);
-      if (input === "/api/projects") return json([CREWBASE]);
+      if (input === "/api/projects") return json([{ project: CREWBASE, role: "owner" }]);
       if (input === `/api/projects/${CREWBASE.id}`) return json(CREWBASE);
       if (input === `/api/projects/${CREWBASE.id}/definition/status`) return json(NO_DEFINITION);
       if (input === `/api/projects/${CREWBASE.id}/connection`) return new Response("", { status: 200 });
       if (input === `/api/projects/${CREWBASE.id}/agent-tokens`) return json([]);
+      if (input === `/api/projects/${CREWBASE.id}/people`) {
+        return json([{ userId: ADA.id, email: ADA.email, name: ADA.name, role: "owner", addedAt: "2026-08-18T12:00:00.000Z" }]);
+      }
       return new Response(JSON.stringify({ error: { code: "not_found", message: "Not found" } }), {
         status: 404,
       });

@@ -4,6 +4,7 @@ import {
   type DefinitionSubmissionDto,
   type ErrorEnvelope,
   type ProjectDto,
+  type ProjectMembershipDto,
   type UserDto,
 } from "@repanel/contracts";
 import { CloudError } from "./errors.js";
@@ -37,8 +38,18 @@ export class Cloud {
     }
   }
 
-  projects(): Promise<ProjectDto[]> {
-    return this.send<ProjectDto[]>("GET", "/projects");
+  /**
+   * The projects this account owns.
+   *
+   * The route answers with everything the account may reach, operators' admins
+   * included (task 029). Those are left out here: linking and deploying are the
+   * owner's to do, so offering one would be offering a refusal.
+   */
+  async projects(): Promise<ProjectDto[]> {
+    const memberships = await this.send<ProjectMembershipDto[]>("GET", "/projects");
+    return memberships
+      .filter((membership) => membership.role === "owner")
+      .map((membership) => membership.project);
   }
 
   createProject(name: string): Promise<ProjectDto> {

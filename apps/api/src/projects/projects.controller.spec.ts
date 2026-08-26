@@ -17,12 +17,12 @@ describe("ProjectsController", () => {
       asked.push(["create", ownerId, request]);
       return Promise.resolve(PROJECT);
     },
-    list: (ownerId: string) => {
-      asked.push(["list", ownerId]);
-      return Promise.resolve([PROJECT]);
+    list: (userId: string) => {
+      asked.push(["list", userId]);
+      return Promise.resolve([{ project: PROJECT, role: "owner" }]);
     },
-    requireOwned: (projectId: string, ownerId: string) => {
-      asked.push(["requireOwned", projectId, ownerId]);
+    requireMember: (projectId: string, userId: string, role: string) => {
+      asked.push(["requireMember", projectId, userId, role]);
       return Promise.resolve(PROJECT);
     },
     revealActionSecret: (projectId: string, ownerId: string) => {
@@ -42,16 +42,16 @@ describe("ProjectsController", () => {
     expect(asked).toEqual([["create", "user-ada", { name: "Crewbase" }]]);
   });
 
-  it("lists what the signed-in user owns", async () => {
-    await expect(controller.list(USER)).resolves.toEqual([PROJECT]);
+  it("lists what the signed-in user may reach, and as what", async () => {
+    await expect(controller.list(USER)).resolves.toEqual([{ project: PROJECT, role: "owner" }]);
 
     expect(asked).toEqual([["list", "user-ada"]]);
   });
 
-  it("asks for a single project as the signed-in user", async () => {
+  it("asks for a single project as its owner", async () => {
     await expect(controller.get(USER, PROJECT.id)).resolves.toEqual(PROJECT);
 
-    expect(asked).toEqual([["requireOwned", PROJECT.id, "user-ada"]]);
+    expect(asked).toEqual([["requireMember", PROJECT.id, "user-ada", "owner"]]);
   });
 
   it("asks for the signing secret as the signed-in user", async () => {

@@ -62,7 +62,7 @@ async function submit(projectRoot: string, options: DeployOptions): Promise<Comm
   const project = (await cloud.projects()).find((candidate) => candidate.key === key);
   if (!project) {
     throw new CloudError(
-      `No project with the key \`${key}\` in this account.`,
+      `No project with the key \`${key}\` that this account owns.`,
       `Run \`repanel link\` to choose the project this repository submits to; it rewrites \`${PROJECT_FILE}\`.`,
     );
   }

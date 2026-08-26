@@ -1,9 +1,9 @@
 import { Test } from "@nestjs/testing";
-import type { ConnectionTestDto, ProjectDto } from "@repanel/contracts";
+import type { ConnectionTestDto, ProjectDto, ProjectRole } from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
 import type { ConfigService } from "../config/config.service";
 import { CryptoService } from "../crypto/crypto.service";
-import { NotFoundError } from "../errors/domain-errors";
+import { ForbiddenError, NotFoundError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 import { ConnectionProbeService } from "./connection-probe.service";
 import {
@@ -16,6 +16,8 @@ import { CustomerPoolService } from "./customer-pool.service";
 
 const ADA = "user-ada";
 const GRACE = "user-grace";
+/** On Crewbase, but only to use its admin. */
+const RAVI = "user-ravi";
 const CREWBASE = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const LEDGER = "1d4e5f60-7a8b-49c0-b1d2-e3f4a5b60718";
 
@@ -60,17 +62,23 @@ class InMemoryConnectionsRepository
   }
 }
 
-/** Stands in for the projects feature: Crewbase is Ada's, and nothing else exists. */
-class OwnedProjects implements Pick<ProjectsService, "requireOwned" | "requireAccess"> {
-  requireOwned(projectId: string, ownerId: string): Promise<ProjectDto> {
-    if (projectId !== CREWBASE || ownerId !== ADA) {
-      return Promise.reject(new NotFoundError("Project not found"));
-    }
-    return Promise.resolve(PROJECT);
+/**
+ * Stands in for the projects feature: Crewbase is Ada's, Ravi operates it, and
+ * nothing else exists.
+ */
+class MemberProjects implements Pick<ProjectsService, "requireMember" | "requireAccess"> {
+  requireMember(projectId: string, userId: string, role: ProjectRole): Promise<ProjectDto> {
+    if (projectId !== CREWBASE) return Promise.reject(new NotFoundError("Project not found"));
+    if (userId === ADA) return Promise.resolve(PROJECT);
+    if (userId !== RAVI) return Promise.reject(new NotFoundError("Project not found"));
+
+    return role === "operator"
+      ? Promise.resolve(PROJECT)
+      : Promise.reject(new ForbiddenError("Only this project's owner can do that"));
   }
 
-  requireAccess(principal: Principal, projectId: string): Promise<ProjectDto> {
-    if (principal.kind === "user") return this.requireOwned(projectId, principal.userId);
+  requireAccess(principal: Principal, projectId: string, role: ProjectRole): Promise<ProjectDto> {
+    if (principal.kind === "user") return this.requireMember(projectId, principal.userId, role);
     if (principal.projectId !== projectId || projectId !== CREWBASE) {
       return Promise.reject(new NotFoundError("Project not found"));
     }
@@ -124,7 +132,7 @@ describe("ConnectionsService", () => {
       providers: [
         ConnectionsService,
         { provide: ConnectionsRepository, useValue: repository },
-        { provide: ProjectsService, useValue: new OwnedProjects() },
+        { provide: ProjectsService, useValue: new MemberProjects() },
         { provide: CryptoService, useValue: crypto },
         { provide: ConnectionProbeService, useValue: probe },
         { provide: CustomerPoolService, useValue: pools },

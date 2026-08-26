@@ -68,11 +68,13 @@ assumed.
 `SessionAuthGuard` (`apps/api/src/auth/session-auth.guard.ts`) — projects,
 connections, definitions, agent tokens, actions and the runtime — with the two
 routes that *create* a session and the health check as the only exceptions. A
-runtime route then asks whether this user owns this project
-(`RuntimeService.readContext` → `ProjectsService.requireOwnedByKey`,
-`apps/api/src/runtime/runtime.service.ts`). Someone else's project answers
-`404`, not `403`, because the existence of a project is itself an answer
-(`apps/api/src/projects/projects.service.ts`). CORS is derived from
+runtime route then asks whether this user is on this project, and in a role that
+carries what is being asked for (`RuntimeService.readContext` →
+`ProjectsService.requireMemberByKey`, `apps/api/src/runtime/runtime.service.ts`).
+A project the caller is not on answers `404`, not `403`, because the existence of
+a project is itself an answer; somebody who *is* on it and may not do this is
+told so plainly, since they already know it exists
+(`apps/api/src/projects/projects.service.ts`, [§8.2](#82-two-roles-and-an-owner-who-holds-the-operators-first-password)). CORS is derived from
 `CONSOLE_URL` and `RUNTIME_URL` rather than declared, so it cannot drift from
 where those surfaces are actually deployed (#040).
 
@@ -109,10 +111,10 @@ declares (#048). That is checked two ways — see [§7](#7-what-we-ask-you-to-ru
 |---|---|---|---|
 | Customer DSN | `connections.encrypted_dsn`, AES-256-GCM, format `v1.<iv>.<tag>.<ct>` | the API process holding `APP_ENCRYPTION_KEY` | `apps/api/src/crypto/crypto.service.ts`; #023 |
 | — on the wire | it never leaves: responses carry `kind`, `host`, `database` and nothing else | — | `connections.mapper.ts`, built from a DSN passed in *to be taken apart*; asserted by `connections.service.spec.ts` ("never answers with the connection string, whatever it is asked") |
-| Action secret | one per project, 32 random bytes base64url, stored encrypted | the signed-in owner, once, via `GET /projects/:id/action-secret` | `projects/action-secret.ts`; `ProjectsService.revealActionSecret` → `requireOwned` |
+| Action secret | one per project, 32 random bytes base64url, stored encrypted | the signed-in owner, once, via `GET /projects/:id/action-secret` | `projects/action-secret.ts`; `ProjectsService.revealActionSecret` → `requireMember(…, "owner")` — an operator is refused |
 | Agent token | `rpk_` + 40 base62 (~238 bits), stored as a sha256 digest | the agent it was handed to | `agent-tokens/agent-token.ts` — a leaked table cannot be replayed |
 | Operator session | 256-bit token, stored as a sha256 digest; `httpOnly`, `SameSite=Lax`, `Secure` in production; fixed 30 days, no sliding | the browser holding the cookie | `auth/session-token.ts`, `auth/session-cookie.ts`, `auth/auth.service.ts` |
-| Operator password | bcrypt, cost 12 | nobody | `auth/password.service.ts` |
+| Operator password | bcrypt, cost 12 | nobody, once it is stored | `auth/password.service.ts`; a generated first password is shown to the owner once and never again (`projects/operator-password.ts`, [§8.2](#82-two-roles-and-an-owner-who-holds-the-operators-first-password)) |
 | `APP_ENCRYPTION_KEY` | the deployment's environment | the API process | validated at boot as 32 base64 bytes; the process refuses to start without one outside tests (`config/env.schema.ts`) |
 | The definition | `definitions` holds the draft and `definition_versions` a verbatim copy of each version published from it, both plaintext (it is the customer's own document). A published version is never rewritten and never deleted; deleting the project takes them with it | the project's owner and its agent token | ≤ 1 MiB before anything parses it (`definitions/definition-size.ts`); re-validated on every read, published or drafted (#047, `runtime.service.ts`) |
 | Customer records | the customer's database, and nowhere else | the project's owner, through the admin | RePanel stores no records and caches none — there is no cache and no Redis in either package ([§7](#7-what-we-ask-you-to-run-and-verify) has the grep). Every read runs against the customer's database and is mapped straight to a DTO (`engine/src/read/record-reader.ts`, `read/records.mapper.ts`) |
@@ -412,13 +414,44 @@ section becomes "RePanel can ask for what your definition allows" instead of
 default onboarding path rather than being replaced. Until then, this section is
 the honest state of things.
 
-### 8.2 Every operator is the project owner
+### 8.2 Two roles, and an owner who holds the operator's first password
 
-There is one account per project. `requireOwned` and `requireOwnedByKey` are
-the whole of the authorization model (`apps/api/src/projects/projects.service.ts`),
-so there is no operator who can use the admin without being able to use the
-console, and no separation between the person who configures RePanel and the
-person who runs actions. Roles are task [029](tasks/029-operator-roles.md).
+A project has an owner and any number of operators (`project_members`,
+DECISIONS #062). An operator reaches the rendered admin and nothing else: not
+the console, not agent tokens, not the database connection, not the signing
+secret, not publishing, and not the People page that would let them add
+somebody. `requireMember(project, person, role)` is the whole of the
+authorization model — one idiom, named at every call site — and
+`authorization.matrix.spec.ts` puts an owner, an operator, a non-member, an
+agent token and nobody at all through **every route the API serves**, with the
+route list read out of the controllers so a new endpoint cannot be added
+without declaring who may reach it.
+
+Three limits are worth stating plainly.
+
+**The owner sees the operator's first password.** There is no email delivery in
+v1, so adding an operator creates their login and shows the generated password
+once, the way an agent token is shown once; only its bcrypt hash is stored. The
+owner passes it on out of band, which is the same transit problem agent tokens
+already have — and until the operator has signed in, the owner holds a
+credential to their account.
+
+**There is no password change and no reset.** Nothing sends mail, so nothing can
+send a reset link. Losing the password means the owner revokes the person and
+adds them again, which mints a new one. The console says exactly that rather
+than implying a flow that does not exist.
+
+**Adding by address says whether the address is registered.** Adding somebody who
+already has a RePanel account returns no password, because there is nothing new
+to pass on. That difference is a registration oracle, one address at a time, to
+an authenticated project owner. It is inherent to the flow — the owner has to
+know whether they have a credential to send — and it is written down here rather
+than left to be discovered.
+
+Revocation is deleting the membership row, and it takes effect on the operator's
+next request: the check runs on every one. Their session is not deleted, because
+the session says who they are and the membership says what they may reach; an
+account may be an operator of one project and the owner of another.
 
 ### 8.3 The audit log is append-only, and spans two databases
 

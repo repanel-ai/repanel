@@ -78,7 +78,7 @@ export class DefinitionsService {
     payload: unknown,
     options: SubmitOptions,
   ): Promise<DraftSubmission> {
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "owner");
     requirePayloadWithinLimit(payload);
 
     const result = validateDefinition(payload);
@@ -116,7 +116,7 @@ export class DefinitionsService {
     const { result } = await this.submitDraft(principal, projectId, payload, { publish: true });
     if (!result.valid) return { valid: false, errors: result.errors };
 
-    const project = await this.projects.requireAccess(principal, projectId);
+    const project = await this.projects.requireAccess(principal, projectId, "owner");
     return { valid: true, adminUrl: `${this.config.runtimeUrl}/a/${project.key}` };
   }
 
@@ -127,7 +127,7 @@ export class DefinitionsService {
    */
   async publish(ownerId: string, projectId: string): Promise<PublishedDefinitionDto> {
     const principal: Principal = { kind: "user", userId: ownerId };
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "owner");
 
     const draft = await this.repository.findByProjectId(projectId);
     if (!draft) throw new NotFoundError(NOTHING_TO_PUBLISH);
@@ -139,18 +139,22 @@ export class DefinitionsService {
 
   /** The project's draft as it stands, or null if nothing was ever submitted. */
   async getDraft(principal: Principal, projectId: string): Promise<DefinitionDraft | null> {
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "owner");
 
     const definition = await this.repository.findByProjectId(projectId);
     return definition ? toDefinitionDraft(definition) : null;
   }
 
-  /** The version the admin serves, or null while nothing has been published. */
+  /**
+   * The version the admin serves, or null while nothing has been published.
+   * `operator`, and it is the only definition route that is: what an operator
+   * may see is the admin they were put on a project to use.
+   */
   async getPublished(
     principal: Principal,
     projectId: string,
   ): Promise<PublishedDefinition | null> {
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "operator");
 
     const published = await this.versions.findLatest(projectId);
     return published ? toPublishedDefinition(published) : null;
@@ -162,7 +166,7 @@ export class DefinitionsService {
    * richer tools.
    */
   async status(ownerId: string, projectId: string): Promise<DefinitionStatusDto> {
-    await this.projects.requireAccess({ kind: "user", userId: ownerId }, projectId);
+    await this.projects.requireAccess({ kind: "user", userId: ownerId }, projectId, "owner");
 
     const definition = await this.repository.findByProjectId(projectId);
     const published = await this.versions.findLatest(projectId);
@@ -173,12 +177,16 @@ export class DefinitionsService {
     );
   }
 
-  /** What the last submission concluded, without validating anything again. */
+  /**
+   * What the last submission concluded, without validating anything again.
+   * `operator`, because the runtime asks it on an operator's behalf to say why
+   * there is nothing to serve — a blank admin has to be able to explain itself.
+   */
   async getValidationResult(
     principal: Principal,
     projectId: string,
   ): Promise<StoredValidation | null> {
-    await this.projects.requireAccess(principal, projectId);
+    await this.projects.requireAccess(principal, projectId, "operator");
 
     const definition = await this.repository.findByProjectId(projectId);
     return definition ? toStoredValidation(definition) : null;

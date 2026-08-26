@@ -36,6 +36,9 @@ export const api = {
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, sending("POST", body)),
 
   put: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, sending("PUT", body)),
+
+  /** Taking something away. It carries no body, and answers with none. */
+  del: <T>(path: string): Promise<T> => request<T>(path, { method: "DELETE" }),
 };
 
 /** A request with a body, or without one — a POST need not carry anything. */

@@ -3,6 +3,7 @@ import {
   createProjectRequestSchema,
   type ActionSecretDto,
   type ProjectDto,
+  type ProjectMembershipDto,
   type UserDto,
 } from "@repanel/contracts";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -23,14 +24,15 @@ export class ProjectsController {
     return this.projects.create(user.id, body);
   }
 
+  /** Everything this account may reach, and as what. Operators are on it too. */
   @Get()
-  list(@CurrentUser() user: UserDto): Promise<ProjectDto[]> {
+  list(@CurrentUser() user: UserDto): Promise<ProjectMembershipDto[]> {
     return this.projects.list(user.id);
   }
 
   @Get(":id")
   get(@CurrentUser() user: UserDto, @Param("id", ParseUUIDPipe) id: string): Promise<ProjectDto> {
-    return this.projects.requireOwned(id, user.id);
+    return this.projects.requireMember(id, user.id, "owner");
   }
 
   /** The one route that answers with a signing secret, and only to its owner. */

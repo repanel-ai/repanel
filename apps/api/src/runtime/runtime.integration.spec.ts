@@ -236,7 +236,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
 
     const queries = new QueryBuilder();
     runtime = new RuntimeService(
-      { requireOwnedByKey: () => Promise.resolve(PROJECT) } as unknown as ProjectsService,
+      { requireMemberByKey: () => Promise.resolve(PROJECT) } as unknown as ProjectsService,
       {
         getPublished: () =>
           Promise.resolve({ payload: draft, version: 1, publishedAt: "2026-08-19T09:00:00.000Z" }),

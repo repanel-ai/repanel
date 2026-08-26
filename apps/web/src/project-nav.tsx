@@ -3,12 +3,15 @@ import { ResourceIcon, SignOutIcon, ChevronDownIcon, Skeleton, cn } from "@repan
 import { Link, NavLink } from "react-router";
 import { SignOutButton } from "./features/auth/sign-out-button";
 
-/** The four pages a project has, in the order they have to be done. */
+/** The five pages a project has, in the order they have to be done. */
 const PAGES = [
   { to: "overview", label: "Overview", icon: "activity" },
   { to: "connection", label: "Connection", icon: "database" },
   { to: "agents", label: "Agent access", icon: "key" },
   { to: "definition", label: "Definition", icon: "file" },
+  // Last because it is the one page that is about somebody other than the
+  // owner, and there is nobody to put on an admin that does not exist yet.
+  { to: "people", label: "People", icon: "users" },
 ] as const;
 
 /** One row of the sidebar's list, whether it is a link, a button or off. */

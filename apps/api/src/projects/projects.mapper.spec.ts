@@ -1,4 +1,4 @@
-import { toProjectDto } from "./projects.mapper";
+import { toProjectDto, toProjectMembershipDto } from "./projects.mapper";
 import type { ProjectRow } from "./projects.repository";
 
 const ROW: ProjectRow = {
@@ -33,5 +33,20 @@ describe("toProjectDto", () => {
 
     expect(Object.keys(dto)).not.toContain("actionSecret");
     expect(JSON.stringify(dto)).not.toContain("v1.");
+  });
+});
+
+describe("toProjectMembershipDto", () => {
+  it("puts the role beside the project rather than inside it", () => {
+    const membership = toProjectMembershipDto({ project: ROW, role: "operator" });
+
+    expect(membership).toEqual({ project: toProjectDto(ROW), role: "operator" });
+    expect(Object.keys(membership.project)).not.toContain("role");
+  });
+
+  it("leaves the signing secret behind, as the project mapper does", () => {
+    expect(JSON.stringify(toProjectMembershipDto({ project: ROW, role: "owner" }))).not.toContain(
+      "v1.",
+    );
   });
 });

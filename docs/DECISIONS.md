@@ -1403,3 +1403,59 @@ developer's machine, and writing a log into their repository would be RePanel
 putting a file there that nothing asked for (#058). It goes when the process
 does, and the panel above it is the same panel — one product, not a sibling
 (#048).
+
+062 · 2026-08 · A project has an owner and operators, and that is the whole
+permission system. Membership is a row in `project_members` — one person, one
+project, one of two roles — and `requireMember(projectId, userId, role)` is the
+one question the API asks about it. `requireOwned` and `requireOwnedByKey` are
+gone rather than kept alongside: two idioms is how a route ends up asking the
+question with the wrong answer, and a spec greps the source tree to keep them
+gone. Every call site names the role it needs, so "what does this route require"
+is answered where the route is rather than in somebody's memory.
+
+**Two refusals, and the difference is the point.** Somebody who is not on a
+project is told it does not exist, because a refusal would confirm that the id
+names something real — the answer #014 already settled. Somebody who *is* on it
+and may not do this is told so plainly: they work in that project every day, so
+hiding it would be a lie they could disprove, and one that hides nothing.
+
+**Roles are per project, not per account.** The same person owns one project and
+operates another; there is no operator *account*, and nothing about a login says
+what it may do. That is what makes the model a membership rather than a tier,
+and it is why revoking somebody does not touch their session — the session says
+who they are, the membership says where they may go, and deleting the row is the
+whole of revoking. It takes effect on their next request because the check runs
+on every one.
+
+**The owner is a row too, written with the project in one transaction.** A
+project whose owner row never landed would be a project nobody can reach, so
+both statements land or neither does. `projects.user_id` stays as the record of
+who made it and the cascade that takes it away with them; it is no longer read
+to decide anything.
+
+**The invite is the honest one, not the polished one.** No email is sent, so
+adding an operator creates their login and shows the generated password once —
+the agent-token pattern, for the same reason: only the hash is stored, so this
+is the password's entire lifetime on screen. An address RePanel already knows is
+added without one, and the answer says so, because the owner has to know whether
+they have something to pass on. There is no reset, and the console says the
+remedy is to revoke and add again rather than implying a flow that does not
+exist. What it costs — the owner holds the first credential, and the response is
+a registration oracle — is written into THREAT-MODEL §8.2 rather than left to be
+discovered.
+
+**The matrix is exhaustive by construction.** `authorization.matrix.spec.ts`
+discovers every route from the controllers themselves, through Nest's own
+metadata, and fails if one is not declared in the table — so an endpoint cannot
+be added without saying who may reach it. Five callers go through every route:
+owner, operator, non-member, agent token, and nobody at all, each carrying what
+they would really carry, through the real guards and the real services. A cell
+reading "reached" asserts that authorization let the caller through and not that
+the work behind it succeeded; the matrix is about the gate.
+
+**An operator's console is the admin.** Signing in lands them in it — straight
+there with one, a bare chooser with several — because the console has no page
+they could open, and a frame around a place you cannot go is a promise the
+product does not keep. What an operator may do inside the admin is what the
+definition allows anybody to do: per-resource and per-action permissions are
+out of scope, and this task is deliberately not the beginning of them.

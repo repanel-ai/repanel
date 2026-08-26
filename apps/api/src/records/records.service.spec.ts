@@ -64,7 +64,7 @@ function publishedOf(payload: unknown): PublishedDefinition {
 
 describe("RecordsService", () => {
   let pool: FakePool;
-  let projects: { requireOwnedByKey: jest.Mock };
+  let projects: { requireMemberByKey: jest.Mock };
   let definitions: { getPublished: jest.Mock; getValidationResult: jest.Mock };
   let activity: { record: jest.Mock };
   let records: RecordsService;
@@ -76,7 +76,7 @@ describe("RecordsService", () => {
 
   beforeEach(() => {
     pool = new FakePool();
-    projects = { requireOwnedByKey: jest.fn().mockResolvedValue(PROJECT) };
+    projects = { requireMemberByKey: jest.fn().mockResolvedValue(PROJECT) };
     definitions = {
       getPublished: jest.fn().mockResolvedValue(publishedOf(saasDefinition)),
       getValidationResult: jest.fn().mockResolvedValue(null),
@@ -127,7 +127,7 @@ describe("RecordsService", () => {
   });
 
   it("asks whether this owner has the project before anything else", async () => {
-    projects.requireOwnedByKey.mockRejectedValue(new NotFoundError("Project not found"));
+    projects.requireMemberByKey.mockRejectedValue(new NotFoundError("Project not found"));
 
     const refusal = await refusalFrom(
       records.createRecord(OPERATOR, PROJECT.key, "users", { values: { email: "a@b.test", name: "A" } }),

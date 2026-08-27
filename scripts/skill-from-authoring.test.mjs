@@ -26,7 +26,14 @@ test("every carried section arrives, in the guide's own order", () => {
   const headings = [...skillFromAuthoring(guide).matchAll(/^## (.+)$/gm)].map(([, h]) => h);
 
   assert.deepEqual(headings, [...guide.matchAll(/^## (.+)$/gm)].map(([, h]) => h).slice(0, -1));
-  assert.ok(headings.includes("5 · Actions, and the endpoints behind them"));
+  // The comparison above is between two lists derived from the same document,
+  // so it would hold just as well if both were empty. These two say it is not:
+  // the guide has sections, and one of them is named. Named by what it is about
+  // rather than by the number in front of it — inserting a section renumbers
+  // every one after it, and a canary that breaks on that is a canary nobody
+  // thanks.
+  assert.ok(headings.length > 5);
+  assert.ok(headings.some((heading) => heading.endsWith("· Actions, and the endpoints behind them")));
 });
 
 test("a section left out on purpose does not arrive", () => {

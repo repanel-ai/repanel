@@ -34,3 +34,29 @@ export class ForbiddenError extends DomainError {
   readonly code = "forbidden";
 }
 
+/**
+ * There is no connector holding a channel open for this project, so the
+ * request never left RePanel. Deliberately its own category rather than a
+ * timeout: nothing was asked of the customer's database, nothing is
+ * half-finished there, and the thing to go and do is start the connector.
+ */
+export class ConnectorOfflineError extends DomainError {
+  readonly code = "connector_offline";
+}
+
+/**
+ * The connector was there and did not answer inside the time the hop was given.
+ *
+ * Told apart from `QueryTimeoutError` on purpose, and the distinction is the
+ * operator's rather than ours. `query_timeout` means the customer's database
+ * was asked and took too long, which is a fact about a query and is fixed with
+ * an index. This means the hop said nothing at all — the connector may be
+ * wedged, the network may be gone — and reading one as the other sends somebody
+ * to tune a query that was never slow (DECISIONS #064).
+ *
+ * The hop's bound is always strictly longer than the statement's, so a slow
+ * query is answered as one by the side that actually knows.
+ */
+export class ConnectorTimeoutError extends DomainError {
+  readonly code = "connector_timeout";
+}

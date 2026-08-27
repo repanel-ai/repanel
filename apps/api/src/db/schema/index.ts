@@ -2,6 +2,7 @@
 export * from "./agent-tokens";
 export * from "./audit-events";
 export * from "./connections";
+export * from "./connector-tokens";
 export * from "./definition-versions";
 export * from "./definitions";
 export * from "./project-members";

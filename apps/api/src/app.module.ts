@@ -6,6 +6,7 @@ import { AgentTokensModule } from "./agent-tokens/agent-tokens.module";
 import { AuthModule } from "./auth/auth.module";
 import { ConfigModule } from "./config/config.module";
 import { ConnectionsModule } from "./connections/connections.module";
+import { ConnectorModule } from "./connector/connector.module";
 import { DbModule } from "./db/db.module";
 import { DefinitionsModule } from "./definitions/definitions.module";
 import { DomainExceptionFilter } from "./errors/domain-exception.filter";
@@ -23,6 +24,7 @@ import { RuntimeModule } from "./runtime/runtime.module";
     AuthModule,
     ConfigModule,
     ConnectionsModule,
+    ConnectorModule,
     DbModule,
     DefinitionsModule,
     HealthModule,

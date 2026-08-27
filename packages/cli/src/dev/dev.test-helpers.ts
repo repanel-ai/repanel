@@ -15,7 +15,7 @@ import {
   type ReadContext,
   type WriteContext,
 } from "@repanel/engine";
-import type { Pool, QueryResult } from "pg";
+import type { Pool, PoolClient, QueryResult } from "pg";
 import { ActivityLog } from "./activity-log.js";
 import type { RuntimeApi } from "./api-routes.js";
 import { readActivityQuery } from "./query-params.js";
@@ -43,7 +43,23 @@ interface Statement {
 export class FakePool {
   readonly statements: Statement[] = [];
 
-  query(statement: Statement): Promise<QueryResult> {
+  /**
+   * The engine runs every statement inside a transaction of its own
+   * (`engine/src/pool/bounded-statement.ts`), so what it asks a pool for is a
+   * client rather than an answer. This fake is its own client: it lends itself
+   * and takes itself back.
+   */
+  connect(): Promise<PoolClient> {
+    return Promise.resolve(this as unknown as PoolClient);
+  }
+
+  release(): void {}
+
+  query(statement: Statement | string): Promise<QueryResult> {
+    // The transaction's own statements travel as bare strings and are not what
+    // any of these cases reads.
+    if (typeof statement === "string") return Promise.resolve(rows([], []));
+
     this.statements.push(statement);
     return Promise.resolve(answerFor(statement.text));
   }

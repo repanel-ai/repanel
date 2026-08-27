@@ -3,7 +3,7 @@ import { CustomerPool } from "@repanel/engine";
 import type { Pool } from "pg";
 import { CryptoService } from "../crypto/crypto.service";
 import { NotFoundError } from "../errors/domain-errors";
-import { ConnectionsRepository, NO_CONNECTION } from "./connections.repository";
+import { ConnectionsRepository, NO_CONNECTION, NO_DSN } from "./connections.repository";
 
 /**
  * The engine's pool of customer connections, given the one thing it does not
@@ -24,6 +24,10 @@ export class CustomerPoolService implements OnModuleDestroy {
       resolveDsn: async (projectId) => {
         const connection = await this.repository.findByProjectId(projectId);
         if (!connection) throw new NotFoundError(NO_CONNECTION);
+        // A connector project has no connection string here and never had one.
+        // Reaching this would mean the routing sent a statement down the wrong
+        // rung, so it is a refusal rather than a fallback.
+        if (!connection.encryptedDsn) throw new NotFoundError(NO_DSN);
         return this.crypto.decrypt(connection.encryptedDsn);
       },
       // The project is named; the connection it belongs to is not.

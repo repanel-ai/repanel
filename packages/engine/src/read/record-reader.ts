@@ -11,6 +11,7 @@ import {
 } from "@repanel/contracts";
 import type { Pool, QueryResult } from "pg";
 import { InvalidQueryError, NotFoundError, QueryTimeoutError, type DomainError } from "../errors.js";
+import { runBounded } from "../pool/bounded-statement.js";
 import { identityField, indexFields, labelField, requireField } from "../query/fields.js";
 import {
   LOOKUP_ALIAS,
@@ -22,7 +23,8 @@ import {
 import { requireResource } from "../resources.js";
 import { toOptionDtos, toRecordDtos, toTotal } from "./records.mapper.js";
 
-/** The customer's database ran out of the time the pool gave the statement. */
+/** The customer's database ran out of the time the statement's transaction
+ *  gave it (`pool/bounded-statement.ts`). */
 const STATEMENT_TIMEOUT = "57014";
 
 /**
@@ -207,7 +209,7 @@ export class RecordReader {
   ): Promise<QueryResult> {
     const pool = await context.pool();
     try {
-      return await pool.query({ text: query.text, values: query.values });
+      return await runBounded(pool, query);
     } catch (error) {
       const code = (error as { code?: unknown } | null | undefined)?.code;
       if (code === STATEMENT_TIMEOUT) {

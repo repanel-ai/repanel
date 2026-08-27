@@ -64,6 +64,13 @@
       "when": 1787701625035,
       "tag": "0008_complex_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787840144897,
+      "tag": "0009_handy_speed",
+      "breakpoints": true
     }
   ]
 }

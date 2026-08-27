@@ -6,9 +6,8 @@ import {
   type Resource,
   type UserDto,
 } from "@repanel/contracts";
-import type { AuditEvent } from "@repanel/engine";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { QueryBuilder, RecordReader, RecordWriter } from "@repanel/engine";
+import { QueryBuilder, type AuditEvent } from "@repanel/engine";
 import { prismaDefinition } from "@repanel/engine/fixtures";
 import { Client } from "pg";
 import type { ConfigService } from "../config/config.service";
@@ -28,7 +27,8 @@ import {
 import type { ActivityService } from "../activity/activity.service";
 import { RecordsService } from "../records/records.service";
 import type { ProjectsService } from "../projects/projects.service";
-import { RuntimeService } from "./runtime.service";
+import type { RuntimeService } from "./runtime.service";
+import { directRuntime } from "./runtime.test-helpers";
 
 /**
  * The query engine against a real Postgres. Runs only when
@@ -48,8 +48,8 @@ import { RuntimeService } from "./runtime.service";
 const CUSTOMER_DATABASE_URL = process.env.TEST_CUSTOMER_DATABASE_URL;
 const describeAgainstPostgres = CUSTOMER_DATABASE_URL ? describe : describe.skip;
 
-// The pool gives a statement five seconds, so the timeout case cannot fit in
-// jest's default of five. The table-building hooks run against a real, possibly
+// A statement gets five seconds, so the timeout case cannot fit in jest's
+// default of five. The table-building hooks run against a real, possibly
 // remote database and share the same budget.
 jest.setTimeout(30_000);
 
@@ -181,7 +181,7 @@ class OneConnection {
     return Promise.resolve({
       id: "connection",
       projectId,
-      kind: "postgres",
+      kind: "postgres-direct",
       encryptedDsn: this.encryptedDsn,
       createdAt: new Date(0),
       updatedAt: new Date(0),
@@ -234,16 +234,17 @@ describeAgainstPostgres("the query engine against Postgres", () => {
     const connections = new OneConnection(crypto.encrypt(scopedTo(dsn, SCHEMA)));
     pools = new CustomerPoolService(connections as unknown as ConnectionsRepository, crypto);
 
-    const queries = new QueryBuilder();
-    runtime = new RuntimeService(
-      { requireMemberByKey: () => Promise.resolve(PROJECT) } as unknown as ProjectsService,
-      {
+    const built = directRuntime({
+      projects: {
+        requireMemberByKey: () => Promise.resolve(PROJECT),
+      } as unknown as ProjectsService,
+      definitions: {
         getPublished: () =>
           Promise.resolve({ payload: draft, version: 1, publishedAt: "2026-08-19T09:00:00.000Z" }),
       } as unknown as DefinitionsService,
       pools,
-      new RecordReader(queries),
-    );
+    });
+    runtime = built.runtime;
     records = new RecordsService(
       runtime,
       {
@@ -252,7 +253,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
           return Promise.resolve();
         },
       } as unknown as ActivityService,
-      new RecordWriter(queries),
+      built.executors,
     );
   });
 
@@ -454,7 +455,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
       expect(options).toEqual([{ id: "team-1", label: "Platform" }]);
     });
 
-    it("is taken back after the five seconds the pool allows it", async () => {
+    it("is taken back after the five seconds a statement gets", async () => {
       draft = slowDefinition;
 
       await expect(
@@ -497,7 +498,7 @@ describeAgainstPostgres("the query engine against Postgres", () => {
       draft = slowDefinition;
     });
 
-    it("is taken back after the five seconds the pool allows it", async () => {
+    it("is taken back after the five seconds a statement gets", async () => {
       const started = Date.now();
 
       await expect(runtime.listRecords(OWNER, PROJECT.key, "slow_records", page)).rejects.toBeInstanceOf(

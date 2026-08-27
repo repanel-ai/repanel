@@ -16,7 +16,7 @@ const NO_DEFINITION: DefinitionStatusDto = {
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const API_URL = "https://api.repanel.test";
 
-const CONNECTED: ConnectionDto = { kind: "postgres", host: "db.example.com", database: "crewbase" };
+const CONNECTED: ConnectionDto = { kind: "postgres-direct", host: "db.example.com", database: "crewbase" };
 const UNUSED: AgentTokenDto = {
   id: "t_1",
   label: "Claude Code on my laptop",

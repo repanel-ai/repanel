@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { ConfigModule } from "../config/config.module";
+import { ConnectorSocketsModule } from "../connector-sockets/connector-sockets.module";
 import { DbModule } from "../db/db.module";
 import { ProjectsModule } from "../projects/projects.module";
 import { DefinitionVersionsRepository } from "./definition-versions.repository";
@@ -15,7 +16,7 @@ import { DefinitionsService } from "./definitions.service";
  * draft the version their operators see.
  */
 @Module({
-  imports: [AuthModule, ConfigModule, DbModule, ProjectsModule],
+  imports: [AuthModule, ConfigModule, ConnectorSocketsModule, DbModule, ProjectsModule],
   controllers: [DefinitionsController],
   providers: [DefinitionsService, DefinitionsRepository, DefinitionVersionsRepository],
   exports: [DefinitionsService],

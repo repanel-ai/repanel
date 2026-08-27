@@ -9,12 +9,16 @@ import {
   type RecordListDto,
   type RecordOptionDto,
 } from "@repanel/contracts";
-import { RecordReader, indexResources, type ReadContext } from "@repanel/engine";
+import { indexResources } from "@repanel/engine";
 import type { Principal } from "../auth/principal";
+import { ConnectionsService } from "../connections/connections.service";
 import { CustomerPoolService } from "../connections/customer-pool.service";
 import { DefinitionsService } from "../definitions/definitions.service";
 import { NotFoundError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
+import { ExecutorsService } from "./executors.service";
+import { FILES_NOTHING, SIGNS_NOTHING } from "./runtime-executor";
+import type { ProjectContext, ServingContext } from "./runtime-executor";
 
 /** Nothing has ever been submitted: the authoring loop has not run. */
 const NO_DEFINITION = "This project has no definition yet";
@@ -26,24 +30,24 @@ const NOT_PUBLISHED = "This admin has not been published yet";
 /** A version is live but no longer validates — a narrowing landed under it. */
 const UNSERVABLE = "This project has no valid definition yet";
 
-/** A project, the definition it is rendered from, and the database behind it. */
-export interface ProjectContext extends ReadContext {
-  projectId: string;
-  definition: Definition;
-}
+/** A read files nothing and signs nothing. */
+const READS_ONLY = { audit: FILES_NOTHING, secret: SIGNS_NOTHING };
 
 /**
  * The rendered admin's read side. It decides who may ask and which definition
  * the answer comes out of; what the definition allows to be asked, and the SQL
- * that asks it, belong to the engine. Nothing here writes.
+ * that asks it, belong to the engine — running here or beside the customer's
+ * database, which is `ExecutorsService`'s decision and nothing else's. Nothing
+ * here writes.
  */
 @Injectable()
 export class RuntimeService {
   constructor(
     private readonly projects: ProjectsService,
     private readonly definitions: DefinitionsService,
+    private readonly connections: ConnectionsService,
     private readonly pools: CustomerPoolService,
-    private readonly reader: RecordReader,
+    private readonly executors: ExecutorsService,
   ) {}
 
   /** The definition the renderer draws, or nothing to draw it from. */
@@ -57,9 +61,7 @@ export class RuntimeService {
     resourceKey: string,
     query: ListRecordsQuery,
   ): Promise<RecordListDto> {
-    const context = await this.readContext(userId, projectKey);
-
-    return this.reader.listRecords(context, resourceKey, query);
+    return (await this.reading(userId, projectKey)).listRecords(resourceKey, query);
   }
 
   async getRecord(
@@ -68,9 +70,7 @@ export class RuntimeService {
     resourceKey: string,
     id: RecordId,
   ): Promise<RecordDto> {
-    const context = await this.readContext(userId, projectKey);
-
-    return this.reader.getRecord(context, resourceKey, id);
+    return (await this.reading(userId, projectKey)).getRecord(resourceKey, id);
   }
 
   /**
@@ -84,9 +84,7 @@ export class RuntimeService {
     resourceKey: string,
     query: OptionsQuery,
   ): Promise<RecordOptionDto[]> {
-    const context = await this.readContext(userId, projectKey);
-
-    return this.reader.listOptions(context, resourceKey, query);
+    return (await this.reading(userId, projectKey)).listOptions(resourceKey, query);
   }
 
   async listRelated(
@@ -97,9 +95,12 @@ export class RuntimeService {
     relationshipKey: string,
     query: ListRecordsQuery,
   ): Promise<RecordListDto> {
-    const context = await this.readContext(userId, projectKey);
-
-    return this.reader.listRelated(context, resourceKey, id, relationshipKey, query);
+    return (await this.reading(userId, projectKey)).listRelated(
+      resourceKey,
+      id,
+      relationshipKey,
+      query,
+    );
   }
 
   /**
@@ -130,12 +131,21 @@ export class RuntimeService {
     return {
       projectId: project.id,
       definition: result.definition,
+      definitionVersion: published.version,
       resources: indexResources(result.definition),
-      // Asked for when a statement is ready to send, so that a resource this
-      // admin does not have is answered as one whether or not there is a
-      // database behind it.
+      // Both of these are asked for when a statement is ready to send, and for
+      // the same reason: a resource this admin does not have is answered as one
+      // whether or not there is a database behind it, and whether or not the
+      // connector that would have served it is running.
+      connectionKind: () => this.connections.kindFor(project.id),
       pool: () => this.pools.poolFor(project.id),
     };
+  }
+
+  /** The same door, for the reads this service serves itself. */
+  private async reading(userId: string, projectKey: string) {
+    const context = await this.readContext(userId, projectKey);
+    return this.executors.for({ ...context, ...READS_ONLY } satisfies ServingContext);
   }
 
   /**

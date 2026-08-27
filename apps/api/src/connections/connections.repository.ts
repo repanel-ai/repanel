@@ -9,6 +9,9 @@ export type NewConnectionRow = typeof connections.$inferInsert;
 /** What it means when the lookup below finds nothing, wherever it is asked. */
 export const NO_CONNECTION = "This project has no database connection";
 
+/** A project served through a connector has no connection string of its own. */
+export const NO_DSN = "This project is served through a connector, not a connection string";
+
 /** All Drizzle access to the table connections owns. */
 @Injectable()
 export class ConnectionsRepository {
@@ -26,7 +29,11 @@ export class ConnectionsRepository {
       .onConflictDoUpdate({
         target: connections.projectId,
         set: {
-          encryptedDsn: connection.encryptedDsn,
+          // The kind is set on every write, so switching rungs is the same
+          // statement as replacing a connection string — and the check
+          // constraint refuses any row where the two disagree.
+          kind: connection.kind,
+          encryptedDsn: connection.encryptedDsn ?? null,
           // The row's own clock, so both timestamps come from the database.
           updatedAt: sql`now()`,
         },

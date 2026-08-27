@@ -25,20 +25,28 @@ than built, this page says so and names the task.
                                                            ─────────────────
   coding agent ─── MCP · rpk_ ───▶ ┌───────────────┐
     writes definition files        │ apps/api      │─ pooled DSN ─▶ Postgres
-                                   │   definition  │
+                                   │   definition  │   (rung 1)
   repanel link · deploy ─ session ▶│   validation  │─ signed ─────▶ the app's
                                    │   control     │  httpCall      /repanel/*
   the operator's browser ─ session▶│   plane       │
-    apps/web · apps/runtime        │   + engine    │
-                                   └───────────────┘
+    apps/web · apps/runtime        │   + engine    │◀─ descriptors ─┐
+                                   └───────────────┘   rpc_ · ws    │
+                                                                    │
+                                              repanel connect ──────┘ (rung 2)
+                                                + packages/engine ─▶ Postgres
+                                                dials out; holds the DSN
+                                                locally; signs and calls
+                                                the app from inside
 
   repanel dev ── packages/engine ──▶ a local database
     loopback only; reaches nothing off the machine (#048)
 ```
 
-**`apps/api`** is the control plane and the only process that holds anything
-dangerous: accounts, projects, definitions, the encrypted DSN, the per-project
-action secret. It embeds `packages/engine` through thin injectable adapters.
+**`apps/api`** is the control plane: accounts, projects, definitions, the
+per-project action secret, and — on the direct rung — the encrypted DSN. It
+embeds `packages/engine` through thin injectable adapters, and one seam decides
+whether a request is served by the engine in this process or by the same engine
+running in the customer's own connector (`runtime/executors.service.ts`, #064).
 
 **`packages/engine`** is the safety core: the query builder, the customer
 connection pool, record mapping, read and action execution. It is given a
@@ -54,15 +62,22 @@ environment variable (#040).
 
 **`packages/cli`** is `repanel`: `validate` and `dev` run entirely on the
 developer's machine; `link` and `deploy` reach Cloud over a session a human
-authorized in their own browser (#049).
+authorized in their own browser (#049); `connect` is **the connector** — the
+same `packages/engine`, run beside the customer's database, dialling out to
+Cloud and serving definition-derived descriptors rather than statements (#064).
+A project is on one rung at a time (`connections.kind`), and on the connector
+rung `apps/api` holds no connection string for it at all. That changes what
+[§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds) has to say, and it
+is the only place in this document where the two rungs differ.
 
 **The coding agent** is present at authoring time and nowhere else. It speaks
 MCP to `apps/api` and holds an `rpk_` token scoped to one project.
 
 ## 2. Trust boundaries
 
-There are five, and each is a place where something is checked rather than
-assumed.
+There are six, and each is a place where something is checked rather than
+assumed. Two of them are the two rungs of the same crossing: 2.3 exists on the
+direct rung and 2.6 replaces it on the connector one.
 
 **2.1 · Browser → API.** Every controller a browser reaches is behind
 `SessionAuthGuard` (`apps/api/src/auth/session-auth.guard.ts`) — projects,
@@ -88,30 +103,46 @@ project, so every other project reads as missing to it —
 public contract per #020). **None of them reads a customer record, and none of
 them touches a connection string.**
 
-**2.3 · API → the customer's database.** The DSN is decrypted only to open a
-pool, on demand, and is held nowhere
+**2.3 · API → the customer's database (direct rung only).** The DSN is decrypted
+only to open a pool, on demand, and is held nowhere
 (`apps/api/src/connections/customer-pool.service.ts`). Every statement that
 crosses this boundary was written by `QueryBuilder` from a validated
 definition (#024, `packages/engine/src/query/query-builder.ts`). This is the
-boundary [§8.1](#81-direct-dsn-you-are-trusting-repanel-cloud-with-a-credential)
-is about.
+boundary [§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds) is about.
+On the connector rung it does not exist: the pool refuses to be opened at all,
+because there is no connection string on the row to open one with.
 
-**2.4 · API → the customer's application.** One signed HTTP request per
-`httpCall` action, to an absolute URL the definition wrote down (#013,
-`packages/engine/src/actions/http-call.ts`). Nothing that comes back is read.
+**2.4 · API → the customer's application (direct rung only).** One signed HTTP
+request per `httpCall` action, to an absolute URL the definition wrote down
+(#013, `packages/engine/src/actions/http-call.ts`). Nothing that comes back is
+read. On the connector rung this call leaves the connector instead, for the
+reason in [§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds).
 
 **2.5 · The developer's machine.** `repanel dev` binds `127.0.0.1`
 (`packages/cli/src/commands/dev.ts`) and reaches nothing off the machine except
 the database the operator confirmed and the endpoints their own definition
 declares (#048). That is checked two ways — see [§7](#7-what-we-ask-you-to-run-and-verify).
 
+**2.6 · API ↔ the customer's connector (connector rung only).** The connector
+dials out and authenticates at the upgrade, before a socket exists: an `rpc_`
+token minted for exactly one project (`connector-sockets/connector-token.ts`),
+and the contracts version this build speaks — a mismatch is refused `426` and
+named, rather than negotiated (#064). What crosses afterwards is a closed
+discriminated union of seven descriptors built from this repository's own
+runtime request schemas, and there is no member of it that could carry a
+statement (`packages/contracts/src/connector/frames.ts`). Both halves of that
+are gated in [§7](#7-what-we-ask-you-to-run-and-verify), and what the boundary
+is worth is [§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds).
+
 ## 3. Assets
 
 | Asset | Where it lives | Who can read it | What keeps it there |
 |---|---|---|---|
-| Customer DSN | `connections.encrypted_dsn`, AES-256-GCM, format `v1.<iv>.<tag>.<ct>` | the API process holding `APP_ENCRYPTION_KEY` | `apps/api/src/crypto/crypto.service.ts`; #023 |
+| Customer DSN (direct rung) | `connections.encrypted_dsn`, AES-256-GCM, format `v1.<iv>.<tag>.<ct>` | the API process holding `APP_ENCRYPTION_KEY` | `apps/api/src/crypto/crypto.service.ts`; #023 |
+| Customer DSN (connector rung) | the customer's own machine, in the environment their connector was started in | that process, and nothing of RePanel's | `connections.encrypted_dsn` is `NULL` and the table's check constraint says it must be (`db/schema/connections.ts`); the connector writes nothing to disk, and a gate scans its sources for every filesystem write this runtime has (`packages/cli/src/connector/persists-nothing.test.ts`) |
+| Connector token | `rpc_` + 40 base62 (~238 bits), stored as a sha256 digest, one per project | the connector it was handed to | `connector-sockets/connector-token.ts` — a leaked table cannot be replayed; minting again replaces the row, which is what revokes it, and closes the channel that was using it |
 | — on the wire | it never leaves: responses carry `kind`, `host`, `database` and nothing else | — | `connections.mapper.ts`, built from a DSN passed in *to be taken apart*; asserted by `connections.service.spec.ts` ("never answers with the connection string, whatever it is asked") |
-| Action secret | one per project, 32 random bytes base64url, stored encrypted | the signed-in owner, once, via `GET /projects/:id/action-secret` | `projects/action-secret.ts`; `ProjectsService.revealActionSecret` → `requireMember(…, "owner")` — an operator is refused |
+| Action secret | one per project, 32 random bytes base64url, stored encrypted | the signed-in owner, once, via `GET /projects/:id/action-secret`; and, on the connector rung, the customer's own connector, once per session, in memory ([§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds)) | `projects/action-secret.ts`; `ProjectsService.revealActionSecret` → `requireMember(…, "owner")` — an operator is refused |
 | Agent token | `rpk_` + 40 base62 (~238 bits), stored as a sha256 digest | the agent it was handed to | `agent-tokens/agent-token.ts` — a leaked table cannot be replayed |
 | Operator session | 256-bit token, stored as a sha256 digest; `httpOnly`, `SameSite=Lax`, `Secure` in production; fixed 30 days, no sliding | the browser holding the cookie | `auth/session-token.ts`, `auth/session-cookie.ts`, `auth/auth.service.ts` |
 | Operator password | bcrypt, cost 12 | nobody, once it is stored | `auth/password.service.ts`; a generated first password is shown to the owner once and never again (`projects/operator-password.ts`, [§8.2](#82-two-roles-and-an-owner-who-holds-the-operators-first-password)) |
@@ -133,10 +164,17 @@ choose what to read: it executes only definition-derived queries, and a query
 shape the definition cannot express does not run (#024). It cannot find a
 database on its own — `CustomerPool` is handed a `resolveDsn` function and
 looks nothing up (`pool/customer-pool.ts`). It cannot decide who may ask; a
-caller has been authorized long before it gets there.
+caller has been authorized long before it gets there. Being able to run
+anywhere is what makes that last sentence load-bearing: the same package runs in
+`apps/api`, in `repanel dev`, and in the connector, and it is given a definition
+and a database in all three.
 
 **`apps/api`** *can* do everything above plus decrypt DSNs and mint secrets. It
-*cannot* return a DSN to any caller ([§3](#3-assets)), and it cannot leak
+*cannot* return a DSN to any caller ([§3](#3-assets)), and — on the connector
+rung — it cannot decrypt one either, because there is none on the row; what it
+can do there is ask the customer's connector for what the published definition
+describes, in a frame that has no room for anything else
+([§2.6](#2-trust-boundaries)). It cannot leak
 internals into a response: one exception filter maps domain errors to HTTP and
 answers everything else with `internal_error`, logging the stack rather than
 sending it (`errors/domain-exception.filter.ts`).
@@ -198,11 +236,21 @@ validated definition** (#024).
   each refuse a sensitive field outright (`query/query-builder.ts`).
 - **`hidden` is not a second security flag.** It is a display choice; `sensitive`
   is the security one, and blurring them would make both useless (#014).
-- **Every query is bounded.** A 5-second statement timeout on every pooled
-  session, at most 5 clients per customer database
-  (`engine/src/pool/customer-pool.ts`), a page size of at most 100
-  (`contracts/src/runtime/requests.ts`), and a total order on every list so
-  paging cannot show one record twice (`query-builder.ts`).
+- **Every query is bounded, and the bound is not session state.** A 5-second
+  statement timeout, set with `SET LOCAL` inside the transaction that carries
+  the statement, so it applies to that statement and is gone the moment it
+  commits (`engine/src/pool/bounded-statement.ts`, #063). It is deliberately not
+  set on the connection: the databases this reaches sit behind transaction-mode
+  poolers, where a connection is a different server session from one transaction
+  to the next — a session parameter asked for in the startup packet is refused
+  outright there, and one set by a statement of ours would be inherited by
+  whoever the pooler lends that session to next. A bound kept there would
+  therefore be either absent or somebody else's, which is why this one is not
+  kept there; CI proves it against pgbouncer in transaction mode
+  (`apps/api/src/runtime/pooler.integration.spec.ts`). Beside it: at most 5
+  clients per customer database (`engine/src/pool/customer-pool.ts`), a page size
+  of at most 100 (`contracts/src/runtime/requests.ts`), and a total order on
+  every list so paging cannot show one record twice (`query-builder.ts`).
 
 ### 5.2 Untrusted content
 
@@ -250,6 +298,16 @@ customer's own repository is real and is [§8.5](#85-the-authoring-agents-inputs
 **`httpCall` is the only egress**, and that is checkable rather than asserted:
 across `packages/engine/src` and `apps/api/src` there is exactly one `fetch`,
 in `actions/http-call.ts`.
+
+The grep in [§7](#7-what-we-ask-you-to-run-and-verify) returns one other line,
+and it is worth saying what it is rather than tuning the grep until it does not:
+`connector-sockets/connector-sockets.service.ts` imports types from `node:http`
+so it can take the server Nest is already listening on and answer an upgrade on
+it. That is **inbound** — the connector dials RePanel, never the reverse, and
+nothing in `apps/api` opens a socket to a customer. On the connector rung the
+one outbound call moves with the engine that makes it: an `httpCall` leaves the
+customer's own connector, which is the point of that rung
+([§8.1](#81-which-rung-you-are-on-decides-what-repanel-holds)).
 
 What bounds it:
 
@@ -363,6 +421,26 @@ development deployment, read in `packages/cli/src/cloud/addresses.ts` and
 nowhere else (#049). A URL that lives in exactly one validated place is
 configured; a URL compiled into a component is not (#040).
 
+**Verify that no SQL crosses the connector's wire.** The claim is structural
+before it is behavioural: `packages/contracts/src/connector/frames.ts` is a
+closed discriminated union whose request arm has seven members built from this
+repository's own runtime request schemas, and no member with a free-text field.
+A frame carrying a statement does not typecheck and does not parse.
+
+```sh
+# the union's members, and that each refuses an extra key
+pnpm --filter @repanel/contracts exec node --import tsx --test "src/connector/frames.test.ts"
+
+# every frame that actually crossed during a full admin exercise, read back
+# and scanned for statement shapes — with a case proving the gate can fail
+docker compose up -d
+TEST_CUSTOMER_DATABASE_URL=postgres://repanel:repanel@localhost:5432/repanel \
+  pnpm --filter @repanel/api exec jest connector.integration
+
+# the connector persists nothing: no filesystem write in anything it is made of
+pnpm --filter @repanel/cli exec node --import tsx --test "src/connector/persists-nothing.test.ts"
+```
+
 **Run the suite** — `pnpm -r test` from the repo root. Two specs are the
 egress guarantee of `repanel dev` and are worth reading rather than only
 running: `packages/cli/src/dev/no-egress.test.ts` follows the command's module
@@ -373,22 +451,30 @@ whole request cycle with every non-loopback socket refused at
 version could not fail (#048), which is the reason both exist.
 
 **Operate the database role, because that part is yours.** RePanel reads what
-the definition names; your database decides what the role can reach. Under
-direct DSN this is the strongest control you hold and RePanel does not enforce
-it: give it a role scoped to the tables your definition names, read-only unless
+the definition names; your database decides what the role can reach. It is worth
+doing on either rung and it is the strongest control you hold on the direct one,
+where RePanel does not enforce it: give it a role scoped to the tables your definition names, read-only unless
 your definition writes — `UPDATE` on the columns a `dbUpdate` action sets or a
 resource marks `editable`, `INSERT` on the tables whose resources offer
 `create`, and nothing more. A definition that offers no writes wants a role that
 cannot perform one, which is a guarantee your database makes and we cannot.
-Restricting inbound access to RePanel's egress addresses is the second one.
+Restricting inbound access to RePanel's egress addresses is the second one — and
+on the connector rung there is no inbound access to restrict, because nothing of
+RePanel's dials your database at all.
 
 ## 8. Residual risk
 
-### 8.1 Direct DSN: you are trusting RePanel Cloud with a credential
+### 8.1 Which rung you are on decides what RePanel holds
 
-**Say it plainly: in hosted RePanel today, we hold a connection string to your
-database.** It is encrypted at rest with a key that lives in the deployment's
-environment rather than in the database (#023,
+A project reaches its database one of two ways, and the honest answer to "what
+is RePanel trusted with" is different for each. `connections.kind` says which,
+the Connection page in the console is where it is chosen, and choosing one takes
+the other's credential with it.
+
+#### On the direct rung, we hold a connection string to your database
+
+**Say it plainly.** It is encrypted at rest with a key that lives in the
+deployment's environment rather than in the database (#023,
 `apps/api/src/crypto/crypto.service.ts`, `config/env.schema.ts`), which defends
 a stolen table dump and *not* a compromised API process. Whoever controls that
 process can decrypt what the process can decrypt, and can then run whatever
@@ -396,23 +482,66 @@ your database role permits. No amount of query-builder discipline changes that
 — #024 bounds what RePanel's own code will ask for, not what an attacker
 holding the process could ask for.
 
-What reduces it today: the least-privilege role and network restrictions in
+What reduces it: the least-privilege role and network restrictions in
 [§7](#7-what-we-ask-you-to-run-and-verify); a credential you can rotate at any
 time through the console, which releases the open pool the moment it is
 replaced (`ConnectionsService.set` → `pools.release`); and self-hosting outright,
 which the AGPL licence exists to make possible
 ([`LICENSING.md`](LICENSING.md)).
 
-**The structural answer is the connector, and it is not built yet.** Task
-[031](tasks/031-connector.md) is one open-source binary that runs beside your
-database, holds the DSN locally and dials *out* to Cloud; Cloud sends
-definition-derived descriptors over the existing runtime request contract and
-never SQL — #024 extended across the network, with a grep gate asserting that
-no SQL string crosses the wire. When it ships, the trust assumption in this
-section becomes "RePanel can ask for what your definition allows" instead of
-"RePanel holds a credential to your database", and direct DSN remains the
-default onboarding path rather than being replaced. Until then, this section is
-the honest state of things.
+This is the default onboarding rung, and it stays that way. It is one form and
+no operations, and for many teams that trade is the right one.
+
+#### On the connector rung, we hold no credential — and this is what we hold instead
+
+`repanel connect` runs beside your database (#064). It holds the connection
+string locally, dials *out* to Cloud, and receives **definition-derived
+descriptors**: a resource key, a record id, a relationship key, an action key,
+and the same `ListRecordsQuery` or `RecordWrite` a browser's request is parsed
+into. It never receives SQL, and that is a property of the type rather than of
+our restraint — the frame contract is a closed union with no member that could
+carry a statement, so adding one is a change to the shared contract and a
+failing spec, not a request somebody has to notice. The gates are in
+[§7](#7-what-we-ask-you-to-run-and-verify) and they can fail.
+
+The trust statement becomes: **RePanel can ask your connector for what your
+published definition describes, and for nothing else.** What an attacker holding
+the API process gains is that same bounded ability, against a running connector,
+for as long as it runs — not a credential, not a shell on your database, and
+nothing at all once the connector is stopped.
+
+Three things are handed to the connector, and it is worth naming them:
+
+- **Your published definition**, pulled over the authenticated channel when its
+  session opens and again on every publish. It is your own document.
+- **Your project's action signing secret**, delivered once when the session
+  opens. It is your own secret — your application verifies with it — and it goes
+  to your own process because that is where an `httpCall` action is sent from:
+  your endpoints may not be reachable from anywhere else, so egress from beside
+  your application is the correct topology rather than a convenience.
+- **Nothing else, and nothing kept.** The connector writes no file. The DSN
+  comes from the environment you started it in; the definition and the secret
+  live in memory and are resynced on reconnect; stopping the process ends all
+  three. A gate scans everything it is made of for every filesystem write this
+  runtime has, because a cache file would turn a stateless process into secrets
+  at rest and would not announce itself.
+
+What this rung does **not** claim:
+
+- **It is not a defence against a compromised connector.** The process holds
+  your DSN. A machine an attacker owns is a database an attacker reaches, with
+  or without RePanel.
+- **It does not bound what your database role permits.** The definition bounds
+  what RePanel asks for; the role bounds what can be asked. Operate it
+  ([§7](#7-what-we-ask-you-to-run-and-verify)).
+- **A connector's channel is one API process's.** The registry lives in memory
+  in the process that accepted the socket; a second replica would hold its own
+  and see none of it. Multi-connector high availability is a rung above this
+  one and is not built.
+- **Availability moves to you.** A connector that is not running is an admin
+  that answers `connector_offline` — sanitized, naming no host — until it is.
+  Restarting it is the whole of the recovery, and it re-pulls the definition as
+  it reconnects.
 
 ### 8.2 Two roles, and an owner who holds the operator's first password
 

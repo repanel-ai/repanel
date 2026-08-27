@@ -8,6 +8,7 @@ import {
 } from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
 import { ConfigService } from "../config/config.service";
+import { ConnectorSocketsService } from "../connector-sockets/connector-sockets.service";
 import { NotFoundError, ValidationFailedError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
 import { requirePayloadWithinLimit } from "./definition-size";
@@ -61,6 +62,7 @@ export class DefinitionsService {
     private readonly versions: DefinitionVersionsRepository,
     private readonly projects: ProjectsService,
     private readonly config: ConfigService,
+    private readonly connectors: ConnectorSocketsService,
   ) {}
 
   /**
@@ -198,6 +200,15 @@ export class DefinitionsService {
    * demonstrably the thing that passed validation.
    */
   private async publishPayload(projectId: string, payload: unknown): Promise<PublishedDefinition> {
-    return toPublishedDefinition(await this.versions.insertNext(projectId, payload));
+    const published = toPublishedDefinition(await this.versions.insertNext(projectId, payload));
+
+    // A connector serves the definition it holds, so it is told the moment
+    // there is a newer one. Told rather than sent: it pulls for itself, over
+    // the channel it authenticated on. Nothing is lost when nobody is
+    // listening — a connector pulls as its session opens, so the next one to
+    // connect is current by construction (DECISIONS #064).
+    this.connectors.notify(projectId, { kind: "definitionPublished", version: published.version });
+
+    return published;
   }
 }

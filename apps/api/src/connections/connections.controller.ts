@@ -3,6 +3,7 @@ import {
   setConnectionRequestSchema,
   type ConnectionDto,
   type ConnectionTestDto,
+  type MintedConnectorTokenDto,
   type UserDto,
 } from "@repanel/contracts";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -34,6 +35,19 @@ export class ConnectionsController {
     @Body() body: SetConnectionDto,
   ): Promise<ConnectionDto> {
     return this.connections.set(user.id, projectId, body);
+  }
+
+  /**
+   * Puts this project on the connector rung and mints the token its connector
+   * dials with. `POST` because it mints: asking twice mints twice, and the
+   * second one revokes the first.
+   */
+  @Post("connector")
+  useConnector(
+    @CurrentUser() user: UserDto,
+    @Param("projectId", ParseUUIDPipe) projectId: string,
+  ): Promise<MintedConnectorTokenDto> {
+    return this.connections.useConnector(user.id, projectId);
   }
 
   @Post("test")

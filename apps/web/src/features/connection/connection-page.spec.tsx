@@ -8,7 +8,17 @@ import { ConnectionPage } from "./connection-page";
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 const DSN = "postgres://admin:hunter2@db.example.com:5432/crewbase";
 
-const CONNECTED: ConnectionDto = { kind: "postgres", host: "db.example.com", database: "crewbase" };
+const CONNECTED: ConnectionDto = { kind: "postgres-direct", host: "db.example.com", database: "crewbase" };
+
+const LIVE: ConnectionDto = {
+  kind: "connector",
+  connected: true,
+  lastSeenAt: "2026-08-27T10:15:00.000Z",
+};
+
+const OFFLINE: ConnectionDto = { kind: "connector", connected: false, lastSeenAt: null };
+
+const MINTED = { token: `rpc_${"a".repeat(40)}` };
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -79,13 +89,76 @@ describe("ConnectionPage", () => {
       view.unmount();
     }
   });
+
+  describe("the connector rung", () => {
+    it("offers it beside the connection string, and says what it changes", async () => {
+      show(null);
+
+      expect(await screen.findByRole("button", { name: "Mint a connector token" })).toBeDefined();
+      expect(document.body.textContent).toContain("RePanel holds no connection string on this rung");
+    });
+
+    it("shows the command once a token is minted, with the token in it", async () => {
+      show(null);
+
+      fireEvent.click(await screen.findByRole("button", { name: "Mint a connector token" }));
+
+      expect(await screen.findByText(`npx @repanel/cli connect --token ${MINTED.token}`)).toBeDefined();
+      expect(document.body.textContent).toContain("not shown again");
+    });
+
+    it("says a connector is there, and when it was last heard from", async () => {
+      show(LIVE);
+
+      expect(await screen.findByText("Connected")).toBeDefined();
+      expect(screen.getByText(/Last heard from/)).toBeDefined();
+    });
+
+    it("says a connector is not there, without pretending to know why", async () => {
+      show(OFFLINE);
+
+      expect(await screen.findByText("Offline")).toBeDefined();
+      expect(
+        await screen.findByText("This project's connector has never connected."),
+      ).toBeDefined();
+    });
+
+    it("names no host and no database, because RePanel has neither on this rung", async () => {
+      show(LIVE);
+
+      await screen.findByText("Connected");
+      expect(document.body.textContent).not.toContain("db.example.com");
+      expect(screen.queryByLabelText("Connection string")).toBeNull();
+    });
+
+    it("shows the command with a placeholder until a token is minted for it", async () => {
+      show(LIVE);
+
+      expect(await screen.findByText("npx @repanel/cli connect --token <token>")).toBeDefined();
+    });
+
+    it("says plainly that minting again revokes what is running", async () => {
+      show(LIVE);
+
+      await screen.findByRole("button", { name: "Mint a new token" });
+      expect(document.body.textContent).toContain("revokes the one before it");
+    });
+  });
 });
 
 function show(connection: ConnectionDto | null, verdict?: ConnectionTestDto) {
+  // Minting puts the project on the connector rung, so what the API answers
+  // with afterwards is a connector connection — as it is in the real one.
+  let current = connection;
+
   const fetched = vi.fn(async (input: string, init?: RequestInit) => {
     if (input.endsWith("/connection/test")) return json(verdict ?? { ok: true });
+    if (input.endsWith("/connection/connector")) {
+      current = OFFLINE;
+      return json(MINTED);
+    }
     if (init?.method === "PUT") return json(CONNECTED);
-    return connection ? json(connection) : new Response("", { status: 200 });
+    return current ? json(current) : new Response("", { status: 200 });
   });
   vi.stubGlobal("fetch", fetched);
 

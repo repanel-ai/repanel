@@ -76,8 +76,8 @@ draw its own conclusion (#053).
 
 The engine is Apache-2.0 rather than copyleft, and that was the ruling worth
 recording. It has to be *embeddable*: `repanel dev` runs it on a developer's
-machine, and the connector ([task 031](tasks/031-connector.md)) will run it
-inside a customer's own network. Those are the activation and enterprise-trust
+machine, and `repanel connect` — the connector (#064) — runs it inside a
+customer's own network. Those are the activation and enterprise-trust
 surfaces — the two places where an AGPL-policy conversation costs a customer we
 would otherwise have had. The MIT-contracts precedent settled the principle for
 the surface a customer's agent writes against; the engine is the same argument
@@ -87,7 +87,8 @@ The moat is runtime quality and Cloud operations, never secret code. That is
 why self-hosting is a first-class answer here rather than a grudging one — the
 AGPL exists to keep a modified RePanel open, not to keep you off it. If holding
 your own database credential matters more to you than convenience, self-hosting
-and the connector are both real answers, and
+and the connector are both real answers — and the connector ships in the
+Apache-2.0 CLI, which is the licence half of the same ruling — and
 [`THREAT-MODEL.md`](THREAT-MODEL.md) says exactly what each one changes.
 
 `examples/crewbase` is MIT because it exists to be copied. It is a reference

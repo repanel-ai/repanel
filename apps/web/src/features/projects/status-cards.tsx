@@ -26,10 +26,10 @@ export function StatusCards({ connection, tokens, definition }: StatusCardsProps
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <StatusCard
         label="Connection"
-        value={connection ? `${connection.host}/${connection.database}` : "No database yet"}
+        value={describe(connection)}
         quiet={!connection}
-        badge={connection ? <Badge tone="positive">Connected</Badge> : <Badge>Waiting</Badge>}
-        note={connection ? "encrypted, and never shown again" : "the first step below"}
+        badge={connectionBadge(connection)}
+        note={connectionNote(connection)}
       />
 
       <StatusCard
@@ -107,4 +107,36 @@ function lastUsed(tokens: readonly AgentTokenDto[]): AgentTokenDto | undefined {
 
 function newest(tokens: readonly AgentTokenDto[]): AgentTokenDto | undefined {
   return [...tokens].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+}
+
+/**
+ * What this project points at, in one line.
+ *
+ * A connector has no host and no database name to show, and that is the rung
+ * working rather than a value missing: RePanel holds no connection string for
+ * it, so it says what it does know — that a binary the customer runs is
+ * answering, or is not.
+ */
+function describe(connection: ConnectionDto | null): string {
+  if (!connection) return "No database yet";
+  return connection.kind === "connector" ? "Your connector" : `${connection.host}/${connection.database}`;
+}
+
+function connectionBadge(connection: ConnectionDto | null) {
+  if (!connection) return <Badge>Waiting</Badge>;
+  if (connection.kind !== "connector") return <Badge tone="positive">Connected</Badge>;
+
+  return connection.connected ? (
+    <Badge tone="positive">Connected</Badge>
+  ) : (
+    <Badge tone="attention">Offline</Badge>
+  );
+}
+
+function connectionNote(connection: ConnectionDto | null): string {
+  if (!connection) return "the first step below";
+  if (connection.kind !== "connector") return "encrypted, and never shown again";
+  return connection.connected
+    ? "beside your database, and RePanel holds no credential"
+    : "start it, and this admin answers again";
 }

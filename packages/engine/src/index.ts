@@ -23,6 +23,8 @@ export {
 export { indexResources, requireResource } from "./resources.js";
 
 export { CustomerPool, type CustomerPoolOptions } from "./pool/customer-pool.js";
+/** The bounds a host has to size its own timeouts around, so the two cannot drift. */
+export { STATEMENT_TIMEOUT_MS } from "./pool/bounded-statement.js";
 
 export { QueryBuilder, type Query, type RecordsQuery, type Ownership } from "./query/query-builder.js";
 
@@ -34,4 +36,4 @@ export { RecordWriter } from "./write/record-writer.js";
 export { WRITE_REFUSED, type Assignment } from "./query/write-statements.js";
 
 export { ActionRunner, type ActionContext } from "./actions/action-runner.js";
-export { HttpCall, type OutboundCall } from "./actions/http-call.js";
+export { CALL_TIMEOUT_MS, HttpCall, type OutboundCall } from "./actions/http-call.js";

@@ -1,5 +1,5 @@
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
-import { SESSION_COOKIE, type UserDto } from "@repanel/contracts";
+import { SESSION_COOKIE, type ConnectionKind, type UserDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import {
   ActionRunner,
@@ -29,6 +29,11 @@ import { ConnectionsController } from "../connections/connections.controller";
 import type { ConnectionRow, ConnectionsRepository } from "../connections/connections.repository";
 import { ConnectionsService } from "../connections/connections.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
+import type { ConnectorSocketsService } from "../connector-sockets/connector-sockets.service";
+import type {
+  ConnectorTokensRepository,
+  ConnectorTokenRow,
+} from "../connector-sockets/connector-tokens.repository";
 import { CryptoService } from "../crypto/crypto.service";
 import type {
   DefinitionVersionRow,
@@ -37,6 +42,7 @@ import type {
 import { DefinitionsController } from "../definitions/definitions.controller";
 import type { DefinitionRow, DefinitionsRepository } from "../definitions/definitions.repository";
 import { DefinitionsService } from "../definitions/definitions.service";
+import { ConnectorOfflineError } from "../errors/domain-errors";
 import { HealthController } from "../health/health.controller";
 import { HealthService } from "../health/health.service";
 import type { DbService } from "../db/db.service";
@@ -44,6 +50,7 @@ import { McpController } from "../mcp/mcp.controller";
 import type { McpService } from "../mcp/mcp.service";
 import { RecordsController } from "../records/records.controller";
 import { RecordsService } from "../records/records.service";
+import { ExecutorsService } from "../runtime/executors.service";
 import { RuntimeController } from "../runtime/runtime.controller";
 import { RuntimeService } from "../runtime/runtime.service";
 import { PeopleController } from "./people.controller";
@@ -177,21 +184,84 @@ class InMemoryConnectionsRepository
 {
   readonly rows: ConnectionRow[] = [];
 
-  save(connection: { projectId: string; encryptedDsn: string }): Promise<ConnectionRow> {
+  save(connection: {
+    projectId: string;
+    kind?: ConnectionKind;
+    encryptedDsn?: string | null;
+  }): Promise<ConnectionRow> {
+    const previous = this.rows.findIndex((row) => row.projectId === connection.projectId);
     const saved: ConnectionRow = {
       id: `connection-${this.rows.length + 1}`,
       projectId: connection.projectId,
-      kind: "postgres",
-      encryptedDsn: connection.encryptedDsn,
+      kind: connection.kind ?? "postgres-direct",
+      encryptedDsn: connection.encryptedDsn ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.rows.push(saved);
+    if (previous >= 0) this.rows.splice(previous, 1, saved);
+    else this.rows.push(saved);
     return Promise.resolve(saved);
   }
 
   findByProjectId(projectId: string): Promise<ConnectionRow | undefined> {
     return Promise.resolve(this.rows.find((row) => row.projectId === projectId));
+  }
+}
+
+/** The matrix mints connector tokens but nothing ever dials in with one. */
+class InMemoryConnectorTokens
+  implements
+    Pick<ConnectorTokensRepository, "save" | "findByProjectId" | "deleteByProjectId" | "recordSeen">
+{
+  readonly rows: ConnectorTokenRow[] = [];
+
+  save(projectId: string, tokenHash: string): Promise<ConnectorTokenRow> {
+    const saved: ConnectorTokenRow = {
+      id: `connector-token-${projectId}`,
+      projectId,
+      tokenHash,
+      createdAt: new Date(),
+      lastSeenAt: null,
+    };
+    const previous = this.rows.findIndex((row) => row.projectId === projectId);
+    if (previous >= 0) this.rows.splice(previous, 1, saved);
+    else this.rows.push(saved);
+    return Promise.resolve(saved);
+  }
+
+  findByProjectId(projectId: string): Promise<ConnectorTokenRow | undefined> {
+    return Promise.resolve(this.rows.find((row) => row.projectId === projectId));
+  }
+
+  deleteByProjectId(projectId: string): Promise<void> {
+    const found = this.rows.findIndex((row) => row.projectId === projectId);
+    if (found >= 0) this.rows.splice(found, 1);
+    return Promise.resolve();
+  }
+
+  recordSeen(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/** No connector ever dials into the matrix, and every route says so the same way. */
+class NoConnector
+  implements Pick<ConnectorSocketsService, "execute" | "notify" | "revoke" | "isConnected" | "lastSeenAt">
+{
+  execute(): Promise<never> {
+    return Promise.reject(new ConnectorOfflineError(NO_CUSTOMER_DATABASE));
+  }
+
+  notify(): void {}
+
+  revoke(): void {}
+
+  isConnected(): boolean {
+    return false;
+  }
+
+  lastSeenAt(): Date | undefined {
+    return undefined;
   }
 }
 
@@ -333,6 +403,8 @@ export async function buildApi(): Promise<Api> {
   );
 
   const connectionsRepository = new InMemoryConnectionsRepository();
+  const connectorTokens = new InMemoryConnectorTokens();
+  const connectorSockets = new NoConnector();
   const pools = new NoCustomerDatabase();
   const connections = new ConnectionsService(
     connectionsRepository as unknown as ConnectionsRepository,
@@ -340,6 +412,8 @@ export async function buildApi(): Promise<Api> {
     crypto,
     { check: () => Promise.resolve({ ok: true }) } as unknown as ConnectionProbeService,
     pools as unknown as CustomerPoolService,
+    connectorTokens as unknown as ConnectorTokensRepository,
+    connectorSockets as unknown as ConnectorSocketsService,
   );
 
   const definitionsRepository = new InMemoryDefinitionsRepository();
@@ -349,27 +423,33 @@ export async function buildApi(): Promise<Api> {
     versions as unknown as DefinitionVersionsRepository,
     projects,
     CONFIG,
+    connectorSockets as unknown as ConnectorSocketsService,
   );
 
   const queries = new QueryBuilder();
   const reader = new RecordReader(queries);
+  // The real routing, over the real connections table: which rung a project is
+  // on is read the way every request reads it, and neither rung has anything
+  // behind it here.
+  const executors = new ExecutorsService(
+    reader,
+    new RecordWriter(queries),
+    new ActionRunner(reader, queries, new HttpCall()),
+    connectorSockets as unknown as ConnectorSocketsService,
+  );
   const runtime = new RuntimeService(
     projects,
     definitions,
+    connections,
     pools as unknown as CustomerPoolService,
-    reader,
+    executors,
   );
   const activity = new ActivityService(
     projects,
     new InMemoryActivityRepository() as unknown as ActivityRepository,
   );
-  const records = new RecordsService(runtime, activity, new RecordWriter(queries));
-  const actions = new ActionsService(
-    runtime,
-    projects,
-    activity,
-    new ActionRunner(reader, queries, new HttpCall()),
-  );
+  const records = new RecordsService(runtime, activity, executors);
+  const actions = new ActionsService(runtime, projects, activity, executors);
 
   // Three people: one owns Crewbase, one operates it, one is on neither and has
   // a project of their own — which is what makes "somebody else's project" a

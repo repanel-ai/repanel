@@ -1459,3 +1459,144 @@ they could open, and a frame around a place you cannot go is a promise the
 product does not keep. What an operator may do inside the admin is what the
 definition allows anybody to do: per-resource and per-action permissions are
 out of scope, and this task is deliberately not the beginning of them.
+
+063 · 2026-08 · A statement's time limit is set inside the statement's own
+transaction and nowhere else. `SET LOCAL statement_timeout` travels with `BEGIN`
+in one message, the statement runs, and the transaction commits — so the limit
+holds for exactly one statement and is gone before the connection is anybody
+else's (`engine/src/pool/bounded-statement.ts`). Nothing is asked of the session:
+the pool sets no `statement_timeout` and no `options` on the connections it
+opens.
+
+**Session-state-dependent safety properties are forbidden.** This is the rule,
+and the timeout is the first thing held to it. The databases RePanel is pointed
+at are Neon and Supabase, reached through transaction-mode poolers by default,
+where a connection is a different server session from one transaction to the
+next. What that does to a session-level bound was measured rather than assumed:
+`node-postgres` puts `statement_timeout` in the startup packet, and pgbouncer in
+transaction mode answers `08P01 unsupported startup parameter: statement_timeout`
+and refuses the connection — so the previous arrangement did not merely lose its
+timeout there, it could not connect at all. Told to ignore that parameter
+instead, the pooler would have connected and run every query unbounded. Both
+outcomes come from the same mistake: parking a safety property somewhere that is
+not ours to keep.
+
+**Proved, not asserted.** `bounded-statement.spec.ts` asserts the statements
+that travel and their order, and that every `set` among them is a `set local`.
+`apps/api/src/runtime/pooler.integration.spec.ts` runs the read, write and action
+paths through a real pgbouncer in transaction mode, with `pg_sleep` dying at five
+seconds on each of the three, and asks the session afterwards what its
+`statement_timeout` is — the position the next tenant of that session is in. CI
+brings the pooler up as a service and asserts both suites' counts (#021's
+pattern). Nothing is added to `ignore_startup_parameters`, deliberately: if a
+session parameter is ever asked for again, the connection is refused and the
+suite fails, rather than the suite passing with no limit in force.
+
+**One transaction per statement, and it is the only thing this adds.** A write
+was already one statement (#056), so nothing here makes a round trip that was
+not being made; what changes is that the statement is carried inside a
+transaction that exists to hold the limit. A statement that runs out of time
+leaves an aborted transaction behind, so the client is rolled back before it goes
+back to the pool, and closed rather than pooled if the rollback cannot be sent.
+
+**The platform courtesy that came with #030 is deferred, by founder ruling.**
+Recognizing a Supabase or Neon transaction-pooler DSN and steering to a better
+one, the AUTHORING guidance that goes with it, and the console link are 030b in
+BACKLOG.md. Core functionality is nailed first; a kind message about a connection
+that now works is not on that path.
+
+064 · 2026-08 · The connector is the trust ladder's third rung: one
+open-source binary beside the customer's database, holding the DSN locally
+and dialling *out* to Cloud, which sends definition-derived descriptors and
+never SQL. A project points one way at a time — `connections.kind` is
+`postgres-direct` or `connector` — and direct DSN remains the default
+onboarding rung rather than being replaced.
+
+**The seam is the reader, the writer and the runner — not the pool.** The
+engine builds a statement *and* runs it, so a connector that were only a
+remote pool would be a connector that SQL travels to. What travels instead is
+the seven calls the engine already exposes, addressed the way the engine
+addresses them: a resource key, a record id, a relationship key, an action
+key, and a `ListRecordsQuery` or a `RecordWrite` that are this repository's
+own request schemas, reused verbatim. `RuntimeExecutor` is that seam;
+`LocalExecutor` is the engine in this process over a pool, `ConnectorExecutor`
+is a descriptor on a wire with the same engine at the far end, and
+`ExecutorsService` is the only place in the API that knows there are two.
+Everything above it — membership, the published definition, the audit log — is
+one code path on both rungs.
+
+**"No SQL crosses the wire" is a type, not a review.** `packages/contracts/
+src/connector/frames.ts` is a closed discriminated union whose request arm has
+exactly seven members and no free-text field. A frame carrying a statement does
+not typecheck and does not parse, so a new capability has to extend the shared
+contract first — the addendum's law, that there is no connector-only query
+path, ever. `frames.test.ts` asserts the union's members and that every member
+refuses an extra key; `connector.integration.spec.ts` reads back every frame
+that actually crossed during a full admin exercise and asserts no statement
+shape among the descriptors, with a case proving that gate can fail.
+
+The scan is over descriptors and not over every frame, deliberately. A result
+carries the customer's rows and a definition carries the customer's vocabulary
+— `writes.update` is in every definition ever written — so scanning those would
+be scanning their data for our words. Only one direction can instruct.
+
+**Two versions, two different rules.** The connector states its contracts
+version (`CONTRACTS_VERSION`, new, and not `SCHEMA_VERSION` — the definition
+schema versions the customer's document and moves on its own clock) as a header
+on the upgrade request. A mismatch is refused with `426` and the category
+`connector_version_mismatch` before a socket exists, named in Cloud's log and
+printed at the connector's terminal, and the connector exits rather than
+retrying: a build that half-understands a frame is worse than one turned away.
+The *definition* version is the opposite — every request carries the version
+Cloud resolved it against, and a connector that is behind pulls and then
+serves. Loud where waiting cannot help; quiet where it can.
+
+**Three sanitized categories where there were two.** `query_timeout` means the
+customer's database was asked and took too long, which is a fact about a query.
+`connector_timeout` means the hop said nothing. `connector_offline` means
+nothing was asked of anything. The hop's deadline is derived from the engine's
+own bounds (`STATEMENT_TIMEOUT_MS + 3s`, and an action also gets
+`CALL_TIMEOUT_MS`) so it is always strictly longer than the statement inside
+it — the ordering is what lets a slow query be answered as one by the side that
+knows it was one. An operator must never read a network failure as a slow query.
+
+**`httpCall` actions leave from the connector, and the action secret goes to
+it.** A customer's endpoint may be internal-only, so egress from beside the
+application is the correct topology and Cloud calling it is not an option. The
+secret is the customer's own — their application verifies with it — and it is
+delivered once when the session opens, over the authenticated channel, and held
+in memory. The connector persists nothing at all: DSN from the environment,
+definition and secret in memory, resynced on connect and on publish. A gate
+scans its sources for every filesystem write this runtime has.
+
+**The audit log is identical on both rungs because the engine produces it on
+both.** The connector runs `RecordWriter` and `ActionRunner`, so the event and
+its before/after values come from the same code and the same statement; it
+travels back in the response frame and Cloud files it — before answering the
+operator, which is how #061's promise survives the hop. #061's own split is
+kept: a form write and a `dbUpdate` must be filed before a success is reported;
+an `httpCall`'s effect already landed and is filed best-effort.
+
+**A frame heartbeat rather than a WebSocket ping.** Every fifteen seconds, with
+Cloud answering, so silence is detectable from both ends — a half-open socket is
+invisible to whichever side is only listening. It is read by more than the
+socket: the console's Connection page shows when a project was last heard from,
+and that has to be a fact about the connector rather than about a connection an
+intermediary might be holding open. Three missed beats is gone.
+
+**One connector per project, newest wins, single process.** A second connection
+for a project closes the first with a stated reason, so restarting after a crash
+does not mean waiting out a zombie socket. The registry is one API process's:
+a second replica would hold its own sockets and see none of these. That is a
+limit of this rung rather than an oversight — multi-connector HA is above it —
+and it is written into the threat model rather than designed around.
+
+**It ships as `repanel connect`, in the CLI.** The CLI already embeds the engine
+and the contracts, already finds a DSN the way `repanel dev` does, and is
+already the Apache-2.0 binary a customer installs; #053 kept the engine
+permissive *because* the connector would run it inside a customer's network. A
+second published package would be closer to the enterprise packaging 031 puts
+out of scope than to what it asks for. The token may be given as
+`REPANEL_CONNECTOR_TOKEN`, which the help calls the better habit for the reason
+`repanel link` refuses a `--dsn` flag; `--token` ships because the task names it
+and because the console prints one line somebody can paste.

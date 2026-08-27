@@ -1,7 +1,7 @@
 import type { UserDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
 import { ActionRunner, HttpCall, QueryBuilder, RecordReader } from "@repanel/engine";
-import type { Pool, QueryResult } from "pg";
+import type { Pool, PoolClient, QueryResult } from "pg";
 import { ActionsService } from "../actions/actions.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { DefinitionsService } from "../definitions/definitions.service";
@@ -13,7 +13,7 @@ import {
   InMemoryAccounts,
   InMemoryProjectsRepository,
 } from "../projects/projects.test-helpers";
-import { RuntimeService } from "../runtime/runtime.service";
+import { directRuntime } from "../runtime/runtime.test-helpers";
 import { ActivityRepository, type NewAuditEventRow } from "./activity.repository";
 import { ActivityService } from "./activity.service";
 
@@ -34,6 +34,9 @@ interface Statement {
   values: unknown[];
 }
 
+/** What `begin`, `commit` and `rollback` answer with: nothing anybody reads. */
+const NOTHING = { rows: [], fields: [], rowCount: 0, command: "" } as unknown as QueryResult;
+
 /** Answers a `dbUpdate` the way Postgres does: the column on both sides. */
 class OneUpdate {
   readonly statements: Statement[] = [];
@@ -42,7 +45,23 @@ class OneUpdate {
     return Promise.resolve(this as unknown as Pool);
   }
 
-  query(statement: Statement): Promise<QueryResult> {
+  /**
+   * The engine runs every statement inside a transaction of its own
+   * (`engine/src/pool/bounded-statement.ts`), so what it asks a pool for is a
+   * client rather than an answer. This fake is its own client: it lends itself
+   * and takes itself back.
+   */
+  connect(): Promise<PoolClient> {
+    return Promise.resolve(this as unknown as PoolClient);
+  }
+
+  release(): void {}
+
+  query(statement: Statement | string): Promise<QueryResult> {
+    // The transaction's own statements travel as bare strings and carry nothing
+    // this spec reads.
+    if (typeof statement === "string") return Promise.resolve(NOTHING);
+
     this.statements.push(statement);
     return Promise.resolve({
       rows: [{ c0: "suspended", b0: "active" }],
@@ -97,11 +116,9 @@ describe("an operator's action, in the log", () => {
     });
     operator = { id: added.person.userId, email: added.person.email, name: added.person.name };
 
-    const queries = new QueryBuilder();
-    const reader = new RecordReader(queries);
-    const runtime = new RuntimeService(
+    const { runtime, executors } = directRuntime({
       projects,
-      {
+      definitions: {
         getPublished: () =>
           Promise.resolve({
             payload: saasDefinition,
@@ -109,14 +126,13 @@ describe("an operator's action, in the log", () => {
             publishedAt: "2026-08-26T09:00:00.000Z",
           }),
       } as unknown as DefinitionsService,
-      new OneUpdate() as unknown as CustomerPoolService,
-      reader,
-    );
+      pools: new OneUpdate() as unknown as CustomerPoolService,
+    });
     actions = new ActionsService(
       runtime,
       projects,
       new ActivityService(projects, audit as unknown as ActivityRepository),
-      new ActionRunner(reader, queries, new HttpCall()),
+      executors,
     );
   });
 

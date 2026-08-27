@@ -11,6 +11,8 @@ import type { Response } from "express";
 import {
   ActionFailedError,
   ConflictError,
+  ConnectorOfflineError,
+  ConnectorTimeoutError,
   DomainError,
   ForbiddenError,
   InvalidQueryError,
@@ -74,6 +76,13 @@ function statusOf(error: DomainError): number {
   // again with different credentials would not change that.
   if (error instanceof WriteRefusedError) return HttpStatus.FORBIDDEN;
   if (error instanceof QueryTimeoutError) return HttpStatus.GATEWAY_TIMEOUT;
+  // The hop, not the database. Same status as a slow query — nobody upstream
+  // answered in time either way — but a category of its own, because what an
+  // operator should do about it is different (DECISIONS #064).
+  if (error instanceof ConnectorTimeoutError) return HttpStatus.GATEWAY_TIMEOUT;
+  // Nothing was asked of anything: the admin cannot be served until the
+  // customer's connector is running again.
+  if (error instanceof ConnectorOfflineError) return HttpStatus.SERVICE_UNAVAILABLE;
   return HttpStatus.INTERNAL_SERVER_ERROR;
 }
 

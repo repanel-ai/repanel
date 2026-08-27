@@ -21,12 +21,14 @@ import {
   ValidationFailedError,
   WriteRefusedError,
 } from "../errors.js";
+import { runBounded } from "../pool/bounded-statement.js";
 import { QueryBuilder, type Query } from "../query/query-builder.js";
 import { WRITE_REFUSED, type Assignment } from "../query/write-statements.js";
 import { toFieldValues, toRecordDtos } from "../read/records.mapper.js";
 import { requireResource } from "../resources.js";
 
-/** The customer's database ran out of the time the pool gave the statement. */
+/** The customer's database ran out of the time the statement's transaction
+ *  gave it (`pool/bounded-statement.ts`). */
 const STATEMENT_TIMEOUT = "57014";
 
 /**
@@ -203,7 +205,7 @@ export class RecordWriter {
   ): Promise<QueryResult> {
     const pool = await context.pool();
     try {
-      return await pool.query({ text: query.text, values: query.values });
+      return await runBounded(pool, query);
     } catch (error) {
       throw this.translate(error, assignments);
     }

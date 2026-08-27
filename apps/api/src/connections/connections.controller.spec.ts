@@ -6,7 +6,7 @@ const USER: UserDto = { id: "user-ada", email: "ada@example.com", name: "Ada" };
 const PROJECT_ID = "8c9a3f70-cf4a-48e5-9b85-b3b869c11a11";
 
 const CONNECTION: ConnectionDto = {
-  kind: "postgres",
+  kind: "postgres-direct",
   host: "db.example.com",
   database: "crewbase",
 };

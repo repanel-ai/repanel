@@ -1,14 +1,14 @@
 import type { ProjectDto, UserDto } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import { QueryBuilder, RecordReader, RecordWriter, type AuditEvent } from "@repanel/engine";
-import type { Pool, QueryResult } from "pg";
+import type { AuditEvent } from "@repanel/engine";
+import type { Pool, PoolClient, QueryResult } from "pg";
 import type { ActivityService } from "../activity/activity.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { PublishedDefinition } from "../definitions/definitions.mapper";
 import type { DefinitionsService } from "../definitions/definitions.service";
 import { NotFoundError, ValidationFailedError, WriteRefusedError } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
-import { RuntimeService } from "../runtime/runtime.service";
+import { directRuntime } from "../runtime/runtime.test-helpers";
 import { RecordsService } from "./records.service";
 
 const PROJECT: ProjectDto = {
@@ -43,6 +43,9 @@ function userRow(overrides: Record<number, unknown> = {}): QueryResult {
   } as unknown as QueryResult;
 }
 
+/** What `begin`, `commit` and `rollback` answer with: nothing anybody reads. */
+const NOTHING = { rows: [], fields: [], rowCount: 0, command: "" } as unknown as QueryResult;
+
 class FakePool {
   readonly statements: Statement[] = [];
   respond: () => QueryResult | Error = () => userRow();
@@ -51,7 +54,23 @@ class FakePool {
     return Promise.resolve(this as unknown as Pool);
   }
 
-  query(statement: Statement): Promise<QueryResult> {
+  /**
+   * The engine runs every statement inside a transaction of its own
+   * (`engine/src/pool/bounded-statement.ts`), so what it asks a pool for is a
+   * client rather than an answer. This fake is its own client: it lends itself
+   * and takes itself back.
+   */
+  connect(): Promise<PoolClient> {
+    return Promise.resolve(this as unknown as PoolClient);
+  }
+
+  release(): void {}
+
+  query(statement: Statement | string): Promise<QueryResult> {
+    // The transaction's own statements travel as bare strings and carry nothing
+    // this spec reads.
+    if (typeof statement === "string") return Promise.resolve(NOTHING);
+
     this.statements.push(statement);
     const answer = this.respond();
     return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
@@ -83,18 +102,12 @@ describe("RecordsService", () => {
     };
     activity = { record: jest.fn().mockResolvedValue(undefined) };
 
-    const queries = new QueryBuilder();
-    const runtime = new RuntimeService(
-      projects as unknown as ProjectsService,
-      definitions as unknown as DefinitionsService,
-      pool as unknown as CustomerPoolService,
-      new RecordReader(queries),
-    );
-    records = new RecordsService(
-      runtime,
-      activity as unknown as ActivityService,
-      new RecordWriter(queries),
-    );
+    const { runtime, executors } = directRuntime({
+      projects: projects as unknown as ProjectsService,
+      definitions: definitions as unknown as DefinitionsService,
+      pools: pool as unknown as CustomerPoolService,
+    });
+    records = new RecordsService(runtime, activity as unknown as ActivityService, executors);
   });
 
   async function refusalFrom(call: Promise<unknown>): Promise<Error> {

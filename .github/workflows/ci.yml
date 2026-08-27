@@ -15,9 +15,10 @@ jobs:
     name: build · typecheck · test
     runs-on: ubuntu-latest
 
-    # The query-engine integration suite asserts what a real Postgres and a real
-    # driver do — identifier folding, returned types, the statement timeout —
-    # so a stub cannot stand in for this. It matches docker-compose.yml.
+    # The query-engine integration suites assert what a real Postgres, a real
+    # driver and a real pooler do — identifier folding, returned types, the
+    # statement timeout — so a stub cannot stand in for this. They match
+    # docker-compose.yml.
     services:
       postgres:
         image: postgres:17-alpine
@@ -33,16 +34,49 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # The same database, reached the way the segment's databases are reached:
+      # through a transaction-mode pooler, where a connection is a different
+      # server session from one transaction to the next. The engine's per-query
+      # timeout is a safety property, and one that only holds on a direct
+      # connection does not hold — so it is proved here against the real thing
+      # (DECISIONS #063). It matches docker-compose.yml.
+      pgbouncer:
+        image: edoburu/pgbouncer:v1.25.2-p0
+        env:
+          # Service containers share the job's network and answer to their
+          # label, so the pooler reaches Postgres by the name above it.
+          DB_HOST: postgres
+          DB_PORT: "5432"
+          DB_USER: repanel
+          DB_PASSWORD: repanel
+          DB_NAME: repanel
+          AUTH_TYPE: scram-sha-256
+          POOL_MODE: transaction
+          MAX_CLIENT_CONN: "100"
+          # One server session behind every client, so each statement runs on a
+          # session the statement before it just used. That is the condition a
+          # per-query bound has to survive, and a larger pool would sometimes
+          # hide a bound that leaked.
+          DEFAULT_POOL_SIZE: "1"
+        ports:
+          - 6432:5432
+
     env:
       # Set here and never conditionally: this is what stops the env-gated
       # suites from skipping in CI, which is the whole point of the job.
       #
-      # It is also the *only* database variable this job may set. `DATABASE_URL`
-      # in particular must stay unset: the CLI proves it reads an env file
-      # without loading it by asserting that `process.env.DATABASE_URL` is still
-      # undefined afterwards, and an ambient one makes that proof fail. Nothing
-      # in the suite connects to a database of RePanel's own anyway.
+      # These are also the *only* database variables this job may set.
+      # `DATABASE_URL` in particular must stay unset: the CLI proves it reads an
+      # env file without loading it by asserting that `process.env.DATABASE_URL`
+      # is still undefined afterwards, and an ambient one makes that proof fail.
+      # Nothing in the suite connects to a database of RePanel's own anyway.
       TEST_CUSTOMER_DATABASE_URL: postgres://repanel:repanel@localhost:5432/repanel
+      # The same database through the pooler. `statement_timeout` is left out of
+      # that service's `ignore_startup_parameters` deliberately: were the engine
+      # to ask for it on the connection again, pgbouncer would refuse the
+      # connection and this suite would fail — rather than connect and quietly
+      # run every query with no limit in force.
+      TEST_POOLED_CUSTOMER_DATABASE_URL: postgres://repanel:repanel@localhost:6432/repanel
 
     steps:
       - uses: actions/checkout@v4

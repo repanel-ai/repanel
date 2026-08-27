@@ -13,6 +13,7 @@ import type { QueryResult } from "pg";
 import type { AuditEvent, WriteContext } from "../audit/audit-event.js";
 import { outcomeOf } from "../audit/outcome.js";
 import { NotFoundError, QueryTimeoutError } from "../errors.js";
+import { runBounded } from "../pool/bounded-statement.js";
 import { indexFields, requireField } from "../query/fields.js";
 import { QueryBuilder, type Query } from "../query/query-builder.js";
 import { RecordReader } from "../read/record-reader.js";
@@ -21,7 +22,8 @@ import { requireResource } from "../resources.js";
 import { resolveActionUrl } from "./action-url.js";
 import { HttpCall } from "./http-call.js";
 
-/** The customer's database ran out of the time the pool gave the statement. */
+/** The customer's database ran out of the time the statement's transaction
+ *  gave it (`pool/bounded-statement.ts`). */
 const STATEMENT_TIMEOUT = "57014";
 
 /**
@@ -202,7 +204,7 @@ export class ActionRunner {
   private async execute(context: ActionContext, query: Query): Promise<QueryResult> {
     const pool = await context.pool();
     try {
-      return await pool.query({ text: query.text, values: query.values });
+      return await runBounded(pool, query);
     } catch (error) {
       const code = (error as { code?: unknown } | null | undefined)?.code;
       if (code === STATEMENT_TIMEOUT) {

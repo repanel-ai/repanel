@@ -158,6 +158,10 @@ const MATRIX: Record<string, Expectation> = {
         dsn: "postgres://reader:s3cret@db.example.com:5432/crewbase",
       } as never),
   },
+  "POST /projects/:projectId/connection/connector": {
+    reach: "owner",
+    run: (api, actor) => api.connections.useConnector(personOf(actor), api.projectId),
+  },
   "POST /projects/:projectId/connection/test": {
     reach: "owner",
     run: (api, actor) => api.connections.test(personOf(actor), api.projectId),

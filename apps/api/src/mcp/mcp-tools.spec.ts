@@ -18,6 +18,7 @@ import {
   type DefinitionRow,
   type NewDefinitionRow,
 } from "../definitions/definitions.repository";
+import { ConnectorSocketsService } from "../connector-sockets/connector-sockets.service";
 import { DefinitionsService } from "../definitions/definitions.service";
 import { NotFoundError } from "../errors/domain-errors";
 import { ProjectsService } from "../projects/projects.service";
@@ -193,6 +194,12 @@ describe("MCP tools", () => {
         { provide: ConnectionsService, useValue: connected },
         { provide: ProjectsService, useValue: new ReachableProjects() },
         { provide: ConfigService, useValue: { runtimeUrl: RUNTIME_URL } },
+        {
+          // Nothing dials into these suites; a publish still announces itself,
+          // and here that is where the announcement stops.
+          provide: ConnectorSocketsService,
+          useValue: { notify: () => undefined },
+        },
         {
           provide: SchemaDocumentationService,
           useValue: { read: () => Promise.resolve(DOCUMENTATION) },

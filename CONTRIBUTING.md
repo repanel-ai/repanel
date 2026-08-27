@@ -72,22 +72,27 @@ openssl rand -base64 32     # paste into APP_ENCRYPTION_KEY
 Under test the values do not have to be real ones; nothing in the suite connects
 to RePanel's own database. CI does exactly this, from the same example file.
 
-`pnpm -r test` then leaves one suite **skipped**, and it will tell you so:
-`apps/api`'s query-engine integration suite runs only when it is given a
-database, because what it asserts — identifier folding, the types the driver
-returns, the statement timeout — cannot be asserted against a stub. Give it one
-and it runs:
+`pnpm -r test` then leaves three suites **skipped**, and it will tell you so:
+`apps/api`'s integration suites run only when they are given a database, because
+what they assert — identifier folding, the types the driver returns, the
+statement timeout, what actually crosses a connector's socket — cannot be
+asserted against a stub. One of the three wants that database through a
+transaction-mode pooler, which is how the Neon and Supabase databases RePanel is
+pointed at are reached, and where a timeout kept on the connection would not
+survive. The third stands a real socket up between the API's own routing and the
+engine running at the far end of it, and reads back every frame that crossed.
+Give them the two variables and all three run:
 
 ```bash
-docker compose up -d    # postgres on 5432
+docker compose up -d    # postgres on 5432, pgbouncer on 6432
 TEST_CUSTOMER_DATABASE_URL=postgres://repanel:repanel@localhost:5432/repanel \
+TEST_POOLED_CUSTOMER_DATABASE_URL=postgres://repanel:repanel@localhost:6432/repanel \
   pnpm --filter @repanel/api test
 ```
 
-The suite creates a schema of its own, fills it, and drops it; it does not
-disturb anything else in that database. **CI always sets this variable**, and
-fails if any suite is skipped — a test that silently does not run is a test that
-does not exist.
+Each suite creates what it needs and drops it by name; none disturbs anything
+else in that database. **CI always sets both variables**, and fails if any suite
+is skipped — a test that silently does not run is a test that does not exist.
 
 ### RePanel itself
 

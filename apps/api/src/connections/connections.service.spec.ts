@@ -1,5 +1,11 @@
 import { Test } from "@nestjs/testing";
-import type { ConnectionTestDto, ProjectDto, ProjectRole } from "@repanel/contracts";
+import type {
+  ConnectionDto,
+  ConnectionTestDto,
+  DirectConnectionDto,
+  ProjectDto,
+  ProjectRole,
+} from "@repanel/contracts";
 import type { Principal } from "../auth/principal";
 import type { ConfigService } from "../config/config.service";
 import { CryptoService } from "../crypto/crypto.service";
@@ -12,6 +18,12 @@ import {
   type NewConnectionRow,
 } from "./connections.repository";
 import { ConnectionsService } from "./connections.service";
+import { ConnectorSocketsService } from "../connector-sockets/connector-sockets.service";
+import {
+  ConnectorTokensRepository,
+  type ConnectorTokenRow,
+} from "../connector-sockets/connector-tokens.repository";
+import { CONNECTOR_TOKEN_PATTERN } from "../connector-sockets/connector-token";
 import { CustomerPoolService } from "./customer-pool.service";
 
 const ADA = "user-ada";
@@ -46,8 +58,8 @@ class InMemoryConnectionsRepository
     const saved: ConnectionRow = {
       id: previous?.id ?? `connection-${this.rows.length + 1}`,
       projectId: connection.projectId,
-      kind: "postgres",
-      encryptedDsn: connection.encryptedDsn,
+      kind: connection.kind ?? "postgres-direct",
+      encryptedDsn: connection.encryptedDsn ?? null,
       createdAt: previous?.createdAt ?? new Date("2026-08-19T09:00:00.000Z"),
       updatedAt: new Date("2026-08-19T11:00:00.000Z"),
     };
@@ -107,6 +119,64 @@ class RecordingPools implements Pick<CustomerPoolService, "release"> {
   }
 }
 
+/** Stands in for the connector token table: one row per project, replaced. */
+class InMemoryConnectorTokens
+  implements
+    Pick<ConnectorTokensRepository, "save" | "findByProjectId" | "deleteByProjectId" | "recordSeen">
+{
+  readonly rows: ConnectorTokenRow[] = [];
+
+  save(projectId: string, tokenHash: string): Promise<ConnectorTokenRow> {
+    const saved: ConnectorTokenRow = {
+      id: `connector-token-${projectId}`,
+      projectId,
+      tokenHash,
+      createdAt: new Date("2026-08-27T09:00:00.000Z"),
+      lastSeenAt: null,
+    };
+    const previous = this.rows.findIndex((row) => row.projectId === projectId);
+    if (previous >= 0) this.rows.splice(previous, 1, saved);
+    else this.rows.push(saved);
+    return Promise.resolve(saved);
+  }
+
+  findByProjectId(projectId: string): Promise<ConnectorTokenRow | undefined> {
+    return Promise.resolve(this.rows.find((row) => row.projectId === projectId));
+  }
+
+  deleteByProjectId(projectId: string): Promise<void> {
+    const found = this.rows.findIndex((row) => row.projectId === projectId);
+    if (found >= 0) this.rows.splice(found, 1);
+    return Promise.resolve();
+  }
+
+  recordSeen(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/** Stands in for the socket transport, and remembers who it was told to turn away. */
+class RecordingSockets implements Pick<ConnectorSocketsService, "revoke" | "lastSeenAt"> {
+  readonly revoked: string[] = [];
+  live?: Date;
+
+  revoke(projectId: string): void {
+    this.revoked.push(projectId);
+  }
+
+  lastSeenAt(): Date | undefined {
+    return this.live;
+  }
+}
+
+/** The direct connection an answer describes; fails the test if it is not one. */
+function directOf(connection: ConnectionDto | null): DirectConnectionDto {
+  if (connection?.kind !== "postgres-direct") {
+    throw new Error(`expected a direct connection, got ${connection?.kind ?? "nothing"}`);
+  }
+  return connection;
+}
+
 /** The error a call was refused with; fails the test if it was not refused. */
 async function refusalFrom(call: Promise<unknown>): Promise<Error> {
   try {
@@ -121,12 +191,16 @@ describe("ConnectionsService", () => {
   let repository: InMemoryConnectionsRepository;
   let probe: ScriptedProbe;
   let pools: RecordingPools;
+  let tokens: InMemoryConnectorTokens;
+  let sockets: RecordingSockets;
   let connections: ConnectionsService;
 
   beforeEach(async () => {
     repository = new InMemoryConnectionsRepository();
     probe = new ScriptedProbe();
     pools = new RecordingPools();
+    tokens = new InMemoryConnectorTokens();
+    sockets = new RecordingSockets();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -136,6 +210,8 @@ describe("ConnectionsService", () => {
         { provide: CryptoService, useValue: crypto },
         { provide: ConnectionProbeService, useValue: probe },
         { provide: CustomerPoolService, useValue: pools },
+        { provide: ConnectorTokensRepository, useValue: tokens },
+        { provide: ConnectorSocketsService, useValue: sockets },
       ],
     }).compile();
 
@@ -145,7 +221,7 @@ describe("ConnectionsService", () => {
   describe("set", () => {
     it("describes the database the project now points at", async () => {
       await expect(connections.set(ADA, CREWBASE, { dsn: DSN })).resolves.toEqual({
-        kind: "postgres",
+        kind: "postgres-direct",
         host: "db.example.com",
         database: "crewbase",
       });
@@ -165,7 +241,7 @@ describe("ConnectionsService", () => {
       const replaced = await connections.set(ADA, CREWBASE, { dsn: REPLACEMENT });
 
       expect(repository.rows).toHaveLength(1);
-      expect(replaced.host).toBe("replica.example.com");
+      expect(directOf(replaced).host).toBe("replica.example.com");
       expect(crypto.decrypt(repository.rows[0]?.encryptedDsn ?? "")).toBe(REPLACEMENT);
     });
 
@@ -194,7 +270,11 @@ describe("ConnectionsService", () => {
 
       const connection = await connections.get(ADA, CREWBASE);
 
-      expect(connection).toEqual({ kind: "postgres", host: "db.example.com", database: "crewbase" });
+      expect(connection).toEqual({
+        kind: "postgres-direct",
+        host: "db.example.com",
+        database: "crewbase",
+      });
       expect(JSON.stringify(connection)).not.toContain("hunter2");
     });
 
@@ -244,6 +324,112 @@ describe("ConnectionsService", () => {
 
       expect(refusal).toBeInstanceOf(NotFoundError);
       expect(probe.asked).toEqual([]);
+    });
+  });
+
+  describe("useConnector", () => {
+    it("mints a token, and hands it over exactly once", async () => {
+      const minted = await connections.useConnector(ADA, CREWBASE);
+
+      expect(minted.token).toMatch(CONNECTOR_TOKEN_PATTERN);
+      // Only a digest is kept, so this response is the only copy there will be.
+      expect(JSON.stringify(tokens.rows)).not.toContain(minted.token);
+    });
+
+    it("puts the project on the connector rung, holding no connection string at all", async () => {
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+
+      await connections.useConnector(ADA, CREWBASE);
+
+      expect(repository.rows).toHaveLength(1);
+      expect(repository.rows[0]).toMatchObject({ kind: "connector", encryptedDsn: null });
+    });
+
+    it("lets go of the pool the connection string it replaced had opened", async () => {
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+      pools.released.length = 0;
+
+      await connections.useConnector(ADA, CREWBASE);
+
+      expect(pools.released).toEqual([CREWBASE]);
+    });
+
+    it("minting again replaces the token, and turns away the connector using it", async () => {
+      const first = await connections.useConnector(ADA, CREWBASE);
+      const second = await connections.useConnector(ADA, CREWBASE);
+
+      expect(second.token).not.toBe(first.token);
+      expect(tokens.rows).toHaveLength(1);
+      expect(sockets.revoked).toEqual([CREWBASE, CREWBASE]);
+    });
+
+    it("refuses a project the caller does not own, and mints nothing", async () => {
+      const refusal = await refusalFrom(connections.useConnector(GRACE, CREWBASE));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(tokens.rows).toEqual([]);
+      expect(repository.rows).toEqual([]);
+    });
+
+    it("refuses an operator, who reaches the admin and nothing that configures it", async () => {
+      const refusal = await refusalFrom(connections.useConnector(RAVI, CREWBASE));
+
+      expect(refusal).toBeInstanceOf(ForbiddenError);
+      expect(tokens.rows).toEqual([]);
+    });
+  });
+
+  describe("a project on the connector rung", () => {
+    beforeEach(async () => {
+      await connections.useConnector(ADA, CREWBASE);
+    });
+
+    it("says whether its connector is there, and never where its database is", async () => {
+      sockets.live = new Date("2026-08-27T10:15:00.000Z");
+
+      await expect(connections.get(ADA, CREWBASE)).resolves.toEqual({
+        kind: "connector",
+        connected: true,
+        lastSeenAt: "2026-08-27T10:15:00.000Z",
+      });
+    });
+
+    it("says it is offline, and when it was last heard from, from what was filed", async () => {
+      tokens.rows[0]!.lastSeenAt = new Date("2026-08-27T09:00:00.000Z");
+
+      await expect(connections.get(ADA, CREWBASE)).resolves.toEqual({
+        kind: "connector",
+        connected: false,
+        lastSeenAt: "2026-08-27T09:00:00.000Z",
+      });
+    });
+
+    it("has no connection string to test, and says so rather than probing something", async () => {
+      const refusal = await refusalFrom(connections.test(ADA, CREWBASE));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
+      expect(probe.asked).toEqual([]);
+    });
+
+    it("routes its runtime requests over the connector", async () => {
+      await expect(connections.kindFor(CREWBASE)).resolves.toBe("connector");
+    });
+
+    it("goes back to a connection string, taking the connector's credential with it", async () => {
+      await connections.set(ADA, CREWBASE, { dsn: DSN });
+
+      expect(repository.rows[0]).toMatchObject({ kind: "postgres-direct" });
+      expect(tokens.rows).toEqual([]);
+      expect(sockets.revoked).toContain(CREWBASE);
+      await expect(connections.kindFor(CREWBASE)).resolves.toBe("postgres-direct");
+    });
+  });
+
+  describe("kindFor", () => {
+    it("refuses a project that points at nothing, rather than guessing a rung", async () => {
+      const refusal = await refusalFrom(connections.kindFor(CREWBASE));
+
+      expect(refusal).toBeInstanceOf(NotFoundError);
     });
   });
 

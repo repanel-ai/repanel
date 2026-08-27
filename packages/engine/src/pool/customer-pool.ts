@@ -7,10 +7,6 @@ const MAX_CLIENTS = 5;
 /** How long an unused client is held before the customer's database gets it back. */
 const IDLE_TIMEOUT_MS = 30_000;
 
-/** Every session this pool hands out is bounded by it, so a runaway query is
- *  the database's problem for five seconds rather than ours for an afternoon. */
-const STATEMENT_TIMEOUT_MS = 5_000;
-
 /** What the pool is given, because it looks nothing up for itself. */
 export interface CustomerPoolOptions {
   /**
@@ -67,11 +63,16 @@ export class CustomerPool {
       // back names a database this key no longer points at. Read it again.
       if ((this.generations.get(key) ?? 0) !== generation) continue;
 
+      // Nothing is asked of the session. The limit on a statement is set inside
+      // the transaction that runs it (`bounded-statement.ts`), because a DSN
+      // handed to us may point at a transaction-mode pooler — which refuses a
+      // connection that asks for `statement_timeout` in its startup packet, and
+      // where a session parameter would in any case belong to whoever the
+      // pooler lends that session to next (DECISIONS #063).
       const pool = new Pool({
         connectionString: dsn,
         max: MAX_CLIENTS,
         idleTimeoutMillis: IDLE_TIMEOUT_MS,
-        statement_timeout: STATEMENT_TIMEOUT_MS,
       });
       // An idle client that dies takes the whole process with it if nothing is
       // listening.

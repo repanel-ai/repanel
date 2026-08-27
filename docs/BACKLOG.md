@@ -25,3 +25,21 @@ Items graduate to numbered tasks; nothing here is a commitment.
 - Marketplace/OAuth integrations (Supabase first) · MySQL · per-customer
   theme overrides (#035 mechanism exists) · environments-as-product with
   publishing promotion (#standing decision) · connector enterprise packaging
+
+## 030b · Platform courtesy for Supabase and Neon DSNs
+Deferred from #030 by founder ruling: #030 shipped the integrity half —
+the per-query timeout is transaction-scoped and proved against pgbouncer
+(#063) — and this is the courtesy half, which waits until core
+functionality is fully nailed. Nothing here is a correctness gap; the
+engine already connects through a transaction pooler.
+- DSN recognition: know a Supabase/Neon transaction-pooler host or port
+  from a session-pooler one, and an IPv6-only direct connection from an
+  unreachable host.
+- Steering messages on the connection test: a specific, kind sentence per
+  recognized shape, saying where in the dashboard the better string is.
+  Categories stay sanitized — no host, user or credential in the answer.
+- AUTHORING.md's Supabase section: rewrite the connection guidance around
+  what is now true. It currently steers to the session pooler *because*
+  RePanel set a session-level `statement_timeout`, and that reason is
+  gone. Regenerate the skill with it (`node scripts/build-skill.mjs`).
+- Console: the Connection page links that guidance.

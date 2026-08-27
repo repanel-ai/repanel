@@ -10,5 +10,31 @@ services:
     volumes:
       - repanel-postgres:/var/lib/postgresql/data
 
+  # The same database, reached the way a customer's Neon or Supabase database is
+  # reached: through a transaction-mode pooler, where a connection is a
+  # different server session from one transaction to the next. It is here so the
+  # gated suite that proves the engine survives that can be run by hand, and it
+  # matches the service CI runs (DECISIONS #063).
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: repanel
+      DB_PASSWORD: repanel
+      DB_NAME: repanel
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "100"
+      # One server session behind every client, so each statement runs on a
+      # session the statement before it just used. That is the condition a
+      # per-query bound has to survive, and a larger pool would sometimes hide
+      # a bound that leaked.
+      DEFAULT_POOL_SIZE: "1"
+    ports:
+      - "6432:5432"
+    depends_on:
+      - postgres
+
 volumes:
   repanel-postgres:

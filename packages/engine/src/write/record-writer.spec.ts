@@ -6,7 +6,7 @@ import {
   type Resource,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import type { Pool, QueryResult } from "pg";
+import type { Pool, PoolClient, QueryResult } from "pg";
 import {
   ConflictError,
   NotFoundError,
@@ -107,12 +107,21 @@ function contextThat(
   resources: ReadonlyMap<string, Resource> = RESOURCES,
   file: (event: AuditEvent) => Promise<void> = () => Promise.resolve(),
 ): WriteContext & { asked: Asked[]; events: AuditEvent[] } {
-  const pool = {
-    query(query: { text: string; values: unknown[] }): Promise<QueryResult> {
+  // The writer runs its statement inside a transaction of its own
+  // (`pool/bounded-statement.ts`), so what it asks the pool for is a client.
+  // `begin`, `commit` and `rollback` travel as bare strings and are not what
+  // this spec reads: the statement carrying values is.
+  const client = {
+    query(query: string | { text: string; values: unknown[] }): Promise<QueryResult> {
+      if (typeof query === "string") return Promise.resolve(NO_ROWS);
+
       asked.push({ text: query.text, values: query.values });
       return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
     },
-  } as unknown as Pool;
+    release: () => undefined,
+  };
+
+  const pool = { connect: () => Promise.resolve(client) } as unknown as Pool;
 
   const events: AuditEvent[] = [];
 

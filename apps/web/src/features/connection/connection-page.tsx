@@ -1,116 +1,103 @@
-import type { ConnectionFailureReason } from "@repanel/contracts";
-import { Button, Card, FormError, Input, Label, Skeleton, cn } from "@repanel/ui";
-import { type FormEvent, useState } from "react";
+import { Button, Card, FormError, Skeleton } from "@repanel/ui";
+import { useState } from "react";
 import { useParams } from "react-router";
 import { PageHead } from "../../page-head";
 import { messageOf } from "../../lib/api-client";
-import { useConnection, useSaveConnection, useTestConnection } from "./use-connection";
+import { ConnectorConnection } from "./connector-connection";
+import { DirectConnection } from "./direct-connection";
+import {
+  useConnection,
+  useSaveConnection,
+  useTestConnection,
+  useUseConnector,
+} from "./use-connection";
 
 /**
- * The four categories a failed probe comes back as (007), each said in a
- * sentence someone can act on. The driver's own words never reach here — they
- * name hosts and users and sometimes repeat the credential — so this is the
- * whole vocabulary of failure the console has, and it is deliberately short.
- */
-const FAILURES: Record<ConnectionFailureReason, string> = {
-  unreachable: "Nothing answered at that host and port.",
-  auth_failed: "The database refused those credentials.",
-  timeout: "The database did not answer in time.",
-  unknown: "The connection failed, for a reason RePanel could not identify.",
-};
-
-/**
- * Where a human points RePanel at their database, and the only place the
- * connection string is ever typed. It is written, never read back: what comes
- * out of the API afterwards is the host and the database name, which is all
- * anyone needs to recognize what they connected.
+ * How this project's database is reached, and the choice between the two ways.
+ *
+ * A connection string is the rung a project starts on: RePanel holds the
+ * credential, and everything is one hop. A connector is the rung above it: the
+ * credential never leaves the customer's network and RePanel sends descriptors
+ * to a binary they run. A project is on one at a time, and choosing one takes
+ * the other's credential with it — which the page says before it is done rather
+ * than after.
  */
 export function ConnectionPage() {
   const { id = "" } = useParams();
   const connection = useConnection(id);
   const save = useSaveConnection(id);
   const test = useTestConnection(id);
-  const [dsn, setDsn] = useState("");
+  const useConnector = useUseConnector(id);
+  /**
+   * The minted token, held here and nowhere else — not in the query cache, not
+   * in what the API answers with afterwards. It exists for as long as this
+   * screen is showing it.
+   */
+  const [minted, setMinted] = useState<string | null>(null);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    save.mutate(
-      { dsn },
-      {
-        onSuccess: () => {
-          setDsn("");
-          // A verdict about the connection string that was just replaced is
-          // not a verdict about anything.
-          test.reset();
-        },
-      },
-    );
+  const current = connection.data;
+
+  function mint() {
+    useConnector.mutate(undefined, { onSuccess: ({ token }) => setMinted(token) });
   }
 
   return (
     <>
       <PageHead title="Connection" meta="the database this admin reads" />
 
-      <Card className="flex flex-col gap-4 p-5">
-        {connection.isPending ? (
-          <Skeleton className="h-5 w-64" />
-        ) : (
-          <p className="text-body text-muted-foreground">
-            {connection.data ? (
-              <>
-                Connected to{" "}
-                <span className="font-data text-foreground">
-                  {connection.data.host}/{connection.data.database}
-                </span>
-              </>
-            ) : (
-              "This project is not pointed at a database yet."
-            )}
-          </p>
+      <Card className="flex min-w-0 flex-col gap-5 p-5">
+        {connection.isPending && <Skeleton className="h-5 w-64" />}
+
+        {!connection.isPending && current?.kind === "connector" && (
+          <ConnectorConnection
+            connection={current}
+            token={minted}
+            minting={useConnector.isPending}
+            onMint={mint}
+            onDismissToken={() => setMinted(null)}
+          />
         )}
 
-        <form className="flex flex-col gap-2" onSubmit={submit}>
-          <Label htmlFor="dsn">Connection string</Label>
-          <div className="flex flex-wrap items-start gap-2">
-            <Input
-              id="dsn"
-              type="password"
-              autoComplete="off"
-              required
-              placeholder="postgres://user:password@host:5432/database"
-              value={dsn}
-              onChange={(event) => setDsn(event.target.value)}
-              className="min-w-64 flex-1"
-            />
-            <Button type="submit" disabled={save.isPending || dsn.trim() === ""}>
-              {save.isPending ? "Saving…" : "Save"}
-            </Button>
-          </div>
-          <p className="text-small text-muted-foreground">
-            Stored encrypted. It is never shown again, never sent to an agent, and never leaves
-            RePanel.
-          </p>
-          <FormError message={messageOf(save.error)} />
-        </form>
+        {!connection.isPending && current?.kind !== "connector" && (
+          <>
+            <p className="text-body text-muted-foreground">
+              {current ? (
+                <>
+                  Connected to{" "}
+                  <span className="font-data text-foreground">
+                    {current.host}/{current.database}
+                  </span>
+                </>
+              ) : (
+                "This project is not pointed at a database yet."
+              )}
+            </p>
 
-        {connection.data && (
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <Button variant="outline" onClick={() => test.mutate()} disabled={test.isPending}>
-              {test.isPending ? "Testing…" : "Test connection"}
-            </Button>
-            {test.data && (
-              <p
-                role="status"
-                className={cn(
-                  "text-body",
-                  test.data.ok ? "text-positive-text" : "text-destructive-text",
-                )}
-              >
-                {test.data.ok ? "The database answered." : FAILURES[test.data.reason]}
+            <DirectConnection
+              connection={current ?? null}
+              saving={save.isPending}
+              saveError={messageOf(save.error)}
+              onSave={(dsn) => save.mutate({ dsn })}
+              testing={test.isPending}
+              verdict={test.data}
+              testError={messageOf(test.error)}
+              onTest={() => test.mutate()}
+              clearVerdict={() => test.reset()}
+            />
+
+            <div className="border-t border-border pt-4">
+              <p className="text-body font-medium">Run a connector instead</p>
+              <p className="mt-1 text-small text-muted-foreground">
+                RePanel holds no connection string on this rung. You run one open-source binary
+                beside your database; it dials out, and RePanel sends it what to read rather than
+                how to read it.
               </p>
-            )}
-            <FormError message={messageOf(test.error)} />
-          </div>
+              <Button className="mt-3" variant="outline" onClick={mint} disabled={useConnector.isPending}>
+                {useConnector.isPending ? "Minting…" : "Mint a connector token"}
+              </Button>
+              <FormError message={messageOf(useConnector.error)} />
+            </div>
+          </>
         )}
       </Card>
     </>

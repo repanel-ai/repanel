@@ -1,5 +1,15 @@
+import { z } from "zod";
+
 /** How the admin addresses one record: whatever its primary key holds. */
 export type RecordId = string | number;
+
+/**
+ * The same thing, for the one place a record id arrives as a value rather than
+ * as a path segment: a connector frame, which is JSON and can therefore carry
+ * the number a numeric key actually is. A route still spells it as text — a URL
+ * has nothing else — and the engine binds either as a parameter regardless.
+ */
+export const recordIdSchema: z.ZodType<RecordId> = z.union([z.string().min(1), z.number()]);
 
 /** Anything a `json` field can carry, which is the outer bound of any value. */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };

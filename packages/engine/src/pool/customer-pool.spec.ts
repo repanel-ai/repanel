@@ -87,8 +87,20 @@ describe("CustomerPool", () => {
 
       expect(pool.options.max).toBe(5);
       expect(pool.options.idleTimeoutMillis).toBe(30_000);
-      // Every session it hands out is bounded, so no query outlives the panel.
-      expect(pool.options.statement_timeout).toBe(5_000);
+    });
+
+    /**
+     * A DSN may point at a transaction-mode pooler, which refuses a connection
+     * that asks for a session parameter in its startup packet — and would in
+     * any case hand the session on to somebody else between two of our
+     * statements. The limit belongs to the statement's transaction, and this is
+     * what says it is not here (DECISIONS #063, `bounded-statement.ts`).
+     */
+    it("asks the session for nothing at all", async () => {
+      const pool = await pools.poolFor(CREWBASE);
+
+      expect(pool.options.statement_timeout).toBeUndefined();
+      expect(pool.options.options).toBeUndefined();
     });
 
     it("hands the same pool back rather than opening a second one", async () => {

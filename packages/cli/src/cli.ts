@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { connect } from "./commands/connect.js";
 import { deploy } from "./commands/deploy.js";
 import { DEFAULT_PORT, dev } from "./commands/dev.js";
 import { link } from "./commands/link.js";
@@ -12,6 +13,7 @@ const OPTIONS = {
   help: { type: "boolean", short: "h" },
   port: { type: "string" },
   "database-url": { type: "string" },
+  token: { type: "string" },
   yes: { type: "boolean", short: "y" },
   project: { type: "string" },
 } as const;
@@ -29,9 +31,10 @@ export interface CliContext {
  * returning what to print. Node's own parser does the parsing, so an unknown
  * option is refused here rather than ignored by every command in turn.
  *
- * A command that keeps running — `dev` — returns as soon as it is up; the open
- * server is what holds the process, and its own output has already been
- * written through `context.io`.
+ * Two commands keep running, and they end differently. `dev` returns as soon as
+ * it is up: the open server holds the process, and its own output has already
+ * been written through `context.io`. `connect` returns when the connector stops
+ * — it is the process, so there is something to say about how it ended.
  *
  * @param argv the arguments after the program name.
  * @param projectRoot the directory a command reads the definition from.
@@ -63,6 +66,17 @@ export async function run(
   if (rest.length > 0) return usageError(`\`repanel ${name}\` takes no arguments.`);
 
   if (name === "validate") return validate(projectRoot);
+
+  // The connector reaches no RePanel account: it carries a token of its own,
+  // minted for one project, and the session `repanel link` keeps is nothing to
+  // do with it.
+  if (name === "connect") {
+    return connect(
+      projectRoot,
+      { token: parsed.values.token, databaseUrl: parsed.values["database-url"], env: context.env },
+      context.io,
+    );
+  }
 
   const project = parsed.values.project?.trim();
   if (parsed.values.project !== undefined && (project === undefined || project === "")) {

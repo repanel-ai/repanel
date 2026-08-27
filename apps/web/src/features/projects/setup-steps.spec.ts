@@ -2,7 +2,7 @@ import type { AgentTokenDto, ConnectionDto, DefinitionStatusDto } from "@repanel
 import { describe, expect, it } from "vitest";
 import { setupSteps, type SetupFacts, type StepKey, type StepState } from "./setup-steps";
 
-const CONNECTED: ConnectionDto = { kind: "postgres", host: "db.example.com", database: "crewbase" };
+const CONNECTED: ConnectionDto = { kind: "postgres-direct", host: "db.example.com", database: "crewbase" };
 const UNUSED: AgentTokenDto = {
   id: "t_1",
   label: "Claude Code on my laptop",

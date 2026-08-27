@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from "@repanel/contracts";
 import { DEFINITION_DIRECTORY } from "./assemble/assemble.js";
 import { PROJECT_FILE } from "./cloud/project-file.js";
+import { TOKEN_VARIABLE } from "./commands/connect.js";
 
 /** An option a command takes, said once and spent twice: the help, and the gate. */
 interface CommandOption {
@@ -72,6 +73,36 @@ export const COMMANDS = {
     ],
     options: [
       { name: "project", help: "  --project <key>        link to this project instead of choosing one" },
+    ],
+  },
+  connect: {
+    summary: "serve this project's admin from beside your own database",
+    details: [
+      "Runs the connector: RePanel's engine, on this machine, reading the",
+      "database this machine can already reach. The connection string stays",
+      "here — RePanel never receives one — and this process dials out, so",
+      "nothing about it is reachable from the internet.",
+      "",
+      "What comes down the channel is what to read: which resource, which",
+      "record, which action, out of the definition you published. The SQL is",
+      "written here, by the same engine the hosted runtime uses. Nothing is",
+      "written to disk: the definition and the signing secret arrive over the",
+      "channel and live in memory, and stopping this leaves nothing behind.",
+      "",
+      "Mint the token on your project's Connection page in the RePanel console.",
+      `It can also be given as ${TOKEN_VARIABLE} in this machine's environment,`,
+      "which is the better habit — a token on a command line is a token in your",
+      "shell history.",
+      "",
+      "The connection string is read from your environment — DATABASE_URL, or",
+      "`.env.local`, or `.env` — exactly as `repanel dev` reads it.",
+    ],
+    options: [
+      { name: "token", help: "  --token <rpc_…>        the connector token for this project" },
+      {
+        name: "database-url",
+        help: "  --database-url <dsn>   use this database instead of the one in .env",
+      },
     ],
   },
   deploy: {

@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import type { RecordDto, RecordId, RecordWrite, UserDto } from "@repanel/contracts";
-import { RecordWriter, type AuditWriter } from "@repanel/engine";
+import type { AuditWriter } from "@repanel/engine";
 import { ActivityService } from "../activity/activity.service";
+import { ExecutorsService } from "../runtime/executors.service";
+import { SIGNS_NOTHING } from "../runtime/runtime-executor";
 import { RuntimeService } from "../runtime/runtime.service";
 
 /**
@@ -13,16 +15,18 @@ import { RuntimeService } from "../runtime/runtime.service";
  * There is no authorization of its own here, and that is the point: "may this
  * caller reach this admin" has one answer, and it is `RuntimeService`'s.
  *
- * What it adds to the engine's writer is the one thing the engine cannot know:
- * who is writing. It takes the whole operator rather than their id, because an
- * audit event carries the address they were called by at the time.
+ * What it adds to the executor is the one thing neither rung can know: who is
+ * writing. It takes the whole operator rather than their id, because an audit
+ * event carries the address they were called by at the time — and it takes it
+ * the same way whether the write is performed in this process or beside the
+ * customer's database, which is what makes the log identical on both rungs.
  */
 @Injectable()
 export class RecordsService {
   constructor(
     private readonly runtime: RuntimeService,
     private readonly activity: ActivityService,
-    private readonly writer: RecordWriter,
+    private readonly executors: ExecutorsService,
   ) {}
 
   async createRecord(
@@ -31,13 +35,7 @@ export class RecordsService {
     resourceKey: string,
     write: RecordWrite,
   ): Promise<RecordDto> {
-    const context = await this.runtime.readContext(actor.id, projectKey);
-
-    return this.writer.createRecord(
-      { ...context, audit: this.auditFor(actor, context.projectId) },
-      resourceKey,
-      write,
-    );
+    return (await this.writing(actor, projectKey)).createRecord(resourceKey, write);
   }
 
   async updateRecord(
@@ -47,14 +45,18 @@ export class RecordsService {
     id: RecordId,
     write: RecordWrite,
   ): Promise<RecordDto> {
+    return (await this.writing(actor, projectKey)).updateRecord(resourceKey, id, write);
+  }
+
+  private async writing(actor: UserDto, projectKey: string) {
     const context = await this.runtime.readContext(actor.id, projectKey);
 
-    return this.writer.updateRecord(
-      { ...context, audit: this.auditFor(actor, context.projectId) },
-      resourceKey,
-      id,
-      write,
-    );
+    return this.executors.for({
+      ...context,
+      audit: this.auditFor(actor, context.projectId),
+      // A form fills columns; it never calls out to the customer's application.
+      secret: SIGNS_NOTHING,
+    });
   }
 
   /** Where this operator's writes to this project are accounted for. */

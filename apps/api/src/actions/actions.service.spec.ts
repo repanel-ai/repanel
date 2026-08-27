@@ -5,14 +5,8 @@ import {
   type UserDto,
 } from "@repanel/contracts";
 import { saasDefinition } from "@repanel/contracts/fixtures";
-import {
-  ActionRunner,
-  HttpCall,
-  QueryBuilder,
-  RecordReader,
-  type AuditEvent,
-} from "@repanel/engine";
-import type { Pool, QueryResult } from "pg";
+import type { AuditEvent, HttpCall } from "@repanel/engine";
+import type { Pool, PoolClient, QueryResult } from "pg";
 import type { ActivityService } from "../activity/activity.service";
 import type { CustomerPoolService } from "../connections/customer-pool.service";
 import type { PublishedDefinition } from "../definitions/definitions.mapper";
@@ -24,7 +18,7 @@ import {
   QueryTimeoutError,
 } from "../errors/domain-errors";
 import type { ProjectsService } from "../projects/projects.service";
-import { RuntimeService } from "../runtime/runtime.service";
+import { directRuntime } from "../runtime/runtime.test-helpers";
 import { ActionsService } from "./actions.service";
 
 const PROJECT: ProjectDto = {
@@ -47,6 +41,9 @@ interface Statement {
   values: unknown[];
 }
 
+/** What `begin`, `commit` and `rollback` answer with: nothing anybody reads. */
+const NOTHING = { rows: [], fields: [], rowCount: 0, command: "" } as unknown as QueryResult;
+
 /** Stands in for the customer's database: answers whatever a test scripted. */
 class FakePool {
   readonly statements: Statement[] = [];
@@ -59,7 +56,23 @@ class FakePool {
     return Promise.resolve(this as unknown as Pool);
   }
 
-  query(statement: Statement): Promise<QueryResult> {
+  /**
+   * The engine runs every statement inside a transaction of its own
+   * (`engine/src/pool/bounded-statement.ts`), so what it asks a pool for is a
+   * client rather than an answer. This fake is its own client: it lends itself
+   * and takes itself back.
+   */
+  connect(): Promise<PoolClient> {
+    return Promise.resolve(this as unknown as PoolClient);
+  }
+
+  release(): void {}
+
+  query(statement: Statement | string): Promise<QueryResult> {
+    // The transaction's own statements travel as bare strings and carry nothing
+    // this spec reads.
+    if (typeof statement === "string") return Promise.resolve(NOTHING);
+
     this.statements.push(statement);
     const answer = this.respond(statement.text);
     return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
@@ -136,19 +149,17 @@ describe("ActionsService", () => {
     http = { send: jest.fn().mockResolvedValue(undefined) };
     activity = { record: jest.fn().mockResolvedValue(undefined) };
 
-    const queries = new QueryBuilder();
-    const reader = new RecordReader(queries);
-    const runtime = new RuntimeService(
-      projects as unknown as ProjectsService,
-      definitions as unknown as DefinitionsService,
-      pool as unknown as CustomerPoolService,
-      reader,
-    );
+    const { runtime, executors } = directRuntime({
+      projects: projects as unknown as ProjectsService,
+      definitions: definitions as unknown as DefinitionsService,
+      pools: pool as unknown as CustomerPoolService,
+      http: http as unknown as HttpCall,
+    });
     actions = new ActionsService(
       runtime,
       projects as unknown as ProjectsService,
       activity as unknown as ActivityService,
-      new ActionRunner(reader, queries, http as unknown as HttpCall),
+      executors,
     );
   });
 
